@@ -24,15 +24,28 @@ type JsonApiResponse struct {
 }
 
 func CreateJsonApiResponse(model interface{}) (*JsonApiResponse, error) {
-	rootNode := new(JsonApiNode)
-	jsonApiResponse := &JsonApiResponse{Data: rootNode}
+	rootNode, included, err := visitModelNode(model)
+	if err != nil {
+		return nil, err
+	}
 
-	primaryKeyType := reflect.TypeOf(model)
+	resp := &JsonApiResponse{Data: rootNode}
+	resp.Included = included
+	// TODO make Included unique
+
+	return resp, nil
+}
+
+func visitModelNode(model interface{}) (*JsonApiNode, []*JsonApiNode, error) {
+	node := new(JsonApiNode)
 
 	var err error
+	included := make([]*JsonApiNode, 0)
 
-	primaryKeyType.FieldByNameFunc(func(name string) bool {
-		field, found := primaryKeyType.FieldByName(name)
+	modelType := reflect.TypeOf(model)
+
+	modelType.FieldByNameFunc(func(name string) bool {
+		field, found := modelType.FieldByName(name)
 
 		if found {
 			fieldValue := reflect.ValueOf(model).FieldByName(name)
@@ -43,24 +56,50 @@ func CreateJsonApiResponse(model interface{}) (*JsonApiResponse, error) {
 
 				if annotation == "primary" {
 					if len(args) >= 2 {
-						rootNode.Id = fmt.Sprintf("%v", fieldValue.Interface())
-						rootNode.Type = args[1]
+						node.Id = fmt.Sprintf("%v", fieldValue.Interface())
+						node.Type = args[1]
 					} else {
 						err = errors.New("'type' as second argument required for 'primary'")
 					}
 				} else if annotation == "attr" {
-					if rootNode.Attributes == nil {
-						rootNode.Attributes = make(map[string]interface{})
+					if node.Attributes == nil {
+						node.Attributes = make(map[string]interface{})
 					}
 
 					if len(args) >= 2 {
-						rootNode.Attributes[args[1]] = fieldValue.Interface()
+						node.Attributes[args[1]] = fieldValue.Interface()
 					} else {
 						err = errors.New("'type' as second argument required for 'primary'")
 					}
+				} else if annotation == "relation" {
+					if node.Relationships == nil {
+						node.Relationships = make(map[string]interface{})
+					}
+
+					if fieldValue.Type().Kind() == reflect.Slice {
+						relationship, err := visitModelNodeRelationships(args[1], fieldValue)
+
+						if err == nil {
+							shallowNodes := make([]*JsonApiNode, 0)
+							for k, v := range relationship {
+								for _, node := range v {
+									included = append(included, node)
+
+									shallowNode := *node
+									shallowNode.Attributes = nil
+									shallowNodes = append(shallowNodes, &shallowNode)
+								}
+
+								node.Relationships[k] = shallowNodes
+							}
+						} else {
+							err = err
+						}
+					} else {
+					}
 
 				} else {
-					err = errors.New("Unsupported jsonapi tag annotation")
+					err = errors.New(fmt.Sprintf("Unsupported jsonapi tag annotation, %s", annotation))
 				}
 			}
 		}
@@ -69,10 +108,28 @@ func CreateJsonApiResponse(model interface{}) (*JsonApiResponse, error) {
 	})
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return jsonApiResponse, nil
+	return node, included, nil
+}
+
+func visitModelNodeRelationships(relationName string, models reflect.Value) (map[string][]*JsonApiNode, error) {
+	relationship := make(map[string][]*JsonApiNode)
+	nodes := make([]*JsonApiNode, 0)
+
+	for i := 0; i < models.Len(); i++ {
+		node, _, err := visitModelNode(models.Index(i).Interface())
+		if err != nil {
+			return nil, err
+		}
+
+		nodes = append(nodes, node)
+	}
+
+	relationship[relationName] = nodes
+
+	return relationship, nil
 }
 
 func handleField(field reflect.StructField) {
