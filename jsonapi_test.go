@@ -14,9 +14,10 @@ type Post struct {
 }
 
 type Blog struct {
-	Id    int    `jsonapi:"primary,blogs"`
-	Title string `jsonapi:"attr,title"`
-	Posts []Post `jsonapi:"relation,posts"`
+	Id          int    `jsonapi:"primary,blogs"`
+	Title       string `jsonapi:"attr,title"`
+	Posts       []Post `jsonapi:"relation,posts"`
+	CurrentPost Post   `jsonapi:"relation,current_post"`
 }
 
 func TestHasPrimaryAnnotation(t *testing.T) {
@@ -34,6 +35,11 @@ func TestHasPrimaryAnnotation(t *testing.T) {
 				Title: "Fuubar",
 				Body:  "Bas",
 			},
+		},
+		CurrentPost: Post{
+			Id:    1,
+			Title: "Foo",
+			Body:  "Bar",
 		},
 	}
 

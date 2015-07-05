@@ -20,7 +20,7 @@ type JsonApiNode struct {
 
 type JsonApiResponse struct {
 	Data     *JsonApiNode   `json:"data"`
-	Included []*JsonApiNode `json:"included"`
+	Included []*JsonApiNode `json:"included,omitempty"`
 }
 
 func CreateJsonApiResponse(model interface{}) (*JsonApiResponse, error) {
@@ -30,8 +30,19 @@ func CreateJsonApiResponse(model interface{}) (*JsonApiResponse, error) {
 	}
 
 	resp := &JsonApiResponse{Data: rootNode}
+
+	uniqueIncluded := make(map[string]*JsonApiNode)
+
+	for i, n := range included {
+		k := fmt.Sprintf("%s,%s", n.Type, n.Id)
+		if uniqueIncluded[k] == nil {
+			uniqueIncluded[k] = n
+		} else {
+			included = append(included[:i], included[i+1:]...)
+		}
+	}
+
 	resp.Included = included
-	// TODO make Included unique
 
 	return resp, nil
 }
@@ -96,6 +107,17 @@ func visitModelNode(model interface{}) (*JsonApiNode, []*JsonApiNode, error) {
 							err = err
 						}
 					} else {
+						relationship, _, err := visitModelNode(fieldValue.Interface())
+						if err == nil {
+							shallowNode := *relationship
+							shallowNode.Attributes = nil
+
+							included = append(included, relationship)
+
+							node.Relationships[args[1]] = &shallowNode
+						} else {
+							err = err
+						}
 					}
 
 				} else {
