@@ -27,7 +27,7 @@ func TestHasPrimaryAnnotation(t *testing.T) {
 		Title: "Title 1",
 	}
 
-	resp, err := CreateJsonApiResponse(testModel)
+	resp, err := MarshalJsonApiPayload(testModel)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +49,7 @@ func TestSupportsAttributes(t *testing.T) {
 		Title: "Title 1",
 	}
 
-	resp, err := CreateJsonApiResponse(testModel)
+	resp, err := MarshalJsonApiPayload(testModel)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestRelations(t *testing.T) {
 		},
 	}
 
-	resp, err := CreateJsonApiResponse(testModel)
+	resp, err := MarshalJsonApiPayload(testModel)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +120,7 @@ func TestRelations(t *testing.T) {
 func TestNoRelations(t *testing.T) {
 	testModel := &Blog{Id: 1, Title: "Title 1"}
 
-	resp, err := CreateJsonApiResponse(testModel)
+	resp, err := MarshalJsonApiPayload(testModel)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +136,6 @@ func TestNoRelations(t *testing.T) {
 	json.NewDecoder(jsonBuffer).Decode(decodedResponse)
 
 	if decodedResponse.Included != nil {
-		fmt.Printf("%v\n", decodedResponse.Included)
 		t.Fatalf("Encoding json response did not omit included")
 	}
 }

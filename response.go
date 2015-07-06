@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-func CreateJsonApiResponse(model interface{}) (*JsonApiPayload, error) {
+func MarshalJsonApiPayload(model interface{}) (*JsonApiPayload, error) {
 	rootNode, included, err := visitModelNode(model)
 	if err != nil {
 		return nil, err
