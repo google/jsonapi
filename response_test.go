@@ -14,29 +14,29 @@ type Post struct {
 }
 
 type Blog struct {
-	Id          int    `jsonapi:"primary,blogs"`
-	Title       string `jsonapi:"attr,title"`
-	Posts       []Post `jsonapi:"relation,posts"`
-	CurrentPost Post   `jsonapi:"relation,current_post"`
+	Id          int     `jsonapi:"primary,blogs"`
+	Title       string  `jsonapi:"attr,title"`
+	Posts       []*Post `jsonapi:"relation,posts"`
+	CurrentPost *Post   `jsonapi:"relation,current_post"`
 }
 
 func TestHasPrimaryAnnotation(t *testing.T) {
-	testModel := Blog{
+	testModel := &Blog{
 		Id:    5,
 		Title: "Title 1",
-		Posts: []Post{
-			Post{
+		Posts: []*Post{
+			&Post{
 				Id:    1,
 				Title: "Foo",
 				Body:  "Bar",
 			},
-			Post{
+			&Post{
 				Id:    2,
 				Title: "Fuubar",
 				Body:  "Bas",
 			},
 		},
-		CurrentPost: Post{
+		CurrentPost: &Post{
 			Id:    1,
 			Title: "Foo",
 			Body:  "Bar",
@@ -55,8 +55,8 @@ func TestHasPrimaryAnnotation(t *testing.T) {
 
 	response := resp.Data
 
-	if response.Type != "Blogs" {
-		t.Fatalf("type should have been Blogs")
+	if response.Type != "blogs" {
+		t.Fatalf("type should have been blogs, got %s", response.Type)
 	}
 
 	if response.Id != "5" {
@@ -65,7 +65,7 @@ func TestHasPrimaryAnnotation(t *testing.T) {
 }
 
 func TestSupportsAttributes(t *testing.T) {
-	testModel := Blog{
+	testModel := &Blog{
 		Id:    5,
 		Title: "Title 1",
 	}
@@ -83,5 +83,28 @@ func TestSupportsAttributes(t *testing.T) {
 
 	if response.Attributes["title"] != "Title 1" {
 		t.Fatalf("Attributes hash not populated using tags correctly")
+	}
+}
+func TestNoRelations(t *testing.T) {
+	testModel := &Blog{Id: 1, Title: "Title 1"}
+
+	resp, err := CreateJsonApiResponse(testModel)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	jsonBuffer := bytes.NewBuffer(nil)
+
+	json.NewEncoder(jsonBuffer).Encode(resp)
+
+	fmt.Printf("%s\n", jsonBuffer.Bytes())
+
+	decodedResponse := new(JsonApiResponse)
+
+	json.NewDecoder(jsonBuffer).Decode(decodedResponse)
+
+	if decodedResponse.Included != nil {
+		fmt.Printf("%v\n", decodedResponse.Included)
+		t.Fatalf("Encoding json response did not omit included")
 	}
 }

@@ -42,79 +42,91 @@ func visitModelNode(model interface{}) (*JsonApiNode, []*JsonApiNode, error) {
 	var err error
 	var included []*JsonApiNode
 
-	modelType := reflect.TypeOf(model)
+	modelType := reflect.TypeOf(model).Elem()
+	modelValue := reflect.ValueOf(model).Elem()
 
+	var i = 0
 	modelType.FieldByNameFunc(func(name string) bool {
-		field, found := modelType.FieldByName(name)
+		fieldType := modelType.Field(i)
+		fieldValue := modelValue.Field(i)
 
-		if found {
-			fieldValue := reflect.ValueOf(model).FieldByName(name)
-			tag := field.Tag.Get("jsonapi")
-			args := strings.Split(tag, ",")
-			if len(args) >= 1 && args[0] != "" {
-				annotation := args[0]
+		i += 1
 
-				if annotation == "primary" {
-					if len(args) >= 2 {
-						node.Id = fmt.Sprintf("%v", fieldValue.Interface())
-						node.Type = args[1]
-					} else {
-						err = errors.New("'type' as second argument required for 'primary'")
-					}
-				} else if annotation == "attr" {
-					if node.Attributes == nil {
-						node.Attributes = make(map[string]interface{})
-					}
+		tag := fieldType.Tag.Get("jsonapi")
 
-					if len(args) >= 2 {
-						node.Attributes[args[1]] = fieldValue.Interface()
-					} else {
-						err = errors.New("'type' as second argument required for 'primary'")
-					}
-				} else if annotation == "relation" {
-					if node.Relationships == nil {
-						node.Relationships = make(map[string]interface{})
-					}
-					if included == nil {
-						included = make([]*JsonApiNode, 0)
-					}
+		args := strings.Split(tag, ",")
 
-					if fieldValue.Type().Kind() == reflect.Slice {
-						relationship, err := visitModelNodeRelationships(args[1], fieldValue)
+		if len(args) >= 1 && args[0] != "" {
+			annotation := args[0]
 
-						if err == nil {
-							shallowNodes := make([]*JsonApiNode, 0)
-							for k, v := range relationship {
-								for _, node := range v {
-									included = append(included, node)
-
-									shallowNode := *node
-									shallowNode.Attributes = nil
-									shallowNodes = append(shallowNodes, &shallowNode)
-								}
-
-								node.Relationships[k] = shallowNodes
-							}
-						} else {
-							err = err
-						}
-					} else {
-						relationship, _, err := visitModelNode(fieldValue.Interface())
-						if err == nil {
-							shallowNode := *relationship
-							shallowNode.Attributes = nil
-
-							included = append(included, relationship)
-
-							node.Relationships[args[1]] = &shallowNode
-						} else {
-							err = err
-						}
-					}
-
+			if annotation == "primary" {
+				if len(args) >= 2 {
+					node.Id = fmt.Sprintf("%v", fieldValue.Interface())
+					node.Type = args[1]
 				} else {
-					err = errors.New(fmt.Sprintf("Unsupported jsonapi tag annotation, %s", annotation))
+					err = errors.New("'type' as second argument required for 'primary'")
 				}
+			} else if annotation == "attr" {
+				if node.Attributes == nil {
+					node.Attributes = make(map[string]interface{})
+				}
+
+				if len(args) >= 2 {
+					node.Attributes[args[1]] = fieldValue.Interface()
+				} else {
+					err = errors.New("'type' as second argument required for 'primary'")
+				}
+			} else if annotation == "relation" {
+
+				isSlice := fieldValue.Type().Kind() == reflect.Slice
+
+				if (isSlice && fieldValue.Len() < 1) || (!isSlice && fieldValue.IsNil()) {
+					return false
+				}
+
+				if node.Relationships == nil {
+					node.Relationships = make(map[string]interface{})
+				}
+
+				if included == nil {
+					included = make([]*JsonApiNode, 0)
+				}
+
+				if isSlice {
+					relationship, err := visitModelNodeRelationships(args[1], fieldValue)
+
+					if err == nil {
+						shallowNodes := make([]*JsonApiNode, 0)
+						for k, v := range relationship {
+							for _, node := range v {
+								included = append(included, node)
+
+								shallowNode := *node
+								shallowNode.Attributes = nil
+								shallowNodes = append(shallowNodes, &shallowNode)
+							}
+
+							node.Relationships[k] = shallowNodes
+						}
+					} else {
+						err = err
+					}
+				} else {
+					relationship, _, err := visitModelNode(fieldValue.Interface())
+					if err == nil {
+						shallowNode := *relationship
+						shallowNode.Attributes = nil
+
+						included = append(included, relationship)
+
+						node.Relationships[args[1]] = &shallowNode
+					} else {
+						err = err
+					}
+				}
+
+			} else {
+				err = errors.New(fmt.Sprintf("Unsupported jsonapi tag annotation, %s", annotation))
 			}
 		}
 
