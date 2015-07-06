@@ -64,18 +64,14 @@ func UnmarshalJsonApiPayload(payload *JsonApiPayload, model interface{}) error {
 					val := attributes[args[1]]
 
 					if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
-						if reflect.TypeOf(val).Kind() != reflect.String {
-							er = errors.New("Cannot parse anything but string to Time")
+						if reflect.TypeOf(val).Kind() != reflect.Int {
+							er = errors.New("Cannot parse anything but int to Time")
 							return false
 						}
 
-						t, err := time.Parse(time.RFC3339, reflect.ValueOf(val).String())
-						if err != nil {
-							er = err
-							return false
-						}
-
+						t := time.Unix(reflect.ValueOf(val).Int(), 0)
 						fieldValue.Set(reflect.ValueOf(t))
+
 						return false
 					}
 

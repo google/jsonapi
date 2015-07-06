@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 )
 
 func MarshalJsonApiPayload(model interface{}) (*JsonApiPayload, error) {
@@ -42,12 +43,12 @@ func visitModelNode(model interface{}) (*JsonApiNode, []*JsonApiNode, error) {
 
 	var i = 0
 	modelType.FieldByNameFunc(func(name string) bool {
-		fieldType := modelType.Field(i)
 		fieldValue := modelValue.Field(i)
+		structField := modelType.Field(i)
 
 		i += 1
 
-		tag := fieldType.Tag.Get("jsonapi")
+		tag := structField.Tag.Get("jsonapi")
 
 		args := strings.Split(tag, ",")
 
@@ -67,7 +68,13 @@ func visitModelNode(model interface{}) (*JsonApiNode, []*JsonApiNode, error) {
 				}
 
 				if len(args) >= 2 {
-					node.Attributes[args[1]] = fieldValue.Interface()
+					if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
+						unix := fieldValue.MethodByName("Unix")
+						val := unix.Call(make([]reflect.Value, 0))[0]
+						node.Attributes[args[1]] = val.Int()
+					} else {
+						node.Attributes[args[1]] = fieldValue.Interface()
+					}
 				} else {
 					err = errors.New("'type' as second argument required for 'primary'")
 				}

@@ -26,8 +26,9 @@ type Blog struct {
 
 func TestHasPrimaryAnnotation(t *testing.T) {
 	testModel := &Blog{
-		Id:    5,
-		Title: "Title 1",
+		Id:        5,
+		Title:     "Title 1",
+		CreatedAt: time.Now(),
 	}
 
 	resp, err := MarshalJsonApiPayload(testModel)
@@ -48,8 +49,9 @@ func TestHasPrimaryAnnotation(t *testing.T) {
 
 func TestSupportsAttributes(t *testing.T) {
 	testModel := &Blog{
-		Id:    5,
-		Title: "Title 1",
+		Id:        5,
+		Title:     "Title 1",
+		CreatedAt: time.Now(),
 	}
 
 	resp, err := MarshalJsonApiPayload(testModel)
@@ -70,8 +72,9 @@ func TestSupportsAttributes(t *testing.T) {
 
 func TestRelations(t *testing.T) {
 	testModel := &Blog{
-		Id:    5,
-		Title: "Title 1",
+		Id:        5,
+		Title:     "Title 1",
+		CreatedAt: time.Now(),
 		Posts: []*Post{
 			&Post{
 				Id:    1,
@@ -121,7 +124,7 @@ func TestRelations(t *testing.T) {
 }
 
 func TestNoRelations(t *testing.T) {
-	testModel := &Blog{Id: 1, Title: "Title 1"}
+	testModel := &Blog{Id: 1, Title: "Title 1", CreatedAt: time.Now()}
 
 	resp, err := MarshalJsonApiPayload(testModel)
 	if err != nil {

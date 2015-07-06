@@ -9,7 +9,7 @@ func TestUnmarshalSetsId(t *testing.T) {
 			Type: "blogs",
 			Attributes: map[string]interface{}{
 				"title":      "New blog",
-				"created_at": "2015-07-06T13:38:20-07:00",
+				"created_at": 1436216820,
 				"view_count": 1000,
 			},
 		},
