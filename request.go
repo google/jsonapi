@@ -14,8 +14,9 @@ func UnmarshalJsonApiPayload(payload *JsonApiPayload, model interface{}) error {
 	modelType := reflect.TypeOf(model).Elem()
 	modelValue := reflect.ValueOf(model).Elem()
 
-	var i = 0
 	var er error
+
+	var i = 0
 	modelType.FieldByNameFunc(func(name string) bool {
 		fieldType := modelType.Field(i)
 		fieldValue := modelValue.Field(i)
