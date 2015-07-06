@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"testing"
 )
 
@@ -109,6 +110,10 @@ func TestRelations(t *testing.T) {
 
 	if relations["current_post"] == nil {
 		t.Fatalf("Current post relationship was not materialized")
+	}
+
+	if reflect.ValueOf(relations["posts"]).Len() != 2 {
+		t.Fatalf("Did not materialize two posts")
 	}
 }
 
