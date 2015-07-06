@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+	"time"
 )
 
 type Post struct {
@@ -15,10 +16,12 @@ type Post struct {
 }
 
 type Blog struct {
-	Id          int     `jsonapi:"primary,blogs"`
-	Title       string  `jsonapi:"attr,title"`
-	Posts       []*Post `jsonapi:"relation,posts"`
-	CurrentPost *Post   `jsonapi:"relation,current_post"`
+	Id          int       `jsonapi:"primary,blogs"`
+	Title       string    `jsonapi:"attr,title"`
+	Posts       []*Post   `jsonapi:"relation,posts"`
+	CurrentPost *Post     `jsonapi:"relation,current_post"`
+	CreatedAt   time.Time `jsonapi:"attr,created_at"`
+	ViewCount   int       `jsonapi:"attr,view_count"`
 }
 
 func TestHasPrimaryAnnotation(t *testing.T) {
@@ -56,8 +59,8 @@ func TestSupportsAttributes(t *testing.T) {
 
 	response := resp.Data
 
-	if response.Attributes == nil || len(response.Attributes) != 1 {
-		t.Fatalf("Expected 1 Attributes")
+	if response.Attributes == nil {
+		t.Fatalf("Expected attributes")
 	}
 
 	if response.Attributes["title"] != "Title 1" {
