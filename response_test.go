@@ -24,34 +24,12 @@ func TestHasPrimaryAnnotation(t *testing.T) {
 	testModel := &Blog{
 		Id:    5,
 		Title: "Title 1",
-		Posts: []*Post{
-			&Post{
-				Id:    1,
-				Title: "Foo",
-				Body:  "Bar",
-			},
-			&Post{
-				Id:    2,
-				Title: "Fuubar",
-				Body:  "Bas",
-			},
-		},
-		CurrentPost: &Post{
-			Id:    1,
-			Title: "Foo",
-			Body:  "Bar",
-		},
 	}
 
 	resp, err := CreateJsonApiResponse(testModel)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	out := bytes.NewBuffer(nil)
-	json.NewEncoder(out).Encode(resp)
-
-	fmt.Printf("%s\n", out.Bytes())
 
 	response := resp.Data
 
@@ -85,6 +63,55 @@ func TestSupportsAttributes(t *testing.T) {
 		t.Fatalf("Attributes hash not populated using tags correctly")
 	}
 }
+
+func TestRelations(t *testing.T) {
+	testModel := &Blog{
+		Id:    5,
+		Title: "Title 1",
+		Posts: []*Post{
+			&Post{
+				Id:    1,
+				Title: "Foo",
+				Body:  "Bar",
+			},
+			&Post{
+				Id:    2,
+				Title: "Fuubar",
+				Body:  "Bas",
+			},
+		},
+		CurrentPost: &Post{
+			Id:    1,
+			Title: "Foo",
+			Body:  "Bar",
+		},
+	}
+
+	resp, err := CreateJsonApiResponse(testModel)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	out := bytes.NewBuffer(nil)
+	json.NewEncoder(out).Encode(resp)
+
+	fmt.Printf("%s\n", out.Bytes())
+
+	relations := resp.Data.Relationships
+
+	if relations == nil {
+		t.Fatalf("Relationships were not materialized")
+	}
+
+	if relations["posts"] == nil {
+		t.Fatalf("Posts relationship was not materialized")
+	}
+
+	if relations["current_post"] == nil {
+		t.Fatalf("Current post relationship was not materialized")
+	}
+}
+
 func TestNoRelations(t *testing.T) {
 	testModel := &Blog{Id: 1, Title: "Title 1"}
 
@@ -99,7 +126,7 @@ func TestNoRelations(t *testing.T) {
 
 	fmt.Printf("%s\n", jsonBuffer.Bytes())
 
-	decodedResponse := new(JsonApiResponse)
+	decodedResponse := new(JsonApiPayload)
 
 	json.NewDecoder(jsonBuffer).Decode(decodedResponse)
 

@@ -1,7 +1,9 @@
 package jsonapi
 
-type JsonApiNodeWrapper struct {
-	Data *JsonApiNode `json:"data"`
+type JsonApiPayload struct {
+	Data     *JsonApiNode       `json:"data"`
+	Included []*JsonApiNode     `json:"included,omitempty"`
+	Links    *map[string]string `json:"links,omitempty"`
 }
 
 type JsonApiNode struct {

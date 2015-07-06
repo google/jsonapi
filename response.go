@@ -7,18 +7,13 @@ import (
 	"strings"
 )
 
-type JsonApiResponse struct {
-	Data     *JsonApiNode   `json:"data"`
-	Included []*JsonApiNode `json:"included,omitempty"`
-}
-
-func CreateJsonApiResponse(model interface{}) (*JsonApiResponse, error) {
+func CreateJsonApiResponse(model interface{}) (*JsonApiPayload, error) {
 	rootNode, included, err := visitModelNode(model)
 	if err != nil {
 		return nil, err
 	}
 
-	resp := &JsonApiResponse{Data: rootNode}
+	resp := &JsonApiPayload{Data: rootNode}
 
 	uniqueIncluded := make(map[string]*JsonApiNode)
 
