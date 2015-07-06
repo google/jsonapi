@@ -35,7 +35,7 @@ func MarshalJsonApiPayload(model interface{}) (*JsonApiPayload, error) {
 func visitModelNode(model interface{}) (*JsonApiNode, []*JsonApiNode, error) {
 	node := new(JsonApiNode)
 
-	var err error
+	var er error
 	var included []*JsonApiNode
 
 	modelType := reflect.TypeOf(model).Elem()
@@ -60,7 +60,8 @@ func visitModelNode(model interface{}) (*JsonApiNode, []*JsonApiNode, error) {
 					node.Id = fmt.Sprintf("%v", fieldValue.Interface())
 					node.Type = args[1]
 				} else {
-					err = errors.New("'type' as second argument required for 'primary'")
+					er = errors.New("'type' as second argument required for 'primary'")
+					return false
 				}
 			} else if annotation == "attr" {
 				if node.Attributes == nil {
@@ -76,7 +77,8 @@ func visitModelNode(model interface{}) (*JsonApiNode, []*JsonApiNode, error) {
 						node.Attributes[args[1]] = fieldValue.Interface()
 					}
 				} else {
-					err = errors.New("'type' as second argument required for 'primary'")
+					er = errors.New("'type' as second argument required for 'primary'")
+					return false
 				}
 			} else if annotation == "relation" {
 
@@ -111,7 +113,8 @@ func visitModelNode(model interface{}) (*JsonApiNode, []*JsonApiNode, error) {
 							node.Relationships[k] = shallowNodes
 						}
 					} else {
-						err = err
+						er = err
+						return false
 					}
 				} else {
 					relationship, _, err := visitModelNode(fieldValue.Interface())
@@ -123,20 +126,22 @@ func visitModelNode(model interface{}) (*JsonApiNode, []*JsonApiNode, error) {
 
 						node.Relationships[args[1]] = &shallowNode
 					} else {
-						err = err
+						er = err
+						return false
 					}
 				}
 
 			} else {
-				err = errors.New(fmt.Sprintf("Unsupported jsonapi tag annotation, %s", annotation))
+				er = errors.New(fmt.Sprintf("Unsupported jsonapi tag annotation, %s", annotation))
+				return false
 			}
 		}
 
 		return false
 	})
 
-	if err != nil {
-		return nil, nil, err
+	if er != nil {
+		return nil, nil, er
 	}
 
 	return node, included, nil
