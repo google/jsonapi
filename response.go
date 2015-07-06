@@ -7,17 +7,6 @@ import (
 	"strings"
 )
 
-type JsonApiNodeWrapper struct {
-	Data *JsonApiNode `json:"data"`
-}
-
-type JsonApiNode struct {
-	Type          string                 `json:"type"`
-	Id            string                 `json:"id"`
-	Attributes    map[string]interface{} `json:"attributes,omitempty"`
-	Relationships map[string]interface{} `json:"realtionships,omitempty"`
-}
-
 type JsonApiResponse struct {
 	Data     *JsonApiNode   `json:"data"`
 	Included []*JsonApiNode `json:"included,omitempty"`
@@ -51,7 +40,7 @@ func visitModelNode(model interface{}) (*JsonApiNode, []*JsonApiNode, error) {
 	node := new(JsonApiNode)
 
 	var err error
-	included := make([]*JsonApiNode, 0)
+	var included []*JsonApiNode
 
 	modelType := reflect.TypeOf(model)
 
@@ -85,6 +74,9 @@ func visitModelNode(model interface{}) (*JsonApiNode, []*JsonApiNode, error) {
 				} else if annotation == "relation" {
 					if node.Relationships == nil {
 						node.Relationships = make(map[string]interface{})
+					}
+					if included == nil {
+						included = make([]*JsonApiNode, 0)
 					}
 
 					if fieldValue.Type().Kind() == reflect.Slice {
