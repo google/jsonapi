@@ -157,7 +157,3 @@ func visitModelNodeRelationships(relationName string, models reflect.Value) (map
 
 	return relationship, nil
 }
-
-func handleField(field reflect.StructField) {
-
-}
