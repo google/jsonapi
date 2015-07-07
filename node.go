@@ -12,3 +12,13 @@ type JsonApiNode struct {
 	Attributes    map[string]interface{} `json:"attributes,omitempty"`
 	Relationships map[string]interface{} `json:"realtionships,omitempty"`
 }
+
+type JsonApiRelationshipSingleNode struct {
+	Data  *JsonApiNode       `json:"data"`
+	Links *map[string]string `json:"links,omitempty"`
+}
+
+type JsonApiRelationshipMultipleNode struct {
+	Data  []*JsonApiNode     `json:"data"`
+	Links *map[string]string `json:"links,omitempty"`
+}

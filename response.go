@@ -98,20 +98,20 @@ func visitModelNode(model interface{}) (*JsonApiNode, []*JsonApiNode, error) {
 
 				if isSlice {
 					relationship, err := visitModelNodeRelationships(args[1], fieldValue)
+					d := relationship[args[1]].Data
 
 					if err == nil {
 						shallowNodes := make([]*JsonApiNode, 0)
-						for k, v := range relationship {
-							for _, node := range v {
-								included = append(included, node)
+						for _, node := range d {
+							included = append(included, node)
 
-								shallowNode := *node
-								shallowNode.Attributes = nil
-								shallowNodes = append(shallowNodes, &shallowNode)
-							}
+							shallowNode := *node
+							shallowNode.Attributes = nil
+							shallowNodes = append(shallowNodes, &shallowNode)
 
-							node.Relationships[k] = shallowNodes
 						}
+
+						node.Relationships[args[1]] = &JsonApiRelationshipMultipleNode{Data: shallowNodes}
 					} else {
 						er = err
 						return false
@@ -124,7 +124,7 @@ func visitModelNode(model interface{}) (*JsonApiNode, []*JsonApiNode, error) {
 
 						included = append(included, relationship)
 
-						node.Relationships[args[1]] = &shallowNode
+						node.Relationships[args[1]] = &JsonApiRelationshipSingleNode{Data: &shallowNode}
 					} else {
 						er = err
 						return false
@@ -147,8 +147,8 @@ func visitModelNode(model interface{}) (*JsonApiNode, []*JsonApiNode, error) {
 	return node, included, nil
 }
 
-func visitModelNodeRelationships(relationName string, models reflect.Value) (map[string][]*JsonApiNode, error) {
-	relationship := make(map[string][]*JsonApiNode)
+func visitModelNodeRelationships(relationName string, models reflect.Value) (map[string]*JsonApiRelationshipMultipleNode, error) {
+	m := make(map[string]*JsonApiRelationshipMultipleNode)
 	nodes := make([]*JsonApiNode, 0)
 
 	for i := 0; i < models.Len(); i++ {
@@ -160,7 +160,7 @@ func visitModelNodeRelationships(relationName string, models reflect.Value) (map
 		nodes = append(nodes, node)
 	}
 
-	relationship[relationName] = nodes
+	m[relationName] = &JsonApiRelationshipMultipleNode{Data: nodes}
 
-	return relationship, nil
+	return m, nil
 }

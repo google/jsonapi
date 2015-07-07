@@ -118,7 +118,7 @@ func TestRelations(t *testing.T) {
 		t.Fatalf("Current post relationship was not materialized")
 	}
 
-	if reflect.ValueOf(relations["posts"]).Len() != 2 {
+	if reflect.ValueOf(relations["posts"]).Elem().FieldByName("Data").Len() != 2 {
 		t.Fatalf("Did not materialize two posts")
 	}
 }
