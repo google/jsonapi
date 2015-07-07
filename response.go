@@ -8,13 +8,45 @@ import (
 	"time"
 )
 
-func MarshalJsonApiPayload(model interface{}) (*JsonApiPayload, error) {
+func MarshalJsonApiManyPayload(models Models) (*JsonApiManyPayload, error) {
+	d := models.GetData()
+	data := make([]*JsonApiNode, 0, len(d))
+
+	incl := make([]*JsonApiNode, 0)
+
+	for _, model := range d {
+		node, included, err := visitModelNode(model)
+		if err != nil {
+			return nil, err
+		}
+		data = append(data, node)
+		incl = append(incl, included...)
+	}
+
+	uniqueIncluded := make(map[string]*JsonApiNode)
+
+	for i, n := range incl {
+		k := fmt.Sprintf("%s,%s", n.Type, n.Id)
+		if uniqueIncluded[k] == nil {
+			uniqueIncluded[k] = n
+		} else {
+			incl = deleteNode(incl, i)
+		}
+	}
+
+	return &JsonApiManyPayload{
+		Data:     data,
+		Included: incl,
+	}, nil
+}
+
+func MarshalJsonApiOnePayload(model interface{}) (*JsonApiOnePayload, error) {
 	rootNode, included, err := visitModelNode(model)
 	if err != nil {
 		return nil, err
 	}
 
-	resp := &JsonApiPayload{Data: rootNode}
+	resp := &JsonApiOnePayload{Data: rootNode}
 
 	uniqueIncluded := make(map[string]*JsonApiNode)
 
@@ -23,7 +55,7 @@ func MarshalJsonApiPayload(model interface{}) (*JsonApiPayload, error) {
 		if uniqueIncluded[k] == nil {
 			uniqueIncluded[k] = n
 		} else {
-			included = append(included[:i], included[i+1:]...)
+			included = deleteNode(included, i)
 		}
 	}
 
@@ -111,7 +143,7 @@ func visitModelNode(model interface{}) (*JsonApiNode, []*JsonApiNode, error) {
 
 						}
 
-						node.Relationships[args[1]] = &JsonApiRelationshipMultipleNode{Data: shallowNodes}
+						node.Relationships[args[1]] = &JsonApiRelationshipManyNode{Data: shallowNodes}
 					} else {
 						er = err
 						return false
@@ -124,7 +156,7 @@ func visitModelNode(model interface{}) (*JsonApiNode, []*JsonApiNode, error) {
 
 						included = append(included, relationship)
 
-						node.Relationships[args[1]] = &JsonApiRelationshipSingleNode{Data: &shallowNode}
+						node.Relationships[args[1]] = &JsonApiRelationshipOneNode{Data: &shallowNode}
 					} else {
 						er = err
 						return false
@@ -147,8 +179,8 @@ func visitModelNode(model interface{}) (*JsonApiNode, []*JsonApiNode, error) {
 	return node, included, nil
 }
 
-func visitModelNodeRelationships(relationName string, models reflect.Value) (map[string]*JsonApiRelationshipMultipleNode, error) {
-	m := make(map[string]*JsonApiRelationshipMultipleNode)
+func visitModelNodeRelationships(relationName string, models reflect.Value) (map[string]*JsonApiRelationshipManyNode, error) {
+	m := make(map[string]*JsonApiRelationshipManyNode)
 	nodes := make([]*JsonApiNode, 0)
 
 	for i := 0; i < models.Len(); i++ {
@@ -160,7 +192,17 @@ func visitModelNodeRelationships(relationName string, models reflect.Value) (map
 		nodes = append(nodes, node)
 	}
 
-	m[relationName] = &JsonApiRelationshipMultipleNode{Data: nodes}
+	m[relationName] = &JsonApiRelationshipManyNode{Data: nodes}
 
 	return m, nil
+}
+
+func deleteNode(a []*JsonApiNode, i int) []*JsonApiNode {
+	if i < len(a)-1 {
+		a = append(a[:i], a[i+1:]...)
+	} else {
+		a = a[:i]
+	}
+
+	return a
 }

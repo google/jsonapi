@@ -32,8 +32,8 @@ func TestUnmarshalSetsAttrs(t *testing.T) {
 	}
 }
 
-func samplePayload() *JsonApiPayload {
-	return &JsonApiPayload{
+func samplePayload() *JsonApiOnePayload {
+	return &JsonApiOnePayload{
 		Data: &JsonApiNode{
 			Id:   "5",
 			Type: "blogs",

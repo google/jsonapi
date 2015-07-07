@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func UnmarshalJsonApiPayload(payload *JsonApiPayload, model interface{}) error {
+func UnmarshalJsonApiPayload(payload *JsonApiOnePayload, model interface{}) error {
 	data := payload.Data
 
 	modelType := reflect.TypeOf(model).Elem()

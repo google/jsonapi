@@ -24,6 +24,16 @@ type Blog struct {
 	ViewCount   int       `jsonapi:"attr,view_count"`
 }
 
+type Blogs []*Blog
+
+func (b Blogs) GetData() []interface{} {
+	d := make([]interface{}, len(b))
+	for i, blog := range b {
+		d[i] = blog
+	}
+	return d
+}
+
 func TestHasPrimaryAnnotation(t *testing.T) {
 	testModel := &Blog{
 		Id:        5,
@@ -31,7 +41,7 @@ func TestHasPrimaryAnnotation(t *testing.T) {
 		CreatedAt: time.Now(),
 	}
 
-	resp, err := MarshalJsonApiPayload(testModel)
+	resp, err := MarshalJsonApiOnePayload(testModel)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +64,7 @@ func TestSupportsAttributes(t *testing.T) {
 		CreatedAt: time.Now(),
 	}
 
-	resp, err := MarshalJsonApiPayload(testModel)
+	resp, err := MarshalJsonApiOnePayload(testModel)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +104,7 @@ func TestRelations(t *testing.T) {
 		},
 	}
 
-	resp, err := MarshalJsonApiPayload(testModel)
+	resp, err := MarshalJsonApiOnePayload(testModel)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +136,7 @@ func TestRelations(t *testing.T) {
 func TestNoRelations(t *testing.T) {
 	testModel := &Blog{Id: 1, Title: "Title 1", CreatedAt: time.Now()}
 
-	resp, err := MarshalJsonApiPayload(testModel)
+	resp, err := MarshalJsonApiOnePayload(testModel)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,11 +147,76 @@ func TestNoRelations(t *testing.T) {
 
 	fmt.Printf("%s\n", jsonBuffer.Bytes())
 
-	decodedResponse := new(JsonApiPayload)
+	decodedResponse := new(JsonApiOnePayload)
 
 	json.NewDecoder(jsonBuffer).Decode(decodedResponse)
 
 	if decodedResponse.Included != nil {
 		t.Fatalf("Encoding json response did not omit included")
+	}
+}
+
+func TestMarshalMany(t *testing.T) {
+	data := Blogs{
+		&Blog{
+			Id:        5,
+			Title:     "Title 1",
+			CreatedAt: time.Now(),
+			Posts: []*Post{
+				&Post{
+					Id:    1,
+					Title: "Foo",
+					Body:  "Bar",
+				},
+				&Post{
+					Id:    2,
+					Title: "Fuubar",
+					Body:  "Bas",
+				},
+			},
+			CurrentPost: &Post{
+				Id:    1,
+				Title: "Foo",
+				Body:  "Bar",
+			},
+		},
+		&Blog{
+			Id:        6,
+			Title:     "Title 2",
+			CreatedAt: time.Now(),
+			Posts: []*Post{
+				&Post{
+					Id:    3,
+					Title: "Foo",
+					Body:  "Bar",
+				},
+				&Post{
+					Id:    4,
+					Title: "Fuubar",
+					Body:  "Bas",
+				},
+			},
+			CurrentPost: &Post{
+				Id:    4,
+				Title: "Foo",
+				Body:  "Bar",
+			},
+		},
+	}
+
+	resp, err := MarshalJsonApiManyPayload(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	out := bytes.NewBuffer(nil)
+	json.NewEncoder(out).Encode(resp)
+
+	fmt.Printf("%s\n", out.Bytes())
+
+	d := resp.Data
+
+	if len(d) != 2 {
+		t.Fatalf("data should have two elements")
 	}
 }

@@ -1,9 +1,19 @@
 package jsonapi
 
-type JsonApiPayload struct {
+type JsonApiOnePayload struct {
 	Data     *JsonApiNode       `json:"data"`
 	Included []*JsonApiNode     `json:"included,omitempty"`
 	Links    *map[string]string `json:"links,omitempty"`
+}
+
+type JsonApiManyPayload struct {
+	Data     []*JsonApiNode     `json:"data"`
+	Included []*JsonApiNode     `json:"included,omitempty"`
+	Links    *map[string]string `json:"links,omitempty"`
+}
+
+type Models interface {
+	GetData() []interface{}
 }
 
 type JsonApiNode struct {
@@ -13,12 +23,12 @@ type JsonApiNode struct {
 	Relationships map[string]interface{} `json:"realtionships,omitempty"`
 }
 
-type JsonApiRelationshipSingleNode struct {
+type JsonApiRelationshipOneNode struct {
 	Data  *JsonApiNode       `json:"data"`
 	Links *map[string]string `json:"links,omitempty"`
 }
 
-type JsonApiRelationshipMultipleNode struct {
+type JsonApiRelationshipManyNode struct {
 	Data  []*JsonApiNode     `json:"data"`
 	Links *map[string]string `json:"links,omitempty"`
 }
