@@ -2,6 +2,7 @@ package jsonapi
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -9,17 +10,24 @@ import (
 )
 
 func UnmarshalJsonApiPayload(payload *JsonApiOnePayload, model interface{}) error {
-	data := payload.Data
+	return unmarshalJsonApiNode(payload.Data, reflect.ValueOf(model))
+}
 
-	modelType := reflect.TypeOf(model).Elem()
-	modelValue := reflect.ValueOf(model).Elem()
+func unmarshalJsonApiNode(data *JsonApiNode, model reflect.Value) error {
+	modelValue := model.Elem()
+	modelType := model.Type().Elem()
 
 	var er error
 
 	var i = 0
+	fmt.Printf("%v,%v\n", model.Type(), modelType)
 	modelType.FieldByNameFunc(func(name string) bool {
-		fieldType := modelType.Field(i)
+		if er != nil {
+			return false
+		}
+
 		fieldValue := modelValue.Field(i)
+		fieldType := modelType.Field(i)
 
 		i += 1
 
@@ -31,6 +39,10 @@ func UnmarshalJsonApiPayload(payload *JsonApiOnePayload, model interface{}) erro
 			annotation := args[0]
 
 			if annotation == "primary" {
+				if data.Id == "" {
+					return false
+				}
+
 				if len(args) >= 2 {
 					if data.Type != args[1] {
 						er = errors.New("Trying to Unmarshal a type that does not match")
@@ -62,76 +74,76 @@ func UnmarshalJsonApiPayload(payload *JsonApiOnePayload, model interface{}) erro
 
 				if len(args) >= 2 {
 					val := attributes[args[1]]
+					v := reflect.ValueOf(val)
 
 					if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
-						if reflect.TypeOf(val).Kind() != reflect.Int {
-							er = errors.New("Cannot parse anything but int to Time")
+						var t time.Time
+
+						if v.Kind() == reflect.Float64 {
+							at := int64(v.Interface().(float64))
+							t = time.Unix(at, 0)
+						} else if v.Kind() == reflect.Int {
+							t = time.Unix(v.Int(), 0)
+						} else {
+							er = errors.New("Only numbers can be parsed as dates, unix timestamps")
 							return false
 						}
 
-						t := time.Unix(reflect.ValueOf(val).Int(), 0)
 						fieldValue.Set(reflect.ValueOf(t))
 
 						return false
 					}
 
-					fieldValue.Set(reflect.ValueOf(val))
+					if fieldValue.Kind() == reflect.Int && v.Kind() != reflect.Int {
+						fieldValue.Set(reflect.ValueOf(int(v.Interface().(float64))))
+					} else {
+						fieldValue.Set(reflect.ValueOf(val))
+					}
 				} else {
 					er = errors.New("Attribute key required as second arg")
 				}
+			} else if annotation == "relation" {
+				isSlice := fieldValue.Type().Kind() == reflect.Slice
+
+				if data.Relationships == nil || data.Relationships[args[1]] == nil {
+					return false
+				}
+
+				relationship := reflect.ValueOf(data.Relationships[args[1]]).Interface().(map[string]interface{})
+
+				if isSlice {
+					data := relationship["data"].([]interface{})
+
+					models := reflect.New(fieldValue.Type()).Elem()
+
+					for _, r := range data {
+						m := reflect.New(fieldValue.Type().Elem().Elem())
+						h := r.(map[string]interface{})
+						if err := unmarshalJsonApiNode(mapToJsonApiNode(h), m); err != nil {
+							er = err
+							return false
+						}
+						models = reflect.Append(models, m)
+					}
+
+					fieldValue.Set(models)
+				} else {
+					data := relationship["data"].(interface{})
+
+					m := reflect.New(fieldValue.Type().Elem())
+					h := data.(map[string]interface{})
+
+					if err := unmarshalJsonApiNode(mapToJsonApiNode(h), m); err != nil {
+						er = err
+						return false
+					}
+
+					fieldValue.Set(m)
+				}
+
+			} else {
+				er = errors.New(fmt.Sprintf("Unsupported jsonapi tag annotation, %s", annotation))
 			}
-			//} else if annotation == "relation" {
-
-			//isSlice := fieldValue.Type().Kind() == reflect.Slice
-
-			//if (isSlice && fieldValue.Len() < 1) || (!isSlice && fieldValue.IsNil()) {
-			//return false
-			//}
-
-			//if node.Relationships == nil {
-			//node.Relationships = make(map[string]interface{})
-			//}
-
-			//if included == nil {
-			//included = make([]*JsonApiNode, 0)
-			//}
-
-			//if isSlice {
-			//relationship, err := visitModelNodeRelationships(args[1], fieldValue)
-
-			//if err == nil {
-			//shallowNodes := make([]*JsonApiNode, 0)
-			//for k, v := range relationship {
-			//for _, node := range v {
-			//included = append(included, node)
-
-			//shallowNode := *node
-			//shallowNode.Attributes = nil
-			//shallowNodes = append(shallowNodes, &shallowNode)
-			//}
-
-			//node.Relationships[k] = shallowNodes
-			//}
-			//} else {
-			//err = err
-			//}
-			//} else {
-			//relationship, _, err := visitModelNode(fieldValue.Interface())
-			//if err == nil {
-			//shallowNode := *relationship
-			//shallowNode.Attributes = nil
-
-			//included = append(included, relationship)
-
-			//node.Relationships[args[1]] = &shallowNode
-			//} else {
-			//err = err
-			//}
-			//}
-
-			//} else {
-			//err = errors.New(fmt.Sprintf("Unsupported jsonapi tag annotation, %s", annotation))
-			//}
 		}
 
 		return false
@@ -142,4 +154,22 @@ func UnmarshalJsonApiPayload(payload *JsonApiOnePayload, model interface{}) erro
 	}
 
 	return nil
+}
+
+func mapToJsonApiNode(m map[string]interface{}) *JsonApiNode {
+	node := &JsonApiNode{Type: m["type"].(string)}
+
+	if m["id"] != nil {
+		node.Id = m["id"].(string)
+	}
+
+	if m["attributes"] != nil {
+		node.Attributes = m["attributes"].(map[string]interface{})
+	}
+
+	if m["relationships"] != nil {
+		node.Relationships = m["relationships"].(map[string]interface{})
+	}
+
+	return node
 }
