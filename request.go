@@ -106,7 +106,7 @@ func unmarshalJsonApiNode(data *JsonApiNode, model reflect.Value) error {
 						return false
 					}
 
-					if fieldValue.Kind() == reflect.Int && v.Kind() != reflect.Int {
+					if fieldValue.Kind() == reflect.Int && v.Kind() == reflect.Float64 {
 						fieldValue.Set(reflect.ValueOf(int(v.Interface().(float64))))
 					} else {
 						fieldValue.Set(reflect.ValueOf(val))
