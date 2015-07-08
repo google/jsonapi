@@ -9,10 +9,16 @@ import (
 	"time"
 )
 
+type Comment struct {
+	Id   int    `jsonapi:"primary,comments"`
+	Body string `jsonapi:"attr,body"`
+}
+
 type Post struct {
-	Id    int    `jsonapi:"primary,posts"`
-	Title string `jsonapi:"attr,title"`
-	Body  string `jsonapi:"attr,body"`
+	Id       int        `jsonapi:"primary,posts"`
+	Title    string     `jsonapi:"attr,title"`
+	Body     string     `jsonapi:"attr,body"`
+	Comments []*Comment `jsonapi:"relation,comments"`
 }
 
 type Blog struct {

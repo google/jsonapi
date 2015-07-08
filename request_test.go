@@ -3,7 +3,7 @@ package jsonapi
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
+	"io"
 	"testing"
 )
 
@@ -28,10 +28,10 @@ func TestUnmarshalSetsAttrs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	o := bytes.NewBuffer(nil)
-	json.NewEncoder(o).Encode(out)
+	//o := bytes.NewBuffer(nil)
+	//json.NewEncoder(o).Encode(out)
 
-	fmt.Printf("%s\n", o.Bytes())
+	//fmt.Printf("%s\n", o.Bytes())
 
 	if out.CreatedAt.IsZero() {
 		t.Fatalf("Did not parse time")
@@ -42,7 +42,49 @@ func TestUnmarshalSetsAttrs(t *testing.T) {
 	}
 }
 
-func samplePayload() *JsonApiOnePayload {
+func TestUnmarshalRelationships(t *testing.T) {
+	in := samplePayload()
+	out := new(Blog)
+
+	if err := UnmarshalJsonApiPayload(in, out); err != nil {
+		t.Fatal(err)
+	}
+
+	if out.CurrentPost == nil {
+		t.Fatalf("Current post was not materialized")
+	}
+
+	if out.CurrentPost.Title != "Bas" || out.CurrentPost.Body != "Fuubar" {
+		t.Fatalf("Attributes where not set")
+	}
+
+	if len(out.Posts) != 2 {
+		t.Fatalf("There should have been 2 posts")
+	}
+}
+
+func TestUnmarshalNestedRelationships(t *testing.T) {
+	in := samplePayload()
+	out := new(Blog)
+
+	if err := UnmarshalJsonApiPayload(in, out); err != nil {
+		t.Fatal(err)
+	}
+
+	if out.CurrentPost == nil {
+		t.Fatalf("Current post was not materialized")
+	}
+
+	if out.CurrentPost.Comments == nil {
+		t.Fatalf("Did not materialize nested records, comments")
+	}
+
+	if len(out.CurrentPost.Comments) != 2 {
+		t.Fatalf("Wrong number of comments")
+	}
+}
+
+func samplePayload() io.Reader {
 	payload := &JsonApiOnePayload{
 		Data: &JsonApiNode{
 			Type: "blogs",
@@ -61,6 +103,13 @@ func samplePayload() *JsonApiOnePayload {
 								"body":  "Bar",
 							},
 						},
+						&JsonApiNode{
+							Type: "posts",
+							Attributes: map[string]interface{}{
+								"title": "X",
+								"body":  "Y",
+							},
+						},
 					},
 				},
 				"current_post": &JsonApiRelationshipOneNode{
@@ -69,6 +118,24 @@ func samplePayload() *JsonApiOnePayload {
 						Attributes: map[string]interface{}{
 							"title": "Bas",
 							"body":  "Fuubar",
+						},
+						Relationships: map[string]interface{}{
+							"comments": &JsonApiRelationshipManyNode{
+								Data: []*JsonApiNode{
+									&JsonApiNode{
+										Type: "comments",
+										Attributes: map[string]interface{}{
+											"body": "Great post!",
+										},
+									},
+									&JsonApiNode{
+										Type: "comments",
+										Attributes: map[string]interface{}{
+											"body": "Needs some work!",
+										},
+									},
+								},
+							},
 						},
 					},
 				},
@@ -80,9 +147,5 @@ func samplePayload() *JsonApiOnePayload {
 
 	json.NewEncoder(out).Encode(payload)
 
-	p := new(JsonApiOnePayload)
-
-	json.NewDecoder(out).Decode(p)
-
-	return p
+	return out
 }

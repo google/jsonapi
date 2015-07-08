@@ -1,15 +1,23 @@
 package jsonapi
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
 )
 
-func UnmarshalJsonApiPayload(payload *JsonApiOnePayload, model interface{}) error {
+func UnmarshalJsonApiPayload(in io.Reader, model interface{}) error {
+	payload := new(JsonApiOnePayload)
+
+	if err := json.NewDecoder(in).Decode(payload); err != nil {
+		return err
+	}
+
 	return unmarshalJsonApiNode(payload.Data, reflect.ValueOf(model))
 }
 
@@ -20,7 +28,6 @@ func unmarshalJsonApiNode(data *JsonApiNode, model reflect.Value) error {
 	var er error
 
 	var i = 0
-	fmt.Printf("%v,%v\n", model.Type(), modelType)
 	modelType.FieldByNameFunc(func(name string) bool {
 		if er != nil {
 			return false
