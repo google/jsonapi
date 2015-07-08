@@ -15,7 +15,7 @@ func MarshalJsonApiManyPayload(models Models) (*JsonApiManyPayload, error) {
 	incl := make([]*JsonApiNode, 0)
 
 	for _, model := range d {
-		node, included, err := visitModelNode(model)
+		node, included, err := visitModelNode(model, true)
 		if err != nil {
 			return nil, err
 		}
@@ -40,8 +40,20 @@ func MarshalJsonApiManyPayload(models Models) (*JsonApiManyPayload, error) {
 	}, nil
 }
 
+func MarshalJsonApiOnePayloadEmbedded(model interface{}) (*JsonApiOnePayload, error) {
+	rootNode, _, err := visitModelNode(model, false)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &JsonApiOnePayload{Data: rootNode}
+
+	return resp, nil
+
+}
+
 func MarshalJsonApiOnePayload(model interface{}) (*JsonApiOnePayload, error) {
-	rootNode, included, err := visitModelNode(model)
+	rootNode, included, err := visitModelNode(model, true)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +76,7 @@ func MarshalJsonApiOnePayload(model interface{}) (*JsonApiOnePayload, error) {
 	return resp, nil
 }
 
-func visitModelNode(model interface{}) (*JsonApiNode, []*JsonApiNode, error) {
+func visitModelNode(model interface{}, sideload bool) (*JsonApiNode, []*JsonApiNode, error) {
 	node := new(JsonApiNode)
 
 	var er error
@@ -81,6 +93,10 @@ func visitModelNode(model interface{}) (*JsonApiNode, []*JsonApiNode, error) {
 		i += 1
 
 		tag := structField.Tag.Get("jsonapi")
+
+		if tag == "" {
+			return false
+		}
 
 		args := strings.Split(tag, ",")
 
@@ -134,34 +150,42 @@ func visitModelNode(model interface{}) (*JsonApiNode, []*JsonApiNode, error) {
 				}
 
 				if isSlice {
-					relationship, err := visitModelNodeRelationships(args[1], fieldValue)
+					relationship, err := visitModelNodeRelationships(args[1], fieldValue, sideload)
 					d := relationship[args[1]].Data
 
 					if err == nil {
-						shallowNodes := make([]*JsonApiNode, 0)
-						for _, node := range d {
-							included = append(included, node)
+						if sideload {
+							shallowNodes := make([]*JsonApiNode, 0)
+							for _, node := range d {
+								included = append(included, node)
 
-							shallowNode := *node
-							shallowNode.Attributes = nil
-							shallowNodes = append(shallowNodes, &shallowNode)
+								shallowNode := *node
+								shallowNode.Attributes = nil
+								shallowNodes = append(shallowNodes, &shallowNode)
 
+							}
+
+							node.Relationships[args[1]] = &JsonApiRelationshipManyNode{Data: shallowNodes}
+						} else {
+							node.Relationships[args[1]] = &JsonApiRelationshipManyNode{Data: d}
 						}
-
-						node.Relationships[args[1]] = &JsonApiRelationshipManyNode{Data: shallowNodes}
 					} else {
 						er = err
 						return false
 					}
 				} else {
-					relationship, _, err := visitModelNode(fieldValue.Interface())
+					relationship, _, err := visitModelNode(fieldValue.Interface(), sideload)
 					if err == nil {
-						shallowNode := *relationship
-						shallowNode.Attributes = nil
+						if sideload {
+							shallowNode := *relationship
+							shallowNode.Attributes = nil
 
-						included = append(included, relationship)
+							included = append(included, relationship)
 
-						node.Relationships[args[1]] = &JsonApiRelationshipOneNode{Data: &shallowNode}
+							node.Relationships[args[1]] = &JsonApiRelationshipOneNode{Data: &shallowNode}
+						} else {
+							node.Relationships[args[1]] = &JsonApiRelationshipOneNode{Data: relationship}
+						}
 					} else {
 						er = err
 						return false
@@ -184,12 +208,12 @@ func visitModelNode(model interface{}) (*JsonApiNode, []*JsonApiNode, error) {
 	return node, included, nil
 }
 
-func visitModelNodeRelationships(relationName string, models reflect.Value) (map[string]*JsonApiRelationshipManyNode, error) {
+func visitModelNodeRelationships(relationName string, models reflect.Value, sideload bool) (map[string]*JsonApiRelationshipManyNode, error) {
 	m := make(map[string]*JsonApiRelationshipManyNode)
 	nodes := make([]*JsonApiNode, 0)
 
 	for i := 0; i < models.Len(); i++ {
-		node, _, err := visitModelNode(models.Index(i).Interface())
+		node, _, err := visitModelNode(models.Index(i).Interface(), sideload)
 		if err != nil {
 			return nil, err
 		}
