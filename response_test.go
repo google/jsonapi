@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"regexp"
 	"testing"
 	"time"
 )
@@ -38,6 +39,21 @@ func (b Blogs) GetData() []interface{} {
 		d[i] = blog
 	}
 	return d
+}
+
+func TestMalformedTagResposne(t *testing.T) {
+	testModel := &BadModel{}
+	_, err := MarshalJsonApiOnePayload(testModel)
+
+	if err == nil {
+		t.Fatalf("Did not error out with wrong number of arguments in tag")
+	}
+
+	r := regexp.MustCompile(`two few arguments`)
+
+	if !r.Match([]byte(err.Error())) {
+		t.Fatalf("The err was not due two two few arguments in a tag")
+	}
 }
 
 func TestHasPrimaryAnnotation(t *testing.T) {

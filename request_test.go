@@ -4,8 +4,27 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"regexp"
 	"testing"
 )
+
+type BadModel struct {
+	Id int `jsonapi:"primary"`
+}
+
+func TestMalformedTag(t *testing.T) {
+	out := new(BadModel)
+	err := UnmarshalJsonApiPayload(samplePayload(), out)
+	if err == nil {
+		t.Fatalf("Did not error out with wrong number of arguments in tag")
+	}
+
+	r := regexp.MustCompile(`two few arguments`)
+
+	if !r.Match([]byte(err.Error())) {
+		t.Fatalf("The err was not due two two few arguments in a tag")
+	}
+}
 
 //func TestUnmarshalSetsId(t *testing.T) {
 //in := samplePayload()
@@ -21,10 +40,8 @@ import (
 //}
 
 func TestUnmarshalSetsAttrs(t *testing.T) {
-	in := samplePayload()
-	out := new(Blog)
-
-	if err := UnmarshalJsonApiPayload(in, out); err != nil {
+	out, err := unmarshalSamplePayload()
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -43,10 +60,8 @@ func TestUnmarshalSetsAttrs(t *testing.T) {
 }
 
 func TestUnmarshalRelationships(t *testing.T) {
-	in := samplePayload()
-	out := new(Blog)
-
-	if err := UnmarshalJsonApiPayload(in, out); err != nil {
+	out, err := unmarshalSamplePayload()
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -64,10 +79,8 @@ func TestUnmarshalRelationships(t *testing.T) {
 }
 
 func TestUnmarshalNestedRelationships(t *testing.T) {
-	in := samplePayload()
-	out := new(Blog)
-
-	if err := UnmarshalJsonApiPayload(in, out); err != nil {
+	out, err := unmarshalSamplePayload()
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -82,6 +95,17 @@ func TestUnmarshalNestedRelationships(t *testing.T) {
 	if len(out.CurrentPost.Comments) != 2 {
 		t.Fatalf("Wrong number of comments")
 	}
+}
+
+func unmarshalSamplePayload() (*Blog, error) {
+	in := samplePayload()
+	out := new(Blog)
+
+	if err := UnmarshalJsonApiPayload(in, out); err != nil {
+		return nil, err
+	}
+
+	return out, nil
 }
 
 func samplePayload() io.Reader {

@@ -84,6 +84,11 @@ func visitModelNode(model interface{}) (*JsonApiNode, []*JsonApiNode, error) {
 
 		args := strings.Split(tag, ",")
 
+		if len(args) != 2 {
+			er = errors.New(fmt.Sprintf("jsonapi tag, on %s, had two few arguments", structField.Name))
+			return false
+		}
+
 		if len(args) >= 1 && args[0] != "" {
 			annotation := args[0]
 
