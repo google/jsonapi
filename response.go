@@ -82,6 +82,10 @@ func visitModelNode(model interface{}) (*JsonApiNode, []*JsonApiNode, error) {
 
 		tag := structField.Tag.Get("jsonapi")
 
+		if tag == "" {
+			return false
+		}
+
 		args := strings.Split(tag, ",")
 
 		if len(args) != 2 {

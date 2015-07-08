@@ -26,18 +26,18 @@ func TestMalformedTag(t *testing.T) {
 	}
 }
 
-//func TestUnmarshalSetsId(t *testing.T) {
-//in := samplePayload()
-//out := new(Blog)
+func TestUnmarshalSetsId(t *testing.T) {
+	in := samplePayloadWithId()
+	out := new(Blog)
 
-//if err := UnmarshalJsonApiPayload(in, out); err != nil {
-//t.Fatal(err)
-//}
+	if err := UnmarshalJsonApiPayload(in, out); err != nil {
+		t.Fatal(err)
+	}
 
-//if out.Id != 0 {
-//t.Fatalf("Did not set Id on dst interface")
-//}
-//}
+	if out.Id != 2 {
+		t.Fatalf("Did not set Id on dst interface")
+	}
+}
 
 func TestUnmarshalSetsAttrs(t *testing.T) {
 	out, err := unmarshalSamplePayload()
@@ -163,6 +163,26 @@ func samplePayload() io.Reader {
 						},
 					},
 				},
+			},
+		},
+	}
+
+	out := bytes.NewBuffer(nil)
+
+	json.NewEncoder(out).Encode(payload)
+
+	return out
+}
+
+func samplePayloadWithId() io.Reader {
+	payload := &JsonApiOnePayload{
+		Data: &JsonApiNode{
+			Id:   "2",
+			Type: "blogs",
+			Attributes: map[string]interface{}{
+				"title":      "New blog",
+				"created_at": 1436216820,
+				"view_count": 1000,
 			},
 		},
 	}
