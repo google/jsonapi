@@ -102,6 +102,29 @@ func TestSupportsAttributes(t *testing.T) {
 	}
 }
 
+func TestOmitsZeroTimes(t *testing.T) {
+	testModel := &Blog{
+		Id:        5,
+		Title:     "Title 1",
+		CreatedAt: time.Time{},
+	}
+
+	resp, err := MarshalJsonApiOnePayload(testModel)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	response := resp.Data
+
+	if response.Attributes == nil {
+		t.Fatalf("Expected attributes")
+	}
+
+	if response.Attributes["created_at"] != nil {
+		t.Fatalf("Created at was serialized even though it was a zero Time")
+	}
+}
+
 func TestRelations(t *testing.T) {
 	testModel := &Blog{
 		Id:        5,

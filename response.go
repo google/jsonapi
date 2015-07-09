@@ -123,6 +123,12 @@ func visitModelNode(model interface{}, sideload bool) (*JsonApiNode, []*JsonApiN
 
 				if len(args) >= 2 {
 					if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
+						isZeroMethod := fieldValue.MethodByName("IsZero")
+						isZero := isZeroMethod.Call(make([]reflect.Value, 0))[0].Interface().(bool)
+						if isZero {
+							return false
+						}
+
 						unix := fieldValue.MethodByName("Unix")
 						val := unix.Call(make([]reflect.Value, 0))[0]
 						node.Attributes[args[1]] = val.Int()
