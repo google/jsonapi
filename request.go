@@ -86,20 +86,28 @@ func unmarshalJsonApiNode(data *JsonApiNode, model reflect.Value) error {
 
 				if len(args) >= 2 {
 					val := attributes[args[1]]
+
+					// next if the attribute was not included in the request
+					if val == nil {
+						return false
+					}
+
 					v := reflect.ValueOf(val)
 
 					if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
-						var t time.Time
+
+						var at int64
 
 						if v.Kind() == reflect.Float64 {
-							at := int64(v.Interface().(float64))
-							t = time.Unix(at, 0)
+							at = int64(v.Interface().(float64))
 						} else if v.Kind() == reflect.Int {
-							t = time.Unix(v.Int(), 0)
+							at = v.Int()
 						} else {
 							er = errors.New("Only numbers can be parsed as dates, unix timestamps")
 							return false
 						}
+
+						t := time.Unix(at, 0)
 
 						fieldValue.Set(reflect.ValueOf(t))
 

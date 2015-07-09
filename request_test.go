@@ -181,7 +181,6 @@ func samplePayloadWithId() io.Reader {
 			Type: "blogs",
 			Attributes: map[string]interface{}{
 				"title":      "New blog",
-				"created_at": 1436216820,
 				"view_count": 1000,
 			},
 		},
