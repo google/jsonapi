@@ -3,8 +3,6 @@ package jsonapi
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
-	"reflect"
 	"regexp"
 	"testing"
 	"time"
@@ -43,7 +41,8 @@ func (b Blogs) GetData() []interface{} {
 
 func TestMalformedTagResposne(t *testing.T) {
 	testModel := &BadModel{}
-	_, err := MarshalJsonApiOnePayload(testModel)
+	out := bytes.NewBuffer(nil)
+	err := MarshalJsonApiOnePayload(out, testModel)
 
 	if err == nil {
 		t.Fatalf("Did not error out with wrong number of arguments in tag")
@@ -63,18 +62,24 @@ func TestHasPrimaryAnnotation(t *testing.T) {
 		CreatedAt: time.Now(),
 	}
 
-	resp, err := MarshalJsonApiOnePayload(testModel)
-	if err != nil {
+	out := bytes.NewBuffer(nil)
+	if err := MarshalJsonApiOnePayload(out, testModel); err != nil {
 		t.Fatal(err)
 	}
 
-	response := resp.Data
+	resp := new(JsonApiOnePayload)
 
-	if response.Type != "blogs" {
-		t.Fatalf("type should have been blogs, got %s", response.Type)
+	if err := json.NewDecoder(out).Decode(resp); err != nil {
+		t.Fatal(err)
 	}
 
-	if response.Id != "5" {
+	data := resp.Data
+
+	if data.Type != "blogs" {
+		t.Fatalf("type should have been blogs, got %s", data.Type)
+	}
+
+	if data.Id != "5" {
 		t.Fatalf("Id not transfered")
 	}
 }
@@ -86,18 +91,23 @@ func TestSupportsAttributes(t *testing.T) {
 		CreatedAt: time.Now(),
 	}
 
-	resp, err := MarshalJsonApiOnePayload(testModel)
-	if err != nil {
+	out := bytes.NewBuffer(nil)
+	if err := MarshalJsonApiOnePayload(out, testModel); err != nil {
 		t.Fatal(err)
 	}
 
-	response := resp.Data
+	resp := new(JsonApiOnePayload)
+	if err := json.NewDecoder(out).Decode(resp); err != nil {
+		t.Fatal(err)
+	}
 
-	if response.Attributes == nil {
+	data := resp.Data
+
+	if data.Attributes == nil {
 		t.Fatalf("Expected attributes")
 	}
 
-	if response.Attributes["title"] != "Title 1" {
+	if data.Attributes["title"] != "Title 1" {
 		t.Fatalf("Attributes hash not populated using tags correctly")
 	}
 }
@@ -109,18 +119,23 @@ func TestOmitsZeroTimes(t *testing.T) {
 		CreatedAt: time.Time{},
 	}
 
-	resp, err := MarshalJsonApiOnePayload(testModel)
-	if err != nil {
+	out := bytes.NewBuffer(nil)
+	if err := MarshalJsonApiOnePayload(out, testModel); err != nil {
 		t.Fatal(err)
 	}
 
-	response := resp.Data
+	resp := new(JsonApiOnePayload)
+	if err := json.NewDecoder(out).Decode(resp); err != nil {
+		t.Fatal(err)
+	}
 
-	if response.Attributes == nil {
+	data := resp.Data
+
+	if data.Attributes == nil {
 		t.Fatalf("Expected attributes")
 	}
 
-	if response.Attributes["created_at"] != nil {
+	if data.Attributes["created_at"] != nil {
 		t.Fatalf("Created at was serialized even though it was a zero Time")
 	}
 }
@@ -149,15 +164,15 @@ func TestRelations(t *testing.T) {
 		},
 	}
 
-	resp, err := MarshalJsonApiOnePayload(testModel)
-	if err != nil {
+	out := bytes.NewBuffer(nil)
+	if err := MarshalJsonApiOnePayload(out, testModel); err != nil {
 		t.Fatal(err)
 	}
 
-	out := bytes.NewBuffer(nil)
-	json.NewEncoder(out).Encode(resp)
-
-	fmt.Printf("%s\n", out.Bytes())
+	resp := new(JsonApiOnePayload)
+	if err := json.NewDecoder(out).Decode(resp); err != nil {
+		t.Fatal(err)
+	}
 
 	relations := resp.Data.Relationships
 
@@ -173,7 +188,7 @@ func TestRelations(t *testing.T) {
 		t.Fatalf("Current post relationship was not materialized")
 	}
 
-	if reflect.ValueOf(relations["posts"]).Elem().FieldByName("Data").Len() != 2 {
+	if len(relations["posts"].(map[string]interface{})["data"].([]interface{})) != 2 {
 		t.Fatalf("Did not materialize two posts")
 	}
 }
@@ -181,22 +196,17 @@ func TestRelations(t *testing.T) {
 func TestNoRelations(t *testing.T) {
 	testModel := &Blog{Id: 1, Title: "Title 1", CreatedAt: time.Now()}
 
-	resp, err := MarshalJsonApiOnePayload(testModel)
-	if err != nil {
+	out := bytes.NewBuffer(nil)
+	if err := MarshalJsonApiOnePayload(out, testModel); err != nil {
 		t.Fatal(err)
 	}
 
-	jsonBuffer := bytes.NewBuffer(nil)
+	resp := new(JsonApiOnePayload)
+	if err := json.NewDecoder(out).Decode(resp); err != nil {
+		t.Fatal(err)
+	}
 
-	json.NewEncoder(jsonBuffer).Encode(resp)
-
-	fmt.Printf("%s\n", jsonBuffer.Bytes())
-
-	decodedResponse := new(JsonApiOnePayload)
-
-	json.NewDecoder(jsonBuffer).Decode(decodedResponse)
-
-	if decodedResponse.Included != nil {
+	if resp.Included != nil {
 		t.Fatalf("Encoding json response did not omit included")
 	}
 }
@@ -249,15 +259,15 @@ func TestMarshalMany(t *testing.T) {
 		},
 	}
 
-	resp, err := MarshalJsonApiManyPayload(data)
-	if err != nil {
+	out := bytes.NewBuffer(nil)
+	if err := MarshalJsonApiManyPayload(out, data); err != nil {
 		t.Fatal(err)
 	}
 
-	out := bytes.NewBuffer(nil)
-	json.NewEncoder(out).Encode(resp)
-
-	fmt.Printf("%s\n", out.Bytes())
+	resp := new(JsonApiManyPayload)
+	if err := json.NewDecoder(out).Decode(resp); err != nil {
+		t.Fatal(err)
+	}
 
 	d := resp.Data
 

@@ -1,14 +1,16 @@
 package jsonapi
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"reflect"
 	"strings"
 	"time"
 )
 
-func MarshalJsonApiManyPayload(models Models) (*JsonApiManyPayload, error) {
+func MarshalJsonApiManyPayload(w io.Writer, models Models) error {
 	d := models.GetData()
 	data := make([]*JsonApiNode, 0, len(d))
 
@@ -17,7 +19,7 @@ func MarshalJsonApiManyPayload(models Models) (*JsonApiManyPayload, error) {
 	for _, model := range d {
 		node, included, err := visitModelNode(model, true)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		data = append(data, node)
 		incl = append(incl, included...)
@@ -34,10 +36,16 @@ func MarshalJsonApiManyPayload(models Models) (*JsonApiManyPayload, error) {
 		}
 	}
 
-	return &JsonApiManyPayload{
+	payload := &JsonApiManyPayload{
 		Data:     data,
 		Included: incl,
-	}, nil
+	}
+
+	if err := json.NewEncoder(w).Encode(payload); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func MarshalJsonApiOnePayloadEmbedded(model interface{}) (*JsonApiOnePayload, error) {
@@ -52,13 +60,13 @@ func MarshalJsonApiOnePayloadEmbedded(model interface{}) (*JsonApiOnePayload, er
 
 }
 
-func MarshalJsonApiOnePayload(model interface{}) (*JsonApiOnePayload, error) {
+func MarshalJsonApiOnePayload(w io.Writer, model interface{}) error {
 	rootNode, included, err := visitModelNode(model, true)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	resp := &JsonApiOnePayload{Data: rootNode}
+	payload := &JsonApiOnePayload{Data: rootNode}
 
 	uniqueIncluded := make(map[string]*JsonApiNode)
 
@@ -71,9 +79,13 @@ func MarshalJsonApiOnePayload(model interface{}) (*JsonApiOnePayload, error) {
 		}
 	}
 
-	resp.Included = included
+	payload.Included = included
 
-	return resp, nil
+	if err := json.NewEncoder(w).Encode(payload); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func visitModelNode(model interface{}, sideload bool) (*JsonApiNode, []*JsonApiNode, error) {
