@@ -1,14 +1,14 @@
 package jsonapi
 
-type JsonApiOnePayload struct {
-	Data     *JsonApiNode       `json:"data"`
-	Included []*JsonApiNode     `json:"included,omitempty"`
+type OnePayload struct {
+	Data     *Node              `json:"data"`
+	Included []*Node            `json:"included,omitempty"`
 	Links    *map[string]string `json:"links,omitempty"`
 }
 
-type JsonApiManyPayload struct {
-	Data     []*JsonApiNode     `json:"data"`
-	Included []*JsonApiNode     `json:"included,omitempty"`
+type ManyPayload struct {
+	Data     []*Node            `json:"data"`
+	Included []*Node            `json:"included,omitempty"`
 	Links    *map[string]string `json:"links,omitempty"`
 }
 
@@ -16,19 +16,19 @@ type Models interface {
 	GetData() []interface{}
 }
 
-type JsonApiNode struct {
+type Node struct {
 	Type          string                 `json:"type"`
 	Id            string                 `json:"id"`
 	Attributes    map[string]interface{} `json:"attributes,omitempty"`
 	Relationships map[string]interface{} `json:"relationships,omitempty"`
 }
 
-type JsonApiRelationshipOneNode struct {
-	Data  *JsonApiNode       `json:"data"`
+type RelationshipOneNode struct {
+	Data  *Node              `json:"data"`
 	Links *map[string]string `json:"links,omitempty"`
 }
 
-type JsonApiRelationshipManyNode struct {
-	Data  []*JsonApiNode     `json:"data"`
+type RelationshipManyNode struct {
+	Data  []*Node            `json:"data"`
 	Links *map[string]string `json:"links,omitempty"`
 }

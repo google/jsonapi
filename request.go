@@ -11,17 +11,17 @@ import (
 	"time"
 )
 
-func UnmarshalJsonApiPayload(in io.Reader, model interface{}) error {
-	payload := new(JsonApiOnePayload)
+func UnmarshalPayload(in io.Reader, model interface{}) error {
+	payload := new(OnePayload)
 
 	if err := json.NewDecoder(in).Decode(payload); err != nil {
 		return err
 	}
 
-	return unmarshalJsonApiNode(payload.Data, reflect.ValueOf(model))
+	return unmarshalNode(payload.Data, reflect.ValueOf(model))
 }
 
-func unmarshalJsonApiNode(data *JsonApiNode, model reflect.Value) error {
+func unmarshalNode(data *Node, model reflect.Value) error {
 	modelValue := model.Elem()
 	modelType := model.Type().Elem()
 
@@ -130,7 +130,7 @@ func unmarshalJsonApiNode(data *JsonApiNode, model reflect.Value) error {
 						m := reflect.New(fieldValue.Type().Elem().Elem())
 						h := r.(map[string]interface{})
 
-						if err := unmarshalJsonApiNode(mapToJsonApiNode(h), m); err != nil {
+						if err := unmarshalNode(mapToNode(h), m); err != nil {
 							er = err
 							return false
 						}
@@ -143,7 +143,7 @@ func unmarshalJsonApiNode(data *JsonApiNode, model reflect.Value) error {
 					m := reflect.New(fieldValue.Type().Elem())
 					h := relationship["data"].(map[string]interface{})
 
-					if err := unmarshalJsonApiNode(mapToJsonApiNode(h), m); err != nil {
+					if err := unmarshalNode(mapToNode(h), m); err != nil {
 						er = err
 						return false
 					}
@@ -166,8 +166,8 @@ func unmarshalJsonApiNode(data *JsonApiNode, model reflect.Value) error {
 	return nil
 }
 
-func mapToJsonApiNode(m map[string]interface{}) *JsonApiNode {
-	node := &JsonApiNode{Type: m["type"].(string)}
+func mapToNode(m map[string]interface{}) *Node {
+	node := &Node{Type: m["type"].(string)}
 
 	if m["id"] != nil {
 		node.Id = m["id"].(string)

@@ -14,7 +14,7 @@ type BadModel struct {
 
 func TestMalformedTag(t *testing.T) {
 	out := new(BadModel)
-	err := UnmarshalJsonApiPayload(samplePayload(), out)
+	err := UnmarshalPayload(samplePayload(), out)
 	if err == nil {
 		t.Fatalf("Did not error out with wrong number of arguments in tag")
 	}
@@ -30,7 +30,7 @@ func TestUnmarshalSetsId(t *testing.T) {
 	in := samplePayloadWithId()
 	out := new(Blog)
 
-	if err := UnmarshalJsonApiPayload(in, out); err != nil {
+	if err := UnmarshalPayload(in, out); err != nil {
 		t.Fatal(err)
 	}
 
@@ -101,7 +101,7 @@ func unmarshalSamplePayload() (*Blog, error) {
 	in := samplePayload()
 	out := new(Blog)
 
-	if err := UnmarshalJsonApiPayload(in, out); err != nil {
+	if err := UnmarshalPayload(in, out); err != nil {
 		return nil, err
 	}
 
@@ -109,8 +109,8 @@ func unmarshalSamplePayload() (*Blog, error) {
 }
 
 func samplePayload() io.Reader {
-	payload := &JsonApiOnePayload{
-		Data: &JsonApiNode{
+	payload := &OnePayload{
+		Data: &Node{
 			Type: "blogs",
 			Attributes: map[string]interface{}{
 				"title":      "New blog",
@@ -118,16 +118,16 @@ func samplePayload() io.Reader {
 				"view_count": 1000,
 			},
 			Relationships: map[string]interface{}{
-				"posts": &JsonApiRelationshipManyNode{
-					Data: []*JsonApiNode{
-						&JsonApiNode{
+				"posts": &RelationshipManyNode{
+					Data: []*Node{
+						&Node{
 							Type: "posts",
 							Attributes: map[string]interface{}{
 								"title": "Foo",
 								"body":  "Bar",
 							},
 						},
-						&JsonApiNode{
+						&Node{
 							Type: "posts",
 							Attributes: map[string]interface{}{
 								"title": "X",
@@ -136,23 +136,23 @@ func samplePayload() io.Reader {
 						},
 					},
 				},
-				"current_post": &JsonApiRelationshipOneNode{
-					Data: &JsonApiNode{
+				"current_post": &RelationshipOneNode{
+					Data: &Node{
 						Type: "posts",
 						Attributes: map[string]interface{}{
 							"title": "Bas",
 							"body":  "Fuubar",
 						},
 						Relationships: map[string]interface{}{
-							"comments": &JsonApiRelationshipManyNode{
-								Data: []*JsonApiNode{
-									&JsonApiNode{
+							"comments": &RelationshipManyNode{
+								Data: []*Node{
+									&Node{
 										Type: "comments",
 										Attributes: map[string]interface{}{
 											"body": "Great post!",
 										},
 									},
-									&JsonApiNode{
+									&Node{
 										Type: "comments",
 										Attributes: map[string]interface{}{
 											"body": "Needs some work!",
@@ -175,8 +175,8 @@ func samplePayload() io.Reader {
 }
 
 func samplePayloadWithId() io.Reader {
-	payload := &JsonApiOnePayload{
-		Data: &JsonApiNode{
+	payload := &OnePayload{
+		Data: &Node{
 			Id:   "2",
 			Type: "blogs",
 			Attributes: map[string]interface{}{

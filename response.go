@@ -10,11 +10,11 @@ import (
 	"time"
 )
 
-func MarshalJsonApiManyPayload(w io.Writer, models Models) error {
+func MarshalManyPayload(w io.Writer, models Models) error {
 	d := models.GetData()
-	data := make([]*JsonApiNode, 0, len(d))
+	data := make([]*Node, 0, len(d))
 
-	incl := make([]*JsonApiNode, 0)
+	incl := make([]*Node, 0)
 
 	for _, model := range d {
 		node, included, err := visitModelNode(model, true)
@@ -25,7 +25,7 @@ func MarshalJsonApiManyPayload(w io.Writer, models Models) error {
 		incl = append(incl, included...)
 	}
 
-	uniqueIncluded := make(map[string]*JsonApiNode)
+	uniqueIncluded := make(map[string]*Node)
 
 	for i, n := range incl {
 		k := fmt.Sprintf("%s,%s", n.Type, n.Id)
@@ -36,7 +36,7 @@ func MarshalJsonApiManyPayload(w io.Writer, models Models) error {
 		}
 	}
 
-	payload := &JsonApiManyPayload{
+	payload := &ManyPayload{
 		Data:     data,
 		Included: incl,
 	}
@@ -48,27 +48,27 @@ func MarshalJsonApiManyPayload(w io.Writer, models Models) error {
 	return nil
 }
 
-func MarshalJsonApiOnePayloadEmbedded(model interface{}) (*JsonApiOnePayload, error) {
+func MarshalOnePayloadEmbedded(model interface{}) (*OnePayload, error) {
 	rootNode, _, err := visitModelNode(model, false)
 	if err != nil {
 		return nil, err
 	}
 
-	resp := &JsonApiOnePayload{Data: rootNode}
+	resp := &OnePayload{Data: rootNode}
 
 	return resp, nil
 
 }
 
-func MarshalJsonApiOnePayload(w io.Writer, model interface{}) error {
+func MarshalOnePayload(w io.Writer, model interface{}) error {
 	rootNode, included, err := visitModelNode(model, true)
 	if err != nil {
 		return err
 	}
 
-	payload := &JsonApiOnePayload{Data: rootNode}
+	payload := &OnePayload{Data: rootNode}
 
-	uniqueIncluded := make(map[string]*JsonApiNode)
+	uniqueIncluded := make(map[string]*Node)
 
 	for i, n := range included {
 		k := fmt.Sprintf("%s,%s", n.Type, n.Id)
@@ -88,11 +88,11 @@ func MarshalJsonApiOnePayload(w io.Writer, model interface{}) error {
 	return nil
 }
 
-func visitModelNode(model interface{}, sideload bool) (*JsonApiNode, []*JsonApiNode, error) {
-	node := new(JsonApiNode)
+func visitModelNode(model interface{}, sideload bool) (*Node, []*Node, error) {
+	node := new(Node)
 
 	var er error
-	var included []*JsonApiNode
+	var included []*Node
 
 	modelType := reflect.TypeOf(model).Elem()
 	modelValue := reflect.ValueOf(model).Elem()
@@ -154,7 +154,7 @@ func visitModelNode(model interface{}, sideload bool) (*JsonApiNode, []*JsonApiN
 				}
 
 				if included == nil {
-					included = make([]*JsonApiNode, 0)
+					included = make([]*Node, 0)
 				}
 
 				if isSlice {
@@ -163,15 +163,15 @@ func visitModelNode(model interface{}, sideload bool) (*JsonApiNode, []*JsonApiN
 
 					if err == nil {
 						if sideload {
-							shallowNodes := make([]*JsonApiNode, 0)
+							shallowNodes := make([]*Node, 0)
 							for _, node := range d {
 								included = append(included, node)
 								shallowNodes = append(shallowNodes, cloneAndRemoveAttributes(node))
 							}
 
-							node.Relationships[args[1]] = &JsonApiRelationshipManyNode{Data: shallowNodes}
+							node.Relationships[args[1]] = &RelationshipManyNode{Data: shallowNodes}
 						} else {
-							node.Relationships[args[1]] = &JsonApiRelationshipManyNode{Data: d}
+							node.Relationships[args[1]] = &RelationshipManyNode{Data: d}
 						}
 					} else {
 						er = err
@@ -182,9 +182,9 @@ func visitModelNode(model interface{}, sideload bool) (*JsonApiNode, []*JsonApiN
 					if err == nil {
 						if sideload {
 							included = append(included, relationship)
-							node.Relationships[args[1]] = &JsonApiRelationshipOneNode{Data: cloneAndRemoveAttributes(relationship)}
+							node.Relationships[args[1]] = &RelationshipOneNode{Data: cloneAndRemoveAttributes(relationship)}
 						} else {
-							node.Relationships[args[1]] = &JsonApiRelationshipOneNode{Data: relationship}
+							node.Relationships[args[1]] = &RelationshipOneNode{Data: relationship}
 						}
 					} else {
 						er = err
@@ -208,16 +208,16 @@ func visitModelNode(model interface{}, sideload bool) (*JsonApiNode, []*JsonApiN
 	return node, included, nil
 }
 
-func cloneAndRemoveAttributes(node *JsonApiNode) *JsonApiNode {
+func cloneAndRemoveAttributes(node *Node) *Node {
 	n := *node
 	n.Attributes = nil
 
 	return &n
 }
 
-func visitModelNodeRelationships(relationName string, models reflect.Value, sideload bool) (map[string]*JsonApiRelationshipManyNode, error) {
-	m := make(map[string]*JsonApiRelationshipManyNode)
-	nodes := make([]*JsonApiNode, 0)
+func visitModelNodeRelationships(relationName string, models reflect.Value, sideload bool) (map[string]*RelationshipManyNode, error) {
+	m := make(map[string]*RelationshipManyNode)
+	nodes := make([]*Node, 0)
 
 	for i := 0; i < models.Len(); i++ {
 		node, _, err := visitModelNode(models.Index(i).Interface(), sideload)
@@ -228,12 +228,12 @@ func visitModelNodeRelationships(relationName string, models reflect.Value, side
 		nodes = append(nodes, node)
 	}
 
-	m[relationName] = &JsonApiRelationshipManyNode{Data: nodes}
+	m[relationName] = &RelationshipManyNode{Data: nodes}
 
 	return m, nil
 }
 
-func deleteNode(a []*JsonApiNode, i int) []*JsonApiNode {
+func deleteNode(a []*Node, i int) []*Node {
 	if i < len(a)-1 {
 		a = append(a[:i], a[i+1:]...)
 	} else {

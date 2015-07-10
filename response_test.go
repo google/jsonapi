@@ -42,7 +42,7 @@ func (b Blogs) GetData() []interface{} {
 func TestMalformedTagResposne(t *testing.T) {
 	testModel := &BadModel{}
 	out := bytes.NewBuffer(nil)
-	err := MarshalJsonApiOnePayload(out, testModel)
+	err := MarshalOnePayload(out, testModel)
 
 	if err == nil {
 		t.Fatalf("Did not error out with wrong number of arguments in tag")
@@ -63,11 +63,11 @@ func TestHasPrimaryAnnotation(t *testing.T) {
 	}
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalJsonApiOnePayload(out, testModel); err != nil {
+	if err := MarshalOnePayload(out, testModel); err != nil {
 		t.Fatal(err)
 	}
 
-	resp := new(JsonApiOnePayload)
+	resp := new(OnePayload)
 
 	if err := json.NewDecoder(out).Decode(resp); err != nil {
 		t.Fatal(err)
@@ -92,11 +92,11 @@ func TestSupportsAttributes(t *testing.T) {
 	}
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalJsonApiOnePayload(out, testModel); err != nil {
+	if err := MarshalOnePayload(out, testModel); err != nil {
 		t.Fatal(err)
 	}
 
-	resp := new(JsonApiOnePayload)
+	resp := new(OnePayload)
 	if err := json.NewDecoder(out).Decode(resp); err != nil {
 		t.Fatal(err)
 	}
@@ -120,11 +120,11 @@ func TestOmitsZeroTimes(t *testing.T) {
 	}
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalJsonApiOnePayload(out, testModel); err != nil {
+	if err := MarshalOnePayload(out, testModel); err != nil {
 		t.Fatal(err)
 	}
 
-	resp := new(JsonApiOnePayload)
+	resp := new(OnePayload)
 	if err := json.NewDecoder(out).Decode(resp); err != nil {
 		t.Fatal(err)
 	}
@@ -165,11 +165,11 @@ func TestRelations(t *testing.T) {
 	}
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalJsonApiOnePayload(out, testModel); err != nil {
+	if err := MarshalOnePayload(out, testModel); err != nil {
 		t.Fatal(err)
 	}
 
-	resp := new(JsonApiOnePayload)
+	resp := new(OnePayload)
 	if err := json.NewDecoder(out).Decode(resp); err != nil {
 		t.Fatal(err)
 	}
@@ -197,11 +197,11 @@ func TestNoRelations(t *testing.T) {
 	testModel := &Blog{Id: 1, Title: "Title 1", CreatedAt: time.Now()}
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalJsonApiOnePayload(out, testModel); err != nil {
+	if err := MarshalOnePayload(out, testModel); err != nil {
 		t.Fatal(err)
 	}
 
-	resp := new(JsonApiOnePayload)
+	resp := new(OnePayload)
 	if err := json.NewDecoder(out).Decode(resp); err != nil {
 		t.Fatal(err)
 	}
@@ -260,11 +260,11 @@ func TestMarshalMany(t *testing.T) {
 	}
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalJsonApiManyPayload(out, data); err != nil {
+	if err := MarshalManyPayload(out, data); err != nil {
 		t.Fatal(err)
 	}
 
-	resp := new(JsonApiManyPayload)
+	resp := new(ManyPayload)
 	if err := json.NewDecoder(out).Decode(resp); err != nil {
 		t.Fatal(err)
 	}
