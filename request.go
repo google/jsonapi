@@ -55,27 +55,22 @@ func unmarshalJsonApiNode(data *JsonApiNode, model reflect.Value) error {
 					return false
 				}
 
-				if len(args) >= 2 {
-					if data.Type != args[1] {
-						er = errors.New("Trying to Unmarshal a type that does not match")
-						return false
-					}
+				if data.Type != args[1] {
+					er = errors.New("Trying to Unmarshal a type that does not match")
+					return false
+				}
 
-					if fieldValue.Kind() == reflect.String {
-						fieldValue.Set(reflect.ValueOf(data.Id))
-					} else if fieldValue.Kind() == reflect.Int {
-						id, err := strconv.Atoi(data.Id)
-						if err != nil {
-							er = err
-							return false
-						}
-						fieldValue.SetInt(int64(id))
-					} else {
-						er = errors.New("Unsuppored data type for primary key, not int or string")
+				if fieldValue.Kind() == reflect.String {
+					fieldValue.Set(reflect.ValueOf(data.Id))
+				} else if fieldValue.Kind() == reflect.Int {
+					id, err := strconv.Atoi(data.Id)
+					if err != nil {
+						er = err
 						return false
 					}
+					fieldValue.SetInt(int64(id))
 				} else {
-					er = errors.New("'type' as second argument required for 'primary'")
+					er = errors.New("Unsuppored data type for primary key, not int or string")
 					return false
 				}
 			} else if annotation == "attr" {
@@ -84,43 +79,39 @@ func unmarshalJsonApiNode(data *JsonApiNode, model reflect.Value) error {
 					return false
 				}
 
-				if len(args) >= 2 {
-					val := attributes[args[1]]
+				val := attributes[args[1]]
 
-					// next if the attribute was not included in the request
-					if val == nil {
-						return false
-					}
+				// next if the attribute was not included in the request
+				if val == nil {
+					return false
+				}
 
-					v := reflect.ValueOf(val)
+				v := reflect.ValueOf(val)
 
-					if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
+				if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
 
-						var at int64
+					var at int64
 
-						if v.Kind() == reflect.Float64 {
-							at = int64(v.Interface().(float64))
-						} else if v.Kind() == reflect.Int {
-							at = v.Int()
-						} else {
-							er = errors.New("Only numbers can be parsed as dates, unix timestamps")
-							return false
-						}
-
-						t := time.Unix(at, 0)
-
-						fieldValue.Set(reflect.ValueOf(t))
-
-						return false
-					}
-
-					if fieldValue.Kind() == reflect.Int && v.Kind() == reflect.Float64 {
-						fieldValue.Set(reflect.ValueOf(int(v.Interface().(float64))))
+					if v.Kind() == reflect.Float64 {
+						at = int64(v.Interface().(float64))
+					} else if v.Kind() == reflect.Int {
+						at = v.Int()
 					} else {
-						fieldValue.Set(reflect.ValueOf(val))
+						er = errors.New("Only numbers can be parsed as dates, unix timestamps")
+						return false
 					}
+
+					t := time.Unix(at, 0)
+
+					fieldValue.Set(reflect.ValueOf(t))
+
+					return false
+				}
+
+				if fieldValue.Kind() == reflect.Int && v.Kind() == reflect.Float64 {
+					fieldValue.Set(reflect.ValueOf(int(v.Interface().(float64))))
 				} else {
-					er = errors.New("Attribute key required as second arg")
+					fieldValue.Set(reflect.ValueOf(val))
 				}
 			} else if annotation == "relation" {
 				isSlice := fieldValue.Type().Kind() == reflect.Slice

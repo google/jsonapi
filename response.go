@@ -109,35 +109,25 @@ func visitModelNode(model interface{}, sideload bool) (*JsonApiNode, []*JsonApiN
 			annotation := args[0]
 
 			if annotation == "primary" {
-				if len(args) >= 2 {
-					node.Id = fmt.Sprintf("%v", fieldValue.Interface())
-					node.Type = args[1]
-				} else {
-					er = errors.New("'type' as second argument required for 'primary'")
-					return false
-				}
+				node.Id = fmt.Sprintf("%v", fieldValue.Interface())
+				node.Type = args[1]
 			} else if annotation == "attr" {
 				if node.Attributes == nil {
 					node.Attributes = make(map[string]interface{})
 				}
 
-				if len(args) >= 2 {
-					if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
-						isZeroMethod := fieldValue.MethodByName("IsZero")
-						isZero := isZeroMethod.Call(make([]reflect.Value, 0))[0].Interface().(bool)
-						if isZero {
-							return false
-						}
-
-						unix := fieldValue.MethodByName("Unix")
-						val := unix.Call(make([]reflect.Value, 0))[0]
-						node.Attributes[args[1]] = val.Int()
-					} else {
-						node.Attributes[args[1]] = fieldValue.Interface()
+				if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
+					isZeroMethod := fieldValue.MethodByName("IsZero")
+					isZero := isZeroMethod.Call(make([]reflect.Value, 0))[0].Interface().(bool)
+					if isZero {
+						return false
 					}
+
+					unix := fieldValue.MethodByName("Unix")
+					val := unix.Call(make([]reflect.Value, 0))[0]
+					node.Attributes[args[1]] = val.Int()
 				} else {
-					er = errors.New("'type' as second argument required for 'primary'")
-					return false
+					node.Attributes[args[1]] = fieldValue.Interface()
 				}
 			} else if annotation == "relation" {
 
