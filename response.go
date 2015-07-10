@@ -163,10 +163,10 @@ func visitModelNode(model interface{}, sideload bool) (*Node, []*Node, error) {
 
 					if err == nil {
 						if sideload {
+							included = append(included, d...)
 							shallowNodes := make([]*Node, 0)
 							for _, node := range d {
-								included = append(included, node)
-								shallowNodes = append(shallowNodes, cloneAndRemoveAttributes(node))
+								shallowNodes = append(shallowNodes, toShallowNode(node))
 							}
 
 							node.Relationships[args[1]] = &RelationshipManyNode{Data: shallowNodes}
@@ -182,7 +182,7 @@ func visitModelNode(model interface{}, sideload bool) (*Node, []*Node, error) {
 					if err == nil {
 						if sideload {
 							included = append(included, relationship)
-							node.Relationships[args[1]] = &RelationshipOneNode{Data: cloneAndRemoveAttributes(relationship)}
+							node.Relationships[args[1]] = &RelationshipOneNode{Data: toShallowNode(relationship)}
 						} else {
 							node.Relationships[args[1]] = &RelationshipOneNode{Data: relationship}
 						}
@@ -208,11 +208,11 @@ func visitModelNode(model interface{}, sideload bool) (*Node, []*Node, error) {
 	return node, included, nil
 }
 
-func cloneAndRemoveAttributes(node *Node) *Node {
-	n := *node
-	n.Attributes = nil
-
-	return &n
+func toShallowNode(node *Node) *Node {
+	return &Node{
+		Id:   node.Id,
+		Type: node.Type,
+	}
 }
 
 func visitModelNodeRelationships(relationName string, models reflect.Value, sideload bool) (map[string]*RelationshipManyNode, error) {

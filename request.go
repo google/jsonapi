@@ -18,10 +18,21 @@ func UnmarshalPayload(in io.Reader, model interface{}) error {
 		return err
 	}
 
-	return unmarshalNode(payload.Data, reflect.ValueOf(model))
+	if payload.Included != nil {
+		includedMap := make(map[string]*Node)
+		for _, included := range payload.Included {
+			key := fmt.Sprintf("%s,%s", included.Type, included.Id)
+			includedMap[key] = included
+		}
+
+		return unmarshalNode(payload.Data, reflect.ValueOf(model), &includedMap)
+	} else {
+		return unmarshalNode(payload.Data, reflect.ValueOf(model), nil)
+	}
+
 }
 
-func unmarshalNode(data *Node, model reflect.Value) error {
+func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) error {
 	modelValue := model.Elem()
 	modelType := model.Type().Elem()
 
@@ -128,9 +139,8 @@ func unmarshalNode(data *Node, model reflect.Value) error {
 
 					for _, r := range data {
 						m := reflect.New(fieldValue.Type().Elem().Elem())
-						h := r.(map[string]interface{})
 
-						if err := unmarshalNode(mapToNode(h), m); err != nil {
+						if err := unmarshalMap(r, m, included); err != nil {
 							er = err
 							return false
 						}
@@ -141,9 +151,7 @@ func unmarshalNode(data *Node, model reflect.Value) error {
 					fieldValue.Set(models)
 				} else {
 					m := reflect.New(fieldValue.Type().Elem())
-					h := relationship["data"].(map[string]interface{})
-
-					if err := unmarshalNode(mapToNode(h), m); err != nil {
+					if err := unmarshalMap(relationship["data"], m, included); err != nil {
 						er = err
 						return false
 					}
@@ -166,18 +174,50 @@ func unmarshalNode(data *Node, model reflect.Value) error {
 	return nil
 }
 
-func mapToNode(m map[string]interface{}) *Node {
+func unmarshalMap(nodeData interface{}, model reflect.Value, included *map[string]*Node) error {
+	h := nodeData.(map[string]interface{})
+	node := fetchNode(h, included)
+
+	if err := unmarshalNode(node, model, included); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func fetchNode(m map[string]interface{}, included *map[string]*Node) *Node {
+	var attributes map[string]interface{}
+	var relationships map[string]interface{}
+
+	if included != nil {
+		key := fmt.Sprintf("%s,%s", m["type"].(string), m["id"].(string))
+		node := (*included)[key]
+
+		if node != nil {
+			attributes = node.Attributes
+			relationships = node.Relationships
+		}
+	}
+
+	return mapToNode(m, attributes, relationships)
+}
+
+func mapToNode(m map[string]interface{}, attributes map[string]interface{}, relationships map[string]interface{}) *Node {
 	node := &Node{Type: m["type"].(string)}
 
 	if m["id"] != nil {
 		node.Id = m["id"].(string)
 	}
 
-	if m["attributes"] != nil {
+	if m["attributes"] == nil {
+		node.Attributes = attributes
+	} else {
 		node.Attributes = m["attributes"].(map[string]interface{})
 	}
 
-	if m["relationships"] != nil {
+	if m["relationships"] == nil {
+		node.Relationships = relationships
+	} else {
 		node.Relationships = m["relationships"].(map[string]interface{})
 	}
 

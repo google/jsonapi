@@ -6,6 +6,7 @@ import (
 	"io"
 	"regexp"
 	"testing"
+	"time"
 )
 
 type BadModel struct {
@@ -45,11 +46,6 @@ func TestUnmarshalSetsAttrs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	//o := bytes.NewBuffer(nil)
-	//json.NewEncoder(o).Encode(out)
-
-	//fmt.Printf("%s\n", o.Bytes())
-
 	if out.CreatedAt.IsZero() {
 		t.Fatalf("Did not parse time")
 	}
@@ -70,7 +66,7 @@ func TestUnmarshalRelationships(t *testing.T) {
 	}
 
 	if out.CurrentPost.Title != "Bas" || out.CurrentPost.Body != "Fuubar" {
-		t.Fatalf("Attributes where not set")
+		t.Fatalf("Attributes were not set")
 	}
 
 	if len(out.Posts) != 2 {
@@ -81,6 +77,48 @@ func TestUnmarshalRelationships(t *testing.T) {
 func TestUnmarshalNestedRelationships(t *testing.T) {
 	out, err := unmarshalSamplePayload()
 	if err != nil {
+		t.Fatal(err)
+	}
+
+	if out.CurrentPost == nil {
+		t.Fatalf("Current post was not materialized")
+	}
+
+	if out.CurrentPost.Comments == nil {
+		t.Fatalf("Did not materialize nested records, comments")
+	}
+
+	if len(out.CurrentPost.Comments) != 2 {
+		t.Fatalf("Wrong number of comments")
+	}
+}
+
+func TestUnmarshalRelationshipsSideloaded(t *testing.T) {
+	payload := samplePayloadWithSideloaded()
+	out := new(Blog)
+
+	if err := UnmarshalPayload(payload, out); err != nil {
+		t.Fatal(err)
+	}
+
+	if out.CurrentPost == nil {
+		t.Fatalf("Current post was not materialized")
+	}
+
+	if out.CurrentPost.Title != "Foo" || out.CurrentPost.Body != "Bar" {
+		t.Fatalf("Attributes were not set")
+	}
+
+	if len(out.Posts) != 2 {
+		t.Fatalf("There should have been 2 posts")
+	}
+}
+
+func TestUnmarshalNestedRelationshipsSideloaded(t *testing.T) {
+	payload := samplePayloadWithSideloaded()
+	out := new(Blog)
+
+	if err := UnmarshalPayload(payload, out); err != nil {
 		t.Fatal(err)
 	}
 
@@ -189,6 +227,66 @@ func samplePayloadWithId() io.Reader {
 	out := bytes.NewBuffer(nil)
 
 	json.NewEncoder(out).Encode(payload)
+
+	return out
+}
+
+func samplePayloadWithSideloaded() io.Reader {
+	testModel := &Blog{
+		Id:        5,
+		Title:     "Title 1",
+		CreatedAt: time.Now(),
+		Posts: []*Post{
+			&Post{
+				Id:    1,
+				Title: "Foo",
+				Body:  "Bar",
+				Comments: []*Comment{
+					&Comment{
+						Id:   1,
+						Body: "foo",
+					},
+					&Comment{
+						Id:   2,
+						Body: "bar",
+					},
+				},
+			},
+			&Post{
+				Id:    2,
+				Title: "Fuubar",
+				Body:  "Bas",
+				Comments: []*Comment{
+					&Comment{
+						Id:   1,
+						Body: "foo",
+					},
+					&Comment{
+						Id:   3,
+						Body: "bas",
+					},
+				},
+			},
+		},
+		CurrentPost: &Post{
+			Id:    1,
+			Title: "Foo",
+			Body:  "Bar",
+			Comments: []*Comment{
+				&Comment{
+					Id:   1,
+					Body: "foo",
+				},
+				&Comment{
+					Id:   2,
+					Body: "bar",
+				},
+			},
+		},
+	}
+
+	out := bytes.NewBuffer(nil)
+	MarshalOnePayload(out, testModel)
 
 	return out
 }
