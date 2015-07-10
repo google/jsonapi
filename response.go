@@ -154,11 +154,7 @@ func visitModelNode(model interface{}, sideload bool) (*JsonApiNode, []*JsonApiN
 							shallowNodes := make([]*JsonApiNode, 0)
 							for _, node := range d {
 								included = append(included, node)
-
-								shallowNode := *node
-								shallowNode.Attributes = nil
-								shallowNodes = append(shallowNodes, &shallowNode)
-
+								shallowNodes = append(shallowNodes, cloneAndRemoveAttributes(node))
 							}
 
 							node.Relationships[args[1]] = &JsonApiRelationshipManyNode{Data: shallowNodes}
@@ -173,12 +169,8 @@ func visitModelNode(model interface{}, sideload bool) (*JsonApiNode, []*JsonApiN
 					relationship, _, err := visitModelNode(fieldValue.Interface(), sideload)
 					if err == nil {
 						if sideload {
-							shallowNode := *relationship
-							shallowNode.Attributes = nil
-
 							included = append(included, relationship)
-
-							node.Relationships[args[1]] = &JsonApiRelationshipOneNode{Data: &shallowNode}
+							node.Relationships[args[1]] = &JsonApiRelationshipOneNode{Data: cloneAndRemoveAttributes(relationship)}
 						} else {
 							node.Relationships[args[1]] = &JsonApiRelationshipOneNode{Data: relationship}
 						}
@@ -202,6 +194,13 @@ func visitModelNode(model interface{}, sideload bool) (*JsonApiNode, []*JsonApiN
 	}
 
 	return node, included, nil
+}
+
+func cloneAndRemoveAttributes(node *JsonApiNode) *JsonApiNode {
+	n := *node
+	n.Attributes = nil
+
+	return &n
 }
 
 func visitModelNodeRelationships(relationName string, models reflect.Value, sideload bool) (map[string]*JsonApiRelationshipManyNode, error) {
