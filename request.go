@@ -124,25 +124,24 @@ func unmarshalJsonApiNode(data *JsonApiNode, model reflect.Value) error {
 
 				if isSlice {
 					data := relationship["data"].([]interface{})
-
 					models := reflect.New(fieldValue.Type()).Elem()
 
 					for _, r := range data {
 						m := reflect.New(fieldValue.Type().Elem().Elem())
 						h := r.(map[string]interface{})
+
 						if err := unmarshalJsonApiNode(mapToJsonApiNode(h), m); err != nil {
 							er = err
 							return false
 						}
+
 						models = reflect.Append(models, m)
 					}
 
 					fieldValue.Set(models)
 				} else {
-					data := relationship["data"].(interface{})
-
 					m := reflect.New(fieldValue.Type().Elem())
-					h := data.(map[string]interface{})
+					h := relationship["data"].(map[string]interface{})
 
 					if err := unmarshalJsonApiNode(mapToJsonApiNode(h), m); err != nil {
 						er = err
