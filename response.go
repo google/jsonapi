@@ -178,10 +178,10 @@ func visitModelNode(model interface{}, sideload bool) (*Node, []*Node, error) {
 						return false
 					}
 				} else {
-					relationship, _, err := visitModelNode(fieldValue.Interface(), sideload)
+					relationship, inc, err := visitModelNode(fieldValue.Interface(), sideload)
 					if err == nil {
 						if sideload {
-							included = append(included, relationship)
+							included = append(included, inc...)
 							node.Relationships[args[1]] = &RelationshipOneNode{Data: toShallowNode(relationship)}
 						} else {
 							node.Relationships[args[1]] = &RelationshipOneNode{Data: relationship}

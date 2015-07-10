@@ -133,6 +133,10 @@ func TestUnmarshalNestedRelationshipsSideloaded(t *testing.T) {
 	if len(out.CurrentPost.Comments) != 2 {
 		t.Fatalf("Wrong number of comments")
 	}
+
+	if out.CurrentPost.Comments[0].Body != "foo" {
+		t.Fatalf("Comment body not set")
+	}
 }
 
 func unmarshalSamplePayload() (*Blog, error) {
