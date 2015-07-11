@@ -93,6 +93,35 @@ func TestUnmarshalNestedRelationships(t *testing.T) {
 	}
 }
 
+func TestUnmarshalNestedRelationshipsEmbedded(t *testing.T) {
+	out := bytes.NewBuffer(nil)
+	if err := MarshalOnePayloadEmbedded(out, testModel()); err != nil {
+		t.Fatal(err)
+	}
+
+	model := new(Blog)
+
+	if err := UnmarshalPayload(out, model); err != nil {
+		t.Fatal(err)
+	}
+
+	if model.CurrentPost == nil {
+		t.Fatalf("Current post was not materialized")
+	}
+
+	if model.CurrentPost.Comments == nil {
+		t.Fatalf("Did not materialize nested records, comments")
+	}
+
+	if len(model.CurrentPost.Comments) != 2 {
+		t.Fatalf("Wrong number of comments")
+	}
+
+	if model.CurrentPost.Comments[0].Body != "foo" {
+		t.Fatalf("Comment body not set")
+	}
+}
+
 func TestUnmarshalRelationshipsSideloaded(t *testing.T) {
 	payload := samplePayloadWithSideloaded()
 	out := new(Blog)
@@ -235,8 +264,8 @@ func samplePayloadWithId() io.Reader {
 	return out
 }
 
-func samplePayloadWithSideloaded() io.Reader {
-	testModel := &Blog{
+func testModel() *Blog {
+	return &Blog{
 		Id:        5,
 		Title:     "Title 1",
 		CreatedAt: time.Now(),
@@ -288,6 +317,10 @@ func samplePayloadWithSideloaded() io.Reader {
 			},
 		},
 	}
+}
+
+func samplePayloadWithSideloaded() io.Reader {
+	testModel := testModel()
 
 	out := bytes.NewBuffer(nil)
 	MarshalOnePayload(out, testModel)

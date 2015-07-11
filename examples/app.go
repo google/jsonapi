@@ -28,10 +28,8 @@ func main() {
 	})
 
 	blog := testBlogForCreate()
-	payload, _ := jsonapi.MarshalOnePayloadEmbedded(blog)
-
 	in := bytes.NewBuffer(nil)
-	json.NewEncoder(in).Encode(payload)
+	jsonapi.MarshalOnePayloadEmbedded(in, blog)
 
 	req, _ := http.NewRequest("POST", "/blogs", in)
 

@@ -76,16 +76,19 @@ func MarshalManyPayload(w io.Writer, models Models) error {
 	return nil
 }
 
-func MarshalOnePayloadEmbedded(model interface{}) (*OnePayload, error) {
+func MarshalOnePayloadEmbedded(w io.Writer, model interface{}) error {
 	rootNode, _, err := visitModelNode(model, false)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	resp := &OnePayload{Data: rootNode}
+	payload := &OnePayload{Data: rootNode}
 
-	return resp, nil
+	if err := json.NewEncoder(w).Encode(payload); err != nil {
+		return err
+	}
 
+	return nil
 }
 
 func visitModelNode(model interface{}, sideload bool) (*Node, []*Node, error) {
