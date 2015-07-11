@@ -10,6 +10,34 @@ import (
 	"time"
 )
 
+func MarshalOnePayload(w io.Writer, model interface{}) error {
+	rootNode, included, err := visitModelNode(model, true)
+	if err != nil {
+		return err
+	}
+
+	payload := &OnePayload{Data: rootNode}
+
+	uniqueIncluded := make(map[string]*Node)
+
+	for i, n := range included {
+		k := fmt.Sprintf("%s,%s", n.Type, n.Id)
+		if uniqueIncluded[k] == nil {
+			uniqueIncluded[k] = n
+		} else {
+			included = deleteNode(included, i)
+		}
+	}
+
+	payload.Included = included
+
+	if err := json.NewEncoder(w).Encode(payload); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func MarshalManyPayload(w io.Writer, models Models) error {
 	d := models.GetData()
 	data := make([]*Node, 0, len(d))
@@ -58,34 +86,6 @@ func MarshalOnePayloadEmbedded(model interface{}) (*OnePayload, error) {
 
 	return resp, nil
 
-}
-
-func MarshalOnePayload(w io.Writer, model interface{}) error {
-	rootNode, included, err := visitModelNode(model, true)
-	if err != nil {
-		return err
-	}
-
-	payload := &OnePayload{Data: rootNode}
-
-	uniqueIncluded := make(map[string]*Node)
-
-	for i, n := range included {
-		k := fmt.Sprintf("%s,%s", n.Type, n.Id)
-		if uniqueIncluded[k] == nil {
-			uniqueIncluded[k] = n
-		} else {
-			included = deleteNode(included, i)
-		}
-	}
-
-	payload.Included = included
-
-	if err := json.NewEncoder(w).Encode(payload); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func visitModelNode(model interface{}, sideload bool) (*Node, []*Node, error) {
