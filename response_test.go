@@ -3,6 +3,7 @@ package jsonapi
 import (
 	"bytes"
 	"encoding/json"
+	"reflect"
 	"regexp"
 	"testing"
 	"time"
@@ -31,16 +32,6 @@ type Comment struct {
 	Id     int    `jsonapi:"primary,comments"`
 	PostId int    `jsonapi:"attr,post_id"`
 	Body   string `jsonapi:"attr,body"`
-}
-
-type Blogs []*Blog
-
-func (b Blogs) GetData() []interface{} {
-	d := make([]interface{}, len(b))
-	for i, blog := range b {
-		d[i] = blog
-	}
-	return d
 }
 
 func TestMalformedTagResposne(t *testing.T) {
@@ -195,7 +186,7 @@ func TestNoRelations(t *testing.T) {
 }
 
 func TestMarshalMany(t *testing.T) {
-	data := Blogs{
+	data := []interface{}{
 		&Blog{
 			Id:        5,
 			Title:     "Title 1",
@@ -243,7 +234,7 @@ func TestMarshalMany(t *testing.T) {
 	}
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalManyPayload(out, data); err != nil {
+	if err := MarshalManyPayload(out, reflect.ValueOf(data)); err != nil {
 		t.Fatal(err)
 	}
 

@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"regexp"
 	"time"
 
@@ -38,7 +39,7 @@ func listBlogs(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(200)
 	w.Header().Set("Content-Type", "application/vnd.api+json")
-	if err := jsonapi.MarshalManyPayload(w, blogs); err != nil {
+	if err := jsonapi.MarshalManyPayload(w, reflect.ValueOf(blogs)); err != nil {
 		http.Error(w, err.Error(), 500)
 	}
 }
@@ -115,8 +116,8 @@ func testBlogForCreate(i int) *Blog {
 	}
 }
 
-func testBlogsForList() Blogs {
-	blogs := make(Blogs, 0, 10)
+func testBlogsForList() []interface{} {
+	blogs := make([]interface{}, 0, 10)
 
 	for i := 0; i < 10; i += 1 {
 		blogs = append(blogs, testBlogForCreate(i))
@@ -194,14 +195,4 @@ type Comment struct {
 	Id     int    `jsonapi:"primary,comments"`
 	PostId int    `jsonapi:"attr,post_id"`
 	Body   string `jsonapi:"attr,body"`
-}
-
-type Blogs []*Blog
-
-func (b Blogs) GetData() []interface{} {
-	d := make([]interface{}, len(b))
-	for i, blog := range b {
-		d[i] = blog
-	}
-	return d
 }
