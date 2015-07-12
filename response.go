@@ -132,7 +132,7 @@ func visitModelNode(model interface{}, sideload bool) (*Node, []*Node, error) {
 					node.Relationships = make(map[string]interface{})
 				}
 
-				if included == nil {
+				if sideload && included == nil {
 					included = make([]*Node, 0)
 				}
 
