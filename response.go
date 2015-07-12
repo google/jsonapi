@@ -223,24 +223,16 @@ func visitModelNodeRelationships(relationName string, models reflect.Value, side
 func uniqueByTypeAndId(nodes []*Node) []*Node {
 	uniqueIncluded := make(map[string]*Node)
 
-	for i, n := range nodes {
+	for i := 0; i < len(nodes); i += 1 {
+		n := nodes[i]
 		k := fmt.Sprintf("%s,%s", n.Type, n.Id)
 		if uniqueIncluded[k] == nil {
 			uniqueIncluded[k] = n
 		} else {
-			nodes = deleteNode(nodes, i)
+			nodes = append(nodes[:i], nodes[i+1:]...)
+			i--
 		}
 	}
 
 	return nodes
-}
-
-func deleteNode(a []*Node, i int) []*Node {
-	if i < len(a)-1 {
-		a = append(a[:i], a[i+1:]...)
-	} else {
-		a = a[:i]
-	}
-
-	return a
 }

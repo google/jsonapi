@@ -145,28 +145,7 @@ func TestOmitsZeroTimes(t *testing.T) {
 }
 
 func TestRelations(t *testing.T) {
-	testModel := &Blog{
-		Id:        5,
-		Title:     "Title 1",
-		CreatedAt: time.Now(),
-		Posts: []*Post{
-			&Post{
-				Id:    1,
-				Title: "Foo",
-				Body:  "Bar",
-			},
-			&Post{
-				Id:    2,
-				Title: "Fuubar",
-				Body:  "Bas",
-			},
-		},
-		CurrentPost: &Post{
-			Id:    1,
-			Title: "Foo",
-			Body:  "Bar",
-		},
-	}
+	testModel := testBlog()
 
 	out := bytes.NewBuffer(nil)
 	if err := MarshalOnePayload(out, testModel); err != nil {
@@ -277,5 +256,72 @@ func TestMarshalMany(t *testing.T) {
 
 	if len(d) != 2 {
 		t.Fatalf("data should have two elements")
+	}
+}
+
+func testBlog() *Blog {
+	return &Blog{
+		Id:        5,
+		Title:     "Title 1",
+		CreatedAt: time.Now(),
+		Posts: []*Post{
+			&Post{
+				Id:    1,
+				Title: "Foo",
+				Body:  "Bar",
+				Comments: []*Comment{
+					&Comment{
+						Id:   1,
+						Body: "foo",
+					},
+					&Comment{
+						Id:   2,
+						Body: "bar",
+					},
+				},
+				LatestComment: &Comment{
+					Id:   1,
+					Body: "foo",
+				},
+			},
+			&Post{
+				Id:    2,
+				Title: "Fuubar",
+				Body:  "Bas",
+				Comments: []*Comment{
+					&Comment{
+						Id:   1,
+						Body: "foo",
+					},
+					&Comment{
+						Id:   3,
+						Body: "bas",
+					},
+				},
+				LatestComment: &Comment{
+					Id:   1,
+					Body: "foo",
+				},
+			},
+		},
+		CurrentPost: &Post{
+			Id:    1,
+			Title: "Foo",
+			Body:  "Bar",
+			Comments: []*Comment{
+				&Comment{
+					Id:   1,
+					Body: "foo",
+				},
+				&Comment{
+					Id:   2,
+					Body: "bar",
+				},
+			},
+			LatestComment: &Comment{
+				Id:   1,
+				Body: "foo",
+			},
+		},
 	}
 }
