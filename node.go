@@ -12,10 +12,6 @@ type ManyPayload struct {
 	Links    *map[string]string `json:"links,omitempty"`
 }
 
-type Models interface {
-	GetData() []interface{}
-}
-
 type Node struct {
 	Type          string                 `json:"type"`
 	Id            string                 `json:"id"`
