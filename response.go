@@ -26,13 +26,14 @@ func MarshalOnePayload(w io.Writer, model interface{}) error {
 	return nil
 }
 
-func MarshalManyPayload(w io.Writer, models reflect.Value) error {
-	data := make([]*Node, 0, models.Len())
+func MarshalManyPayload(w io.Writer, models []interface{}) error {
+	modelsValues := reflect.ValueOf(models)
+	data := make([]*Node, 0, modelsValues.Len())
 
 	incl := make([]*Node, 0)
 
-	for i := 0; i < models.Len(); i += 1 {
-		model := models.Index(i).Interface()
+	for i := 0; i < modelsValues.Len(); i += 1 {
+		model := modelsValues.Index(i).Interface()
 
 		node, included, err := visitModelNode(model, true)
 		if err != nil {

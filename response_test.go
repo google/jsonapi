@@ -3,7 +3,6 @@ package jsonapi
 import (
 	"bytes"
 	"encoding/json"
-	"reflect"
 	"regexp"
 	"testing"
 	"time"
@@ -234,7 +233,7 @@ func TestMarshalMany(t *testing.T) {
 	}
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalManyPayload(out, reflect.ValueOf(data)); err != nil {
+	if err := MarshalManyPayload(out, data); err != nil {
 		t.Fatal(err)
 	}
 
