@@ -161,12 +161,12 @@ func visitModelNode(model interface{}, sideload bool) (*Node, []*Node, error) {
 				}
 
 				if isSlice {
-					relationship, err := visitModelNodeRelationships(args[1], fieldValue, sideload)
-					d := relationship[args[1]].Data
+					relationship, incl, err := visitModelNodeRelationships(args[1], fieldValue, sideload)
+					d := relationship.Data
 
 					if err == nil {
 						if sideload {
-							included = append(included, d...)
+							included = append(included, incl...)
 							shallowNodes := make([]*Node, 0)
 							for _, node := range d {
 								shallowNodes = append(shallowNodes, toShallowNode(node))
@@ -174,17 +174,18 @@ func visitModelNode(model interface{}, sideload bool) (*Node, []*Node, error) {
 
 							node.Relationships[args[1]] = &RelationshipManyNode{Data: shallowNodes}
 						} else {
-							node.Relationships[args[1]] = &RelationshipManyNode{Data: d}
+							node.Relationships[args[1]] = relationship
 						}
 					} else {
 						er = err
 						return false
 					}
 				} else {
-					relationship, inc, err := visitModelNode(fieldValue.Interface(), sideload)
+					relationship, incl, err := visitModelNode(fieldValue.Interface(), sideload)
 					if err == nil {
 						if sideload {
-							included = append(included, inc...)
+							included = append(included, incl...)
+							included = append(included, relationship)
 							node.Relationships[args[1]] = &RelationshipOneNode{Data: toShallowNode(relationship)}
 						} else {
 							node.Relationships[args[1]] = &RelationshipOneNode{Data: relationship}
@@ -218,22 +219,29 @@ func toShallowNode(node *Node) *Node {
 	}
 }
 
-func visitModelNodeRelationships(relationName string, models reflect.Value, sideload bool) (map[string]*RelationshipManyNode, error) {
-	m := make(map[string]*RelationshipManyNode)
+func visitModelNodeRelationships(relationName string, models reflect.Value, sideload bool) (*RelationshipManyNode, []*Node, error) {
 	nodes := make([]*Node, 0)
 
+	var included []*Node
+	if sideload {
+		included = make([]*Node, 0)
+	}
+
 	for i := 0; i < models.Len(); i++ {
-		node, _, err := visitModelNode(models.Index(i).Interface(), sideload)
+		node, incl, err := visitModelNode(models.Index(i).Interface(), sideload)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		nodes = append(nodes, node)
+		included = append(included, incl...)
 	}
 
-	m[relationName] = &RelationshipManyNode{Data: nodes}
+	included = append(included, nodes...)
 
-	return m, nil
+	n := &RelationshipManyNode{Data: nodes}
+
+	return n, included, nil
 }
 
 func deleteNode(a []*Node, i int) []*Node {

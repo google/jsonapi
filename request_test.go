@@ -93,6 +93,26 @@ func TestUnmarshalNestedRelationships(t *testing.T) {
 	}
 }
 
+func TestUnmarshalRelationshipsSerializedEmbedded(t *testing.T) {
+	out := sampleSerializedEmbeddedTestModel()
+
+	if out.CurrentPost == nil {
+		t.Fatalf("Current post was not materialized")
+	}
+
+	if out.CurrentPost.Title != "Foo" || out.CurrentPost.Body != "Bar" {
+		t.Fatalf("Attributes were not set")
+	}
+
+	if len(out.Posts) != 2 {
+		t.Fatalf("There should have been 2 posts")
+	}
+
+	if out.Posts[0].LatestComment.Body != "foo" {
+		t.Fatalf("The comment body was not set")
+	}
+}
+
 func TestUnmarshalNestedRelationshipsEmbedded(t *testing.T) {
 	out := bytes.NewBuffer(nil)
 	if err := MarshalOnePayloadEmbedded(out, testModel()); err != nil {
@@ -284,6 +304,10 @@ func testModel() *Blog {
 						Body: "bar",
 					},
 				},
+				LatestComment: &Comment{
+					Id:   1,
+					Body: "foo",
+				},
 			},
 			&Post{
 				Id:    2,
@@ -298,6 +322,10 @@ func testModel() *Blog {
 						Id:   3,
 						Body: "bas",
 					},
+				},
+				LatestComment: &Comment{
+					Id:   1,
+					Body: "foo",
 				},
 			},
 		},
@@ -315,6 +343,10 @@ func testModel() *Blog {
 					Body: "bar",
 				},
 			},
+			LatestComment: &Comment{
+				Id:   1,
+				Body: "foo",
+			},
 		},
 	}
 }
@@ -326,4 +358,15 @@ func samplePayloadWithSideloaded() io.Reader {
 	MarshalOnePayload(out, testModel)
 
 	return out
+}
+
+func sampleSerializedEmbeddedTestModel() *Blog {
+	out := bytes.NewBuffer(nil)
+	MarshalOnePayloadEmbedded(out, testModel())
+
+	blog := new(Blog)
+
+	UnmarshalPayload(out, blog)
+
+	return blog
 }
