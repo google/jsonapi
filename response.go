@@ -15,21 +15,9 @@ func MarshalOnePayload(w io.Writer, model interface{}) error {
 	if err != nil {
 		return err
 	}
-
 	payload := &OnePayload{Data: rootNode}
 
-	uniqueIncluded := make(map[string]*Node)
-
-	for i, n := range included {
-		k := fmt.Sprintf("%s,%s", n.Type, n.Id)
-		if uniqueIncluded[k] == nil {
-			uniqueIncluded[k] = n
-		} else {
-			included = deleteNode(included, i)
-		}
-	}
-
-	payload.Included = included
+	payload.Included = uniqueByTypeAndId(included)
 
 	if err := json.NewEncoder(w).Encode(payload); err != nil {
 		return err
@@ -53,20 +41,9 @@ func MarshalManyPayload(w io.Writer, models Models) error {
 		incl = append(incl, included...)
 	}
 
-	uniqueIncluded := make(map[string]*Node)
-
-	for i, n := range incl {
-		k := fmt.Sprintf("%s,%s", n.Type, n.Id)
-		if uniqueIncluded[k] == nil {
-			uniqueIncluded[k] = n
-		} else {
-			incl = deleteNode(incl, i)
-		}
-	}
-
 	payload := &ManyPayload{
 		Data:     data,
-		Included: incl,
+		Included: uniqueByTypeAndId(incl),
 	}
 
 	if err := json.NewEncoder(w).Encode(payload); err != nil {
@@ -242,6 +219,21 @@ func visitModelNodeRelationships(relationName string, models reflect.Value, side
 	n := &RelationshipManyNode{Data: nodes}
 
 	return n, included, nil
+}
+
+func uniqueByTypeAndId(nodes []*Node) []*Node {
+	uniqueIncluded := make(map[string]*Node)
+
+	for i, n := range nodes {
+		k := fmt.Sprintf("%s,%s", n.Type, n.Id)
+		if uniqueIncluded[k] == nil {
+			uniqueIncluded[k] = n
+		} else {
+			nodes = deleteNode(nodes, i)
+		}
+	}
+
+	return nodes
 }
 
 func deleteNode(a []*Node, i int) []*Node {
