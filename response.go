@@ -122,7 +122,6 @@ func visitModelNode(model interface{}, sideload bool) (*Node, []*Node, error) {
 					node.Attributes[args[1]] = fieldValue.Interface()
 				}
 			} else if annotation == "relation" {
-
 				isSlice := fieldValue.Type().Kind() == reflect.Slice
 
 				if (isSlice && fieldValue.Len() < 1) || (!isSlice && fieldValue.IsNil()) {
