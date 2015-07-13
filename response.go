@@ -93,7 +93,7 @@ func MarshalManyPayload(w io.Writer, models []interface{}) error {
 // all relationships will be serailized inline in the data.
 //
 // However, in tests, you may want to construct payloads to post to create methods
-// that are embedded to most closely resember the payloads that will be produced by
+// that are embedded to most closely resemble the payloads that will be produced by
 // the client.  This is what this method is intended for.
 //
 // model interface{} should be a pointer to a struct.
