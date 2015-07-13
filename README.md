@@ -61,7 +61,9 @@ structs like those that jsonapi sends because it is very hard to get at all of
 your data easily.
 
 
-## Tags Example
+## Tags
+
+### Example
 
 You want jsonapi.org style inputs and ouputs but you want to keep your
 structs that you already have.  Use the jsonapi lib with the "jsonapi"
@@ -95,7 +97,43 @@ type Comment struct {
 }
 ```
 
-## Handler Examples
+### Reference
+
+The **jsonapi** Tag Reference
+
+#### `primary`
+
+```
+`jsonapi:"primary,<type field output>"`
+```
+
+This indicates that this is the primary key field for this struct type. Tag
+value arguments are comma separated.  The first argument must be, `primary`, and
+the second must be the name that should appear in the `type` field for all data
+objects that represent this type of model.
+
+#### `attr`
+
+```
+`jsonapi:"attr,<key name in attributes hash>"`
+```
+
+These fields' values should end up in the `attributes`hash for a record.  The first
+argument must be, `attr`, and the second should be the name for the key to display in
+the the `attributes` hash for that record.
+
+#### `relation`
+
+```
+`jsonapi:"relation,<key name in relationships hash>"`
+```
+
+Relations are struct fields that represent a one-to-one or one-to-many to other structs.
+jsonapi will traverse the graph of relationships and marshal or unmarshal records.  The first
+argument must be, `relation`, and the second should be the name of the relationship, used as
+the key in the `relationships` hash for the record.
+
+## Methods Reference
 
 **All `Marshal` and `Unmarshal` methods expect pointers to struct
 instance or slices of the same contained with the `interface{}`s**
@@ -103,7 +141,7 @@ instance or slices of the same contained with the `interface{}`s**
 Now you have your structs are prepared to be seralized or materialized.
 What about the rest?
 
-### Create
+### Create Record Example
 
 You can Unmarshal a jsonapi payload using `jsonapi.UnmarshalPayload`; convert an io
 into a struct instance using jsonapi tags on struct fields.  Method supports single
@@ -129,7 +167,7 @@ This method encodes a response for a single record only. If you want to serializ
 records, see, [MarshalManyPayload](#marshalmanypayload). Wrties a jsonapi response, with
 related records sideloaded, into `included` array.
 
-#### Example
+#### Handler Exmaple Code
 
 ```go
 func CreateBlog(w http.ResponseWriter, r *http.Request) {
@@ -151,7 +189,7 @@ func CreateBlog(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-### List
+### List Records Example
 
 #### `MarshalManyPayload`
 
@@ -188,7 +226,7 @@ the first time.  For example when you fetch the `Blog`s from the db
 FetchBlogs() ([]interface{}, error)
 ```
 
-#### Example
+#### Handler Example Code
 
 ```go
 func ListBlogs(w http.ResponseWriter, r *http.Request) {
