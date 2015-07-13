@@ -95,10 +95,36 @@ type Comment struct {
 
 ## Handler Examples
 
-Now you have your structs prepared to be seralized or materialized.
+Now you have your structs are prepared to be seralized or materialized.
 What about the rest?
 
 ### Create
+
+You can Unmarshal a jsonapi payload using `jsonapi.UnmarshalPayload`; convert an io
+into a struct instance using jsonapi tags on struct fields.  Method supports single
+request payloads only, at the moment. Bulk creates and updates are not supported yet.
+
+#### `UnmarshalPayload`
+
+```go
+UnmarshalPayload(in io.Reader, model interface{})
+```
+
+Visit [godoc](http://godoc.org/github.com/shwoodard/jsonapi#UnmarshalPayload)
+
+#### `MarshalOnePayload`
+
+This method encodes a response for a single record only. If you want to serialize many
+records, see, [MarshalManyPayload](#MarshalManyPayload). Wrties a jsonapi response, with
+related records sideloaded, into `included` array.
+
+```go
+MarshalOnePayloadEmbedded(w io.Writer, model interface{}) error
+```
+
+Visit [godoc](http://godoc.org/github.com/shwoodard/jsonapi#MarshalOnePayload)
+
+#### Example
 
 ```go
 func CreateBlog(w http.ResponseWriter, r *http.Request) {
@@ -120,3 +146,6 @@ func CreateBlog(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
+### List
+#### `MarshalManyPayload`
+#### Example
