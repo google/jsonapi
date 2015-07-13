@@ -1,5 +1,7 @@
 # jsonapi
 
+[![Build Status](https://travis-ci.org/shwoodard/jsonapi.svg?branch=master)](https://travis-ci.org/shwoodard/jsonapi)
+
 A serailizer/deserializer for json payloads that comply to the
 [jsonapi.org](http://jsonapi.org) spec in go.
 
