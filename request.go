@@ -11,6 +11,34 @@ import (
 	"time"
 )
 
+// Convert an io into a struct instance using jsonapi tags on struct fields.
+// Method supports single request payloads only, at the moment. Bulk creates and updates
+// are not supported yet.
+//
+// For example you could pass it, in, req.Body and, model, a BlogPost
+// struct instance to populate in an http handler,
+//
+//		func CreateBlog(w http.ResponseWriter, r *http.Request) {
+//			blog := new(Blog)
+//
+//			if err := jsonapi.UnmarshalPayload(r.Body, blog); err != nil {
+//				http.Error(w, err.Error(), 500)
+//				return
+//			}
+//
+//			// ...do stuff with your blog...
+//
+//			w.WriteHeader(201)
+//			w.Header().Set("Content-Type", "application/vnd.api+json")
+//
+//			if err := jsonapi.MarshalOnePayload(w, blog); err != nil {
+//				http.Error(w, err.Error(), 500)
+//			}
+//		}
+//
+//
+// Visit https://github.com/shwoodard/jsonapi#create for more info.
+//
 func UnmarshalPayload(in io.Reader, model interface{}) error {
 	payload := new(OnePayload)
 
