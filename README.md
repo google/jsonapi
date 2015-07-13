@@ -5,6 +5,8 @@
 A serailizer/deserializer for json payloads that comply to the
 [jsonapi.org](http://jsonapi.org) spec in go.
 
+Also visit, [Godoc](http://godoc.org/github.com/shwoodard/jsonapi).
+
 ## Background
 
 You are working in your Go web application and you have a struct that is
