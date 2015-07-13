@@ -115,7 +115,7 @@ Visit [godoc](http://godoc.org/github.com/shwoodard/jsonapi#UnmarshalPayload)
 #### `MarshalOnePayload`
 
 This method encodes a response for a single record only. If you want to serialize many
-records, see, [MarshalManyPayload](#MarshalManyPayload). Wrties a jsonapi response, with
+records, see, [MarshalManyPayload](#marshalmanypayload). Wrties a jsonapi response, with
 related records sideloaded, into `included` array.
 
 ```go
