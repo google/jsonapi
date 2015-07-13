@@ -95,6 +95,9 @@ type Comment struct {
 
 ## Handler Examples
 
+**All `Marshal` and `Unmarshal` methods except pointers or slices of
+pointers contained with the `interface{}`s**
+
 Now you have your structs are prepared to be seralized or materialized.
 What about the rest?
 
@@ -114,15 +117,15 @@ Visit [godoc](http://godoc.org/github.com/shwoodard/jsonapi#UnmarshalPayload)
 
 #### `MarshalOnePayload`
 
-This method encodes a response for a single record only. If you want to serialize many
-records, see, [MarshalManyPayload](#marshalmanypayload). Wrties a jsonapi response, with
-related records sideloaded, into `included` array.
-
 ```go
-MarshalOnePayloadEmbedded(w io.Writer, model interface{}) error
+MarshalOnePayload(w io.Writer, model interface{}) error
 ```
 
 Visit [godoc](http://godoc.org/github.com/shwoodard/jsonapi#MarshalOnePayload)
+
+This method encodes a response for a single record only. If you want to serialize many
+records, see, [MarshalManyPayload](#marshalmanypayload). Wrties a jsonapi response, with
+related records sideloaded, into `included` array.
 
 #### Example
 
@@ -147,6 +150,7 @@ func CreateBlog(w http.ResponseWriter, r *http.Request) {
 ```
 
 ### List
+
 #### `MarshalManyPayload`
 
 ```go
@@ -154,6 +158,33 @@ MarshalManyPayload(w io.Writer, models []interface{}) error
 ```
 
 Visit [godoc](http://godoc.org/github.com/shwoodard/jsonapi#MashalManyPayload)
+
+Takes an `io.Writer` and an slice of `interface{}`.  Note, if you have a
+type safe array of your structs, like,
+
+```go
+var blogs []*Blog
+```
+
+you will need to interate over the slice of `Blog` pointers and append
+them to an interface array, like,
+
+```go
+blogInterface := make([]interface{}, len(blogs))
+
+for i, blog := range blogs {
+  blogInterface[i] = blog
+}
+
+```
+
+Alternatively, you can insert your `Blog`s into a slice of `interface{}`
+the first time.  For example when you fetch the `Blog`s from the db
+`append` them to an `[]interface{}` rather than a `[]*Blog`,
+
+```go
+FetchBlogs() ([]interface{}, error)
+```
 
 #### Example
 
