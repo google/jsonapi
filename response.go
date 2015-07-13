@@ -40,17 +40,17 @@ func MarshalOnePayload(w io.Writer, model interface{}) error {
 // For example you could pass it, w, your http.ResponseWriter, and, models, a slice of Blog
 // struct instance pointers as interface{}'s to write to the response,
 //
-//			func ListBlogs(w http.ResponseWriter, r *http.Request) {
-//					// ... fetch your blogs and filter, offset, limit, etc ...
+//	 func ListBlogs(w http.ResponseWriter, r *http.Request) {
+//		 // ... fetch your blogs and filter, offset, limit, etc ...
 //
-//					blogs := testBlogsForList()
+//		 blogs := testBlogsForList()
 //
-//					w.WriteHeader(200)
-//					w.Header().Set("Content-Type", "application/vnd.api+json")
-//					if err := jsonapi.MarshalManyPayload(w, blogs); err != nil {
-//							http.Error(w, err.Error(), 500)
-//					}
-//			}
+//		 w.WriteHeader(200)
+//		 w.Header().Set("Content-Type", "application/vnd.api+json")
+//		 if err := jsonapi.MarshalManyPayload(w, blogs); err != nil {
+//			 http.Error(w, err.Error(), 500)
+//		 }
+//	 }
 //
 //
 // Visit https://github.com/shwoodard/jsonapi#list for more info.
