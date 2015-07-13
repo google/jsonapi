@@ -1,4 +1,5 @@
 /*
+Visit the readme at https://github.com/shwoodard/jsonapi
 
 You can keep your model structs as is and use struct field tags to indicate to jsonapi
 how you want your response built or your request deserialzied. What about my relationships?
