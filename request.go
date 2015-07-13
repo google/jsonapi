@@ -15,6 +15,10 @@ import (
 // Method supports single request payloads only, at the moment. Bulk creates and updates
 // are not supported yet.
 //
+// Will Unmarshal embedded and sideloaded payloads.  The latter is only possible if the
+// object graph is complete.  That is, in the "relationships" data there are type and id,
+// keys that correspond to records in the "included" array.
+//
 // For example you could pass it, in, req.Body and, model, a BlogPost
 // struct instance to populate in an http handler,
 //
@@ -39,6 +43,7 @@ import (
 //
 // Visit https://github.com/shwoodard/jsonapi#create for more info.
 //
+// model interface{} should be a pointer to a struct.
 func UnmarshalPayload(in io.Reader, model interface{}) error {
 	payload := new(OnePayload)
 

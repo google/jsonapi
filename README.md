@@ -95,8 +95,8 @@ type Comment struct {
 
 ## Handler Examples
 
-**All `Marshal` and `Unmarshal` methods except pointers or slices of
-pointers contained with the `interface{}`s**
+**All `Marshal` and `Unmarshal` methods expect pointers to struct
+instance or slices of the same contained with the `interface{}`s**
 
 Now you have your structs are prepared to be seralized or materialized.
 What about the rest?
@@ -201,3 +201,51 @@ func ListBlogs(w http.ResponseWriter, r *http.Request) {
 	}
 }
 ```
+
+## Testing
+
+### `MarshalOnePayloadEmbedded`
+
+```go
+MarshalOnePayloadEmbedded(w io.Writer, model interface{}) error
+```
+
+Visit [godoc](http://godoc.org/github.com/shwoodard/jsonapi#MarshalOnePayloadEmbedded)
+
+This method not meant to for use in implementation code, although feel
+free.  This method was created for use in tests.  In most cases, your
+request payloads for create will be embedded rather than sideloaded for related records.
+This method will serialize a single struct pointer into an embedded json
+response.  In other words, there will be no, "included", array in the json
+all relationships will be serailized inline in the data.
+
+However, in tests, you may want to construct payloads to post to create methods
+that are embedded to most closely resember the payloads that will be produced by
+the client.  This is what this method is intended for.
+
+model interface{} should be a pointer to a struct.
+
+### Example
+
+```go
+out := bytes.NewBuffer(nil)
+
+// testModel returns a pointer to a Blog
+jsonapi.MarshalOnePayloadEmbedded(out, testModel())
+
+h := new(BlogsHandler)
+
+w := httptest.NewRecorder()
+r, _ := http.NewRequest("POST", "/blogs", out)
+
+h.CreateBlog(w, r)
+
+blog := new(Blog)
+jsonapi.UnmarshalPayload(w.Body, blog)
+
+// ... assert stuff about blog here ...
+```
+
+## Contributing
+
+Fork, Change, Pull Request *with tests*.
