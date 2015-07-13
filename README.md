@@ -148,4 +148,25 @@ func CreateBlog(w http.ResponseWriter, r *http.Request) {
 
 ### List
 #### `MarshalManyPayload`
+
+```go
+MarshalManyPayload(w io.Writer, models []interface{}) error
+```
+
+Visit [godoc](http://godoc.org/github.com/shwoodard/jsonapi#MashalManyPayload)
+
 #### Example
+
+```go
+func ListBlogs(w http.ResponseWriter, r *http.Request) {
+	// ... fetch your blogs and filter, offset, limit, etc ...
+
+	blogs := testBlogsForList()
+
+	w.WriteHeader(200)
+	w.Header().Set("Content-Type", "application/vnd.api+json")
+	if err := jsonapi.MarshalManyPayload(w, blogs); err != nil {
+		http.Error(w, err.Error(), 500)
+	}
+}
+```
