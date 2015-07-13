@@ -169,7 +169,7 @@ This method encodes a response for a single record only. If you want to serializ
 records, see, [MarshalManyPayload](#marshalmanypayload). Wrties a jsonapi response, with
 related records sideloaded, into `included` array.
 
-#### Handler Exmaple Code
+#### Handler Example Code
 
 ```go
 func CreateBlog(w http.ResponseWriter, r *http.Request) {
