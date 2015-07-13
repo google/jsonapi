@@ -199,7 +199,7 @@ func CreateBlog(w http.ResponseWriter, r *http.Request) {
 MarshalManyPayload(w io.Writer, models []interface{}) error
 ```
 
-Visit [godoc](http://godoc.org/github.com/shwoodard/jsonapi#MashalManyPayload)
+Visit [godoc](http://godoc.org/github.com/shwoodard/jsonapi#MarshalManyPayload)
 
 Takes an `io.Writer` and an slice of `interface{}`.  Note, if you have a
 type safe array of your structs, like,
