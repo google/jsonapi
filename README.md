@@ -13,6 +13,8 @@ Also visit, [Godoc](http://godoc.org/github.com/shwoodard/jsonapi).
 go get -u github.com/shoodard/jsonapi
 ```
 
+Or, see [Alternative Installation](#alternative-installation).
+
 ## Background
 
 You are working in your Go web application and you have a struct that is
@@ -334,7 +336,23 @@ jsonapi.UnmarshalPayload(w.Body, blog)
 // ... assert stuff about blog here ...
 ```
 
-## Alternative Installations
+## Alternative Installation
+I use git subtrees to manage dependencies rather than `go get` so that
+the src is committed to my repo.
+
+```
+git subtree add --squash --prefix=src/github.com/shwoodard/jsonapi git@github.com:shwoodard/jsonapi master
+```
+
+To update,
+
+```
+git subtree pull --squash --prefix=src/github.com/shwoodard/jsonapi git@github.com:shwoodard/jsonapi master
+```
+
+This assumes that I have my repo structured with a `src` dir containing
+a collection of packages and `GOPATH` is set to the root
+folder--containing `src`.
 
 ## Contributing
 
