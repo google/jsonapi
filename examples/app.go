@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/shwoodard/jsonapi"
@@ -21,7 +23,7 @@ func createBlog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ...do stuff with your blog ...
+	// ...do stuff with your blog...
 
 	w.WriteHeader(201)
 	w.Header().Set("Content-Type", "application/vnd.api+json")
@@ -32,8 +34,9 @@ func createBlog(w http.ResponseWriter, r *http.Request) {
 }
 
 func listBlogs(w http.ResponseWriter, r *http.Request) {
-	// ... fetch your blogs and filter, offset, limit, etc ...
+	// ...fetch your blogs, filter, offset, limit, etc...
 
+	// but, for now
 	blogs := testBlogsForList()
 
 	w.WriteHeader(200)
@@ -43,15 +46,36 @@ func listBlogs(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func showBlog(w http.ResponseWriter, r *http.Request) {
+	id := r.FormValue("id")
+
+	// ...fetch your blog...
+
+	intId, err := strconv.Atoi(id)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+	}
+	// but, for now
+	blog := testBlogForCreate(intId)
+	w.WriteHeader(200)
+
+	w.Header().Set("Content-Type", "application/vnd.api+json")
+	if err := jsonapi.MarshalOnePayload(w, blog); err != nil {
+		http.Error(w, err.Error(), 500)
+	}
+}
+
 func main() {
 	http.HandleFunc("/blogs", func(w http.ResponseWriter, r *http.Request) {
 		if !regexp.MustCompile(`application/vnd\.api\+json`).Match([]byte(r.Header.Get("Accept"))) {
-			http.Error(w, "Not Acceptable", 406)
+			http.Error(w, "Unsupported Media Type", 415)
 			return
 		}
 
 		if r.Method == "POST" {
 			createBlog(w, r)
+		} else if r.FormValue("id") != "" {
+			showBlog(w, r)
 		} else {
 			listBlogs(w, r)
 		}
@@ -126,6 +150,7 @@ func testBlogsForList() []interface{} {
 }
 
 func exerciseHandler() {
+	// list
 	req, _ := http.NewRequest("GET", "/blogs", nil)
 
 	req.Header.Set("Accept", "application/vnd.api+json")
@@ -134,13 +159,28 @@ func exerciseHandler() {
 
 	http.DefaultServeMux.ServeHTTP(w, req)
 
-	buf := new(bytes.Buffer)
-	io.Copy(buf, w.Body)
+	jsonReply, _ := ioutil.ReadAll(w.Body)
 
 	fmt.Println("============ jsonapi response from list ===========\n")
-	fmt.Println(buf.String())
+	fmt.Println(string(jsonReply))
 	fmt.Println("============== end raw jsonapi from list =============")
 
+	// show
+	req, _ = http.NewRequest("GET", "/blogs?id=1", nil)
+
+	req.Header.Set("Accept", "application/vnd.api+json")
+
+	w = httptest.NewRecorder()
+
+	http.DefaultServeMux.ServeHTTP(w, req)
+
+	jsonReply, _ = ioutil.ReadAll(w.Body)
+
+	fmt.Println("\n============ jsonapi response from show ===========\n")
+	fmt.Println(string(jsonReply))
+	fmt.Println("============== end raw jsonapi from show =============")
+
+	// create
 	blog := testBlogForCreate(1)
 	in := bytes.NewBuffer(nil)
 	jsonapi.MarshalOnePayloadEmbedded(in, blog)
@@ -153,7 +193,7 @@ func exerciseHandler() {
 
 	http.DefaultServeMux.ServeHTTP(w, req)
 
-	buf = new(bytes.Buffer)
+	buf := bytes.NewBuffer(nil)
 	io.Copy(buf, w.Body)
 
 	fmt.Println("\n============ jsonapi response from create ===========\n")
