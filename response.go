@@ -123,16 +123,20 @@ func visitModelNode(model interface{}, sideload bool) (*Node, []*Node, error) {
 
 	var i = 0
 	modelType.FieldByNameFunc(func(name string) bool {
-		fieldValue := modelValue.Field(i)
-		structField := modelType.Field(i)
-
-		i += 1
-
-		tag := structField.Tag.Get("jsonapi")
-
-		if tag == "" {
+		if er != nil {
 			return false
 		}
+
+		structField := modelType.Field(i)
+		tag := structField.Tag.Get("jsonapi")
+		if tag == "" {
+			i += 1
+			return false
+		}
+
+		fieldValue := modelValue.Field(i)
+
+		i += 1
 
 		args := strings.Split(tag, ",")
 

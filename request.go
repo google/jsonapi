@@ -77,12 +77,16 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			return false
 		}
 
-		fieldValue := modelValue.Field(i)
 		fieldType := modelType.Field(i)
+		tag := fieldType.Tag.Get("jsonapi")
+		if tag == "" {
+			i += 1
+			return false
+		}
+
+		fieldValue := modelValue.Field(i)
 
 		i += 1
-
-		tag := fieldType.Tag.Get("jsonapi")
 
 		args := strings.Split(tag, ",")
 

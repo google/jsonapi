@@ -19,6 +19,7 @@ type Blog struct {
 }
 
 type Post struct {
+	Blog
 	Id            int        `jsonapi:"primary,posts"`
 	BlogId        int        `jsonapi:"attr,blog_id"`
 	Title         string     `jsonapi:"attr,title"`
