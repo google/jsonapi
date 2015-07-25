@@ -10,7 +10,7 @@ Also visit, [Godoc](http://godoc.org/github.com/shwoodard/jsonapi).
 ## Installation
 
 ```
-go get -u github.com/shoodard/jsonapi
+go get -u github.com/shwoodard/jsonapi
 ```
 
 Or, see [Alternative Installation](#alternative-installation).
