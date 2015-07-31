@@ -16,9 +16,11 @@ import (
 )
 
 func createBlog(w http.ResponseWriter, r *http.Request) {
+	jsonapiRuntime := jsonapi.NewRuntime().Instrument("blogs.create")
+
 	blog := new(Blog)
 
-	if err := jsonapi.UnmarshalPayload(r.Body, blog); err != nil {
+	if err := jsonapiRuntime.UnmarshalPayload(r.Body, blog); err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
@@ -28,12 +30,13 @@ func createBlog(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(201)
 	w.Header().Set("Content-Type", "application/vnd.api+json")
 
-	if err := jsonapi.MarshalOnePayload(w, blog); err != nil {
+	if err := jsonapiRuntime.MarshalOnePayload(w, blog); err != nil {
 		http.Error(w, err.Error(), 500)
 	}
 }
 
 func listBlogs(w http.ResponseWriter, r *http.Request) {
+	jsonapiRuntime := jsonapi.NewRuntime().Instrument("blogs.list")
 	// ...fetch your blogs, filter, offset, limit, etc...
 
 	// but, for now
@@ -41,7 +44,7 @@ func listBlogs(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(200)
 	w.Header().Set("Content-Type", "application/vnd.api+json")
-	if err := jsonapi.MarshalManyPayload(w, blogs); err != nil {
+	if err := jsonapiRuntime.MarshalManyPayload(w, blogs); err != nil {
 		http.Error(w, err.Error(), 500)
 	}
 }
@@ -54,18 +57,42 @@ func showBlog(w http.ResponseWriter, r *http.Request) {
 	intId, err := strconv.Atoi(id)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
+		return
 	}
+
+	jsonapiRuntime := jsonapi.NewRuntime().Instrument("blogs.show")
+
 	// but, for now
 	blog := testBlogForCreate(intId)
 	w.WriteHeader(200)
 
 	w.Header().Set("Content-Type", "application/vnd.api+json")
-	if err := jsonapi.MarshalOnePayload(w, blog); err != nil {
+	if err := jsonapiRuntime.MarshalOnePayload(w, blog); err != nil {
 		http.Error(w, err.Error(), 500)
 	}
 }
 
 func main() {
+	jsonapi.Instrumentation = func(r *jsonapi.Runtime, eventType jsonapi.Event, callGUID string, dur time.Duration) {
+		metricPrefix := r.Value("instrument").(string)
+
+		if eventType == jsonapi.UnmarshalStart {
+			fmt.Printf("%s: id, %s, started at %v\n", metricPrefix+".jsonapi_unmarshal_time", callGUID, time.Now())
+		}
+
+		if eventType == jsonapi.UnmarshalStop {
+			fmt.Printf("%s: id, %s, stopped at, %v , and took %v to unmarshal paylaod\n", metricPrefix+".jsonapi_unmarshal_time", callGUID, time.Now(), dur)
+		}
+
+		if eventType == jsonapi.MarshalStart {
+			fmt.Printf("%s: id, %s, started at %v\n", metricPrefix+".jsonapi_marshal_time", callGUID, time.Now())
+		}
+
+		if eventType == jsonapi.MarshalStop {
+			fmt.Printf("%s: id, %s, stopped at, %v , and took %v to marshal paylaod\n", metricPrefix+".jsonapi_marshal_time", callGUID, time.Now(), dur)
+		}
+	}
+
 	http.HandleFunc("/blogs", func(w http.ResponseWriter, r *http.Request) {
 		if !regexp.MustCompile(`application/vnd\.api\+json`).Match([]byte(r.Header.Get("Accept"))) {
 			http.Error(w, "Unsupported Media Type", 415)
@@ -157,7 +184,9 @@ func exerciseHandler() {
 
 	w := httptest.NewRecorder()
 
+	fmt.Println("============ start list ===========\n")
 	http.DefaultServeMux.ServeHTTP(w, req)
+	fmt.Println("============ stop list ===========\n")
 
 	jsonReply, _ := ioutil.ReadAll(w.Body)
 
@@ -172,7 +201,9 @@ func exerciseHandler() {
 
 	w = httptest.NewRecorder()
 
+	fmt.Println("============ start show ===========\n")
 	http.DefaultServeMux.ServeHTTP(w, req)
+	fmt.Println("============ stop show ===========\n")
 
 	jsonReply, _ = ioutil.ReadAll(w.Body)
 
@@ -191,7 +222,9 @@ func exerciseHandler() {
 
 	w = httptest.NewRecorder()
 
+	fmt.Println("============ start create ===========\n")
 	http.DefaultServeMux.ServeHTTP(w, req)
+	fmt.Println("============ stop create ===========\n")
 
 	buf := bytes.NewBuffer(nil)
 	io.Copy(buf, w.Body)
