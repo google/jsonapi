@@ -1,5 +1,5 @@
 /*
-Visit the readme at https://github.com/shwoodard/jsonapi
+Package jsonapi provides a serializer and deserializer for jsonapi.org spec payloads.
 
 You can keep your model structs as is and use struct field tags to indicate to jsonapi
 how you want your response built or your request deserialzied. What about my relationships?
@@ -60,5 +60,6 @@ the key in the "relationships" hash for the record.
 
 Use the methods below to Marshal and Unmarshal jsonapi.org json payloads.
 
+Visit the readme at https://github.com/shwoodard/jsonapi
 */
 package jsonapi
