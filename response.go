@@ -2,7 +2,6 @@ package jsonapi
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -10,7 +9,7 @@ import (
 	"time"
 )
 
-// Wrties a jsonapi response with one, with related records sideloaded, into "included" array.
+// MarshalOnePayload writes a jsonapi response with one, with related records sideloaded, into "included" array.
 // This method encodes a response for a single record only. Hence, data will be a single record rather
 // than an array of records.  If you want to serialize many records, see, MarshalManyPayload.
 //
@@ -18,13 +17,10 @@ import (
 //
 // model interface{} should be a pointer to a struct.
 func MarshalOnePayload(w io.Writer, model interface{}) error {
-	rootNode, included, err := visitModelNode(model, true)
+	payload, err := MarshalOne(model)
 	if err != nil {
 		return err
 	}
-	payload := &OnePayload{Data: rootNode}
-
-	payload.Included = uniqueByTypeAndId(included)
 
 	if err := json.NewEncoder(w).Encode(payload); err != nil {
 		return err
@@ -33,7 +29,22 @@ func MarshalOnePayload(w io.Writer, model interface{}) error {
 	return nil
 }
 
-// Wrties a jsonapi response with many records, with related records sideloaded, into "included" array.
+// MarshalOne does the same as MarshalOnePayload except it just returns the payload
+// and doesn't write out results.
+// Useful is you use your JSON rendering library.
+func MarshalOne(model interface{}) (*OnePayload, error) {
+	rootNode, included, err := visitModelNode(model, true)
+	if err != nil {
+		return nil, err
+	}
+	payload := &OnePayload{Data: rootNode}
+
+	payload.Included = uniqueByTypeAndID(included)
+
+	return payload, nil
+}
+
+// MarshalManyPayload writes a jsonapi response with many records, with related records sideloaded, into "included" array.
 // This method encodes a response for a slice of records, hence data will be an array of
 // records rather than a single record.  To serialize a single record, see MarshalOnePayload
 //
@@ -57,25 +68,9 @@ func MarshalOnePayload(w io.Writer, model interface{}) error {
 //
 // models []interface{} should be a slice of struct pointers.
 func MarshalManyPayload(w io.Writer, models []interface{}) error {
-	modelsValues := reflect.ValueOf(models)
-	data := make([]*Node, 0, modelsValues.Len())
-
-	incl := make([]*Node, 0)
-
-	for i := 0; i < modelsValues.Len(); i += 1 {
-		model := modelsValues.Index(i).Interface()
-
-		node, included, err := visitModelNode(model, true)
-		if err != nil {
-			return err
-		}
-		data = append(data, node)
-		incl = append(incl, included...)
-	}
-
-	payload := &ManyPayload{
-		Data:     data,
-		Included: uniqueByTypeAndId(incl),
+	payload, err := MarshalMany(models)
+	if err != nil {
+		return err
 	}
 
 	if err := json.NewEncoder(w).Encode(payload); err != nil {
@@ -85,7 +80,35 @@ func MarshalManyPayload(w io.Writer, models []interface{}) error {
 	return nil
 }
 
-// This method not meant to for use in implementation code, although feel
+// MarshalMany does the same as MarshalManyPayload except it just returns the payload
+// and doesn't write out results.
+// Useful is you use your JSON rendering library.
+func MarshalMany(models []interface{}) (*ManyPayload, error) {
+	modelsValues := reflect.ValueOf(models)
+	data := make([]*Node, 0, modelsValues.Len())
+
+	var incl []*Node
+
+	for i := 0; i < modelsValues.Len(); i++ {
+		model := modelsValues.Index(i).Interface()
+
+		node, included, err := visitModelNode(model, true)
+		if err != nil {
+			return nil, err
+		}
+		data = append(data, node)
+		incl = append(incl, included...)
+	}
+
+	payload := &ManyPayload{
+		Data:     data,
+		Included: uniqueByTypeAndID(incl),
+	}
+
+	return payload, nil
+}
+
+// MarshalOnePayloadEmbedded - This method not meant to for use in implementation code, although feel
 // free.  The purpose of this method is for use in tests.  In most cases, your
 // request payloads for create will be embedded rather than sideloaded for related records.
 // This method will serialize a single struct pointer into an embedded json
@@ -130,18 +153,18 @@ func visitModelNode(model interface{}, sideload bool) (*Node, []*Node, error) {
 		structField := modelType.Field(i)
 		tag := structField.Tag.Get("jsonapi")
 		if tag == "" {
-			i += 1
+			i++
 			return false
 		}
 
 		fieldValue := modelValue.Field(i)
 
-		i += 1
+		i++
 
 		args := strings.Split(tag, ",")
 
 		if len(args) != 2 {
-			er = errors.New(fmt.Sprintf("jsonapi tag, on %s, had two few arguments", structField.Name))
+			er = fmt.Errorf("jsonapi tag, on %s, had two few arguments", structField.Name)
 			return false
 		}
 
@@ -191,7 +214,7 @@ func visitModelNode(model interface{}, sideload bool) (*Node, []*Node, error) {
 					if err == nil {
 						if sideload {
 							included = append(included, incl...)
-							shallowNodes := make([]*Node, 0)
+							var shallowNodes []*Node
 							for _, node := range d {
 								shallowNodes = append(shallowNodes, toShallowNode(node))
 							}
@@ -221,7 +244,7 @@ func visitModelNode(model interface{}, sideload bool) (*Node, []*Node, error) {
 				}
 
 			} else {
-				er = errors.New(fmt.Sprintf("Unsupported jsonapi tag annotation, %s", annotation))
+				er = fmt.Errorf("Unsupported jsonapi tag annotation, %s", annotation)
 				return false
 			}
 		}
@@ -244,9 +267,9 @@ func toShallowNode(node *Node) *Node {
 }
 
 func visitModelNodeRelationships(relationName string, models reflect.Value, sideload bool) (*RelationshipManyNode, []*Node, error) {
-	nodes := make([]*Node, 0)
-
+	var nodes []*Node
 	var included []*Node
+
 	if sideload {
 		included = make([]*Node, 0)
 	}
@@ -268,10 +291,10 @@ func visitModelNodeRelationships(relationName string, models reflect.Value, side
 	return n, included, nil
 }
 
-func uniqueByTypeAndId(nodes []*Node) []*Node {
+func uniqueByTypeAndID(nodes []*Node) []*Node {
 	uniqueIncluded := make(map[string]*Node)
 
-	for i := 0; i < len(nodes); i += 1 {
+	for i := 0; i < len(nodes); i++ {
 		n := nodes[i]
 		k := fmt.Sprintf("%s,%s", n.Type, n.Id)
 		if uniqueIncluded[k] == nil {
