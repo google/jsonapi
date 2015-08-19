@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/shwoodard/jsonapi.svg?branch=master)](https://travis-ci.org/shwoodard/jsonapi)
 
 A serailizer/deserializer for json payloads that comply to the
-[jsonapi.org](http://jsonapi.org) spec in go.
+[JSON API - jsonapi.org](http://jsonapi.org) spec in go.
 
 Also visit, [Godoc](http://godoc.org/github.com/shwoodard/jsonapi).
 
@@ -18,26 +18,26 @@ Or, see [Alternative Installation](#alternative-installation).
 ## Background
 
 You are working in your Go web application and you have a struct that is
-organized similarly to how your database schema.  You need to send and
-receive json payloads that adhere jsonapi spec.  Once you realize that
+organized similarly to your database schema.  You need to send and
+receive json payloads that adhere to the JSON API spec.  Once you realize that
 your json needed to take on this special form, you go down the path of
-creating more structs to be able to serialize and deserialize jsonapi
-payloads.  Then there are more models that required these additional
-structure.  Ugh! With jsonapi, you can keep your model structs as is and
+creating more structs to be able to serialize and deserialize JSON API
+payloads.  Then there are more models required with this additional
+structure.  Ugh! With JSON API, you can keep your model structs as is and
 use [StructTags](http://golang.org/pkg/reflect/#StructTag) to indicate
-to jsonapi how you want your response built or your request
-deserialized.  What about your relationships?  jsonapi supports
+to JSON API how you want your response built or your request
+deserialized.  What about your relationships?  JSON API supports
 relationships out of the box and will even put them in your response
 into an `included` side-loaded slice--that contains associated records.
 
 ## Introduction
 
-jsonapi uses [StructField](http://golang.org/pkg/reflect/#StructField)
+JSON API uses [StructField](http://golang.org/pkg/reflect/#StructField)
 tags to annotate the structs fields that you already have and use in
-your app and then reads and writes [jsonapi.org](http://jsonapi.org)
-output based on the instructions you give the library in your jsonapi
+your app and then reads and writes [JSON API](http://jsonapi.org)
+output based on the instructions you give the library in your JSON API
 tags.  Let's take an example.  In your app, you most likely have structs
-that look similar to these,
+that look similar to these:
 
 
 ```go
@@ -68,7 +68,7 @@ type Comment struct {
 
 These structs may or may not resemble the layout of your database.  But
 these are the ones that you want to use right?  You wouldn't want to use
-structs like those that jsonapi sends because it is difficult to get at
+structs like those that JSON API sends because it is difficult to get at
 all of your data easily.
 
 ## Example App
@@ -77,9 +77,9 @@ all of your data easily.
 
 This runnable file demonstrates the implementation of a create, a show,
 and a list [http.Handler](http://golang.org/pkg/net/http#Handler).  It
-outputs some example requests and response as well as serialized
+outputs some example requests and responses as well as serialized
 examples of the source/target structs to json.  That is to say, I show
-you that the library has successfully taken your jsonapi request and
+you that the library has successfully taken your JSON API request and
 turned it into your struct types.
 
 To run,
@@ -98,11 +98,11 @@ To run,
 ### Example
 
 The `jsonapi` [StructTags](http://golang.org/pkg/reflect/#StructTag)
-tells this library how to Marshal and Unmarshal your structs into
-jsonapi payloads and your jsonapi payloads to structs, respectively.
-Then Use jsonapi's Marshal and Unmarshal methods to construct and read
+tells this library how to marshal and unmarshal your structs into
+JSON API payloads and your JSON API payloads to structs, respectively.
+Then Use JSON API's Marshal and Unmarshal methods to construct and read
 your responses and replies.  Here's an example of the structs above
-using jsonapi tags,
+using JSON API tags:
 
 ```go
 type Blog struct {
@@ -138,12 +138,12 @@ type Comment struct {
 `jsonapi:"primary,<type field output>"`
 ```
 
-This indicates that this is the primary key field for this struct type.
+This indicates this is the primary key field for this struct type.
 Tag value arguments are comma separated.  The first argument must be,
 `primary`, and the second must be the name that should appear in the
 `type`\* field for all data objects that represent this type of model.
 
-\* According the [jsonapi](http://jsonapi.org) spec, the plural record
+\* According the [JSON API](http://jsonapi.org) spec, the plural record
 types are shown in the examples, but not required.
 
 #### `attr`
@@ -165,8 +165,8 @@ multiple word field names.
 ```
 
 Relations are struct fields that represent a one-to-one or one-to-many
-relationship with other structs.  jsonapi will traverse the graph of
-relationships and Marshal or Unmarshal records.  The first argument must
+relationship with other structs. JSON API will traverse the graph of
+relationships and marshal or unmarshal records.  The first argument must
 be, `relation`, and the second should be the name of the relationship,
 used as the key in the `relationships` hash for the record.
 
@@ -180,10 +180,10 @@ about the rest?
 
 ### Create Record Example
 
-You can Unmarshal a jsonapi payload using
+You can Unmarshal a JSON API payload using
 [jsonapi.UnmarshalPayload](http://godoc.org/github.com/shwoodard/jsonapi#UnmarshalPayload).
 It reads from an [io.Reader](https://golang.org/pkg/io/#Reader)
-containing a jsonapi payload for one record (but can have related
+containing a JSON API payload for one record (but can have related
 records).  Then, it materializes a struct that you created and passed in
 (using new or &).  Again, the method supports single records only, at
 the top level, in request payloads at the moment. Bulk creates and
@@ -191,7 +191,7 @@ updates are not supported yet.
 
 After saving your record, you can use,
 [MarshalOnePayload](http://godoc.org/github.com/shwoodard/jsonapi#MarshalOnePayload),
-to write the jsonapi response to an
+to write the JSON API response to an
 [io.Writer](https://golang.org/pkg/io/#Writer).
 
 #### `UnmarshalPayload`
@@ -210,7 +210,7 @@ MarshalOnePayload(w io.Writer, model interface{}) error
 
 Visit [godoc](http://godoc.org/github.com/shwoodard/jsonapi#MarshalOnePayload)
 
-Writes a jsonapi response, with related records sideloaded, into an
+Writes a JSON API response, with related records sideloaded, into an
 `included` array.  This method encodes a response for a single record
 only. If you want to serialize many records, see,
 [MarshalManyPayload](#marshalmanypayload).
@@ -304,7 +304,7 @@ MarshalOnePayloadEmbedded(w io.Writer, model interface{}) error
 Visit [godoc](http://godoc.org/github.com/shwoodard/jsonapi#MarshalOnePayloadEmbedded)
 
 This method is not strictly meant to for use in implementation code,
-although feel free.  It was mainly created for use test; in most cases,
+although feel free.  It was mainly created for use in tests; in most cases,
 your request payloads for create will be embedded rather than sideloaded
 for related records.  This method will serialize a single struct pointer
 into an embedded json response.  In other words, there will be no,
