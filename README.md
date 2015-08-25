@@ -88,7 +88,7 @@ To run,
 * Create the following directories or similar: `~/go`
 * `cd` there
 * Set `GOPATH` to `PWD` in your shell session, `export GOPATH=$PWD`
-* `go get github.com/shoodard/jsonapi`.  (Append `-u` after `get` if you
+* `go get github.com/shwoodard/jsonapi`.  (Append `-u` after `get` if you
   are updating.)
 * `go run src/github.com/shwoodard/jsonapi/examples/app.go` or `cd
   src/github.com/shwoodard/jsonapi/examples && go run app.go`
