@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 )
@@ -24,6 +25,17 @@ func TestMalformedTag(t *testing.T) {
 
 	if !r.Match([]byte(err.Error())) {
 		t.Fatalf("The err was not due two two few arguments in a tag")
+	}
+}
+
+func TestUnmarshalInvalidJSON(t *testing.T) {
+	in := strings.NewReader("{}")
+	out := new(Blog)
+
+	err := UnmarshalPayload(in, out)
+
+	if err == nil {
+		t.Fatalf("Did not error out the invalid JSON.")
 	}
 }
 
