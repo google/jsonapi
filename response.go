@@ -9,6 +9,14 @@ import (
 	"time"
 )
 
+type BadJSONAPIStructTag struct {
+	fieldTypeName string
+}
+
+func (e BadJSONAPIStructTag) Error() string {
+	return fmt.Sprintf("jsonapi tag, on %s, had too few arguments", e.fieldTypeName)
+}
+
 // MarshalOnePayload writes a jsonapi response with one, with related records sideloaded, into "included" array.
 // This method encodes a response for a single record only. Hence, data will be a single record rather
 // than an array of records.  If you want to serialize many records, see, MarshalManyPayload.
@@ -163,90 +171,95 @@ func visitModelNode(model interface{}, sideload bool) (*Node, []*Node, error) {
 
 		args := strings.Split(tag, ",")
 
-		if len(args) != 2 {
-			er = fmt.Errorf("jsonapi tag, on %s, had two few arguments", structField.Name)
+		if len(args) < 1 {
+			er = BadJSONAPIStructTag{structField.Name}
 			return false
 		}
 
-		if len(args) >= 1 && args[0] != "" {
-			annotation := args[0]
+		annotation := args[0]
 
-			if annotation == "primary" {
-				node.Id = fmt.Sprintf("%v", fieldValue.Interface())
-				node.Type = args[1]
-			} else if annotation == "attr" {
-				if node.Attributes == nil {
-					node.Attributes = make(map[string]interface{})
-				}
+		if (annotation == "client-id" && len(args) != 1) || (annotation != "client-id" && len(args) != 2) {
+			er = BadJSONAPIStructTag{structField.Name}
+			return false
+		}
 
-				if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
-					isZeroMethod := fieldValue.MethodByName("IsZero")
-					isZero := isZeroMethod.Call(make([]reflect.Value, 0))[0].Interface().(bool)
-					if isZero {
-						return false
-					}
+		if annotation == "primary" {
+			node.Id = fmt.Sprintf("%v", fieldValue.Interface())
+			node.Type = args[1]
+		} else if annotation == "client-id" {
+			node.ClientId = fieldValue.String()
+		} else if annotation == "attr" {
+			if node.Attributes == nil {
+				node.Attributes = make(map[string]interface{})
+			}
 
-					unix := fieldValue.MethodByName("Unix")
-					val := unix.Call(make([]reflect.Value, 0))[0]
-					node.Attributes[args[1]] = val.Int()
-				} else {
-					node.Attributes[args[1]] = fieldValue.Interface()
-				}
-			} else if annotation == "relation" {
-				isSlice := fieldValue.Type().Kind() == reflect.Slice
-
-				if (isSlice && fieldValue.Len() < 1) || (!isSlice && fieldValue.IsNil()) {
+			if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
+				isZeroMethod := fieldValue.MethodByName("IsZero")
+				isZero := isZeroMethod.Call(make([]reflect.Value, 0))[0].Interface().(bool)
+				if isZero {
 					return false
 				}
 
-				if node.Relationships == nil {
-					node.Relationships = make(map[string]interface{})
-				}
-
-				if sideload && included == nil {
-					included = make([]*Node, 0)
-				}
-
-				if isSlice {
-					relationship, incl, err := visitModelNodeRelationships(args[1], fieldValue, sideload)
-					d := relationship.Data
-
-					if err == nil {
-						if sideload {
-							included = append(included, incl...)
-							var shallowNodes []*Node
-							for _, node := range d {
-								shallowNodes = append(shallowNodes, toShallowNode(node))
-							}
-
-							node.Relationships[args[1]] = &RelationshipManyNode{Data: shallowNodes}
-						} else {
-							node.Relationships[args[1]] = relationship
-						}
-					} else {
-						er = err
-						return false
-					}
-				} else {
-					relationship, incl, err := visitModelNode(fieldValue.Interface(), sideload)
-					if err == nil {
-						if sideload {
-							included = append(included, incl...)
-							included = append(included, relationship)
-							node.Relationships[args[1]] = &RelationshipOneNode{Data: toShallowNode(relationship)}
-						} else {
-							node.Relationships[args[1]] = &RelationshipOneNode{Data: relationship}
-						}
-					} else {
-						er = err
-						return false
-					}
-				}
-
+				unix := fieldValue.MethodByName("Unix")
+				val := unix.Call(make([]reflect.Value, 0))[0]
+				node.Attributes[args[1]] = val.Int()
 			} else {
-				er = fmt.Errorf("Unsupported jsonapi tag annotation, %s", annotation)
+				node.Attributes[args[1]] = fieldValue.Interface()
+			}
+		} else if annotation == "relation" {
+			isSlice := fieldValue.Type().Kind() == reflect.Slice
+
+			if (isSlice && fieldValue.Len() < 1) || (!isSlice && fieldValue.IsNil()) {
 				return false
 			}
+
+			if node.Relationships == nil {
+				node.Relationships = make(map[string]interface{})
+			}
+
+			if sideload && included == nil {
+				included = make([]*Node, 0)
+			}
+
+			if isSlice {
+				relationship, incl, err := visitModelNodeRelationships(args[1], fieldValue, sideload)
+				d := relationship.Data
+
+				if err == nil {
+					if sideload {
+						included = append(included, incl...)
+						var shallowNodes []*Node
+						for _, node := range d {
+							shallowNodes = append(shallowNodes, toShallowNode(node))
+						}
+
+						node.Relationships[args[1]] = &RelationshipManyNode{Data: shallowNodes}
+					} else {
+						node.Relationships[args[1]] = relationship
+					}
+				} else {
+					er = err
+					return false
+				}
+			} else {
+				relationship, incl, err := visitModelNode(fieldValue.Interface(), sideload)
+				if err == nil {
+					if sideload {
+						included = append(included, incl...)
+						included = append(included, relationship)
+						node.Relationships[args[1]] = &RelationshipOneNode{Data: toShallowNode(relationship)}
+					} else {
+						node.Relationships[args[1]] = &RelationshipOneNode{Data: relationship}
+					}
+				} else {
+					er = err
+					return false
+				}
+			}
+
+		} else {
+			er = fmt.Errorf("Unsupported jsonapi tag annotation, %s", annotation)
+			return false
 		}
 
 		return false

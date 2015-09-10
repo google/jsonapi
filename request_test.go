@@ -4,27 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"regexp"
 	"testing"
 	"time"
 )
 
 type BadModel struct {
 	Id int `jsonapi:"primary"`
-}
-
-func TestMalformedTag(t *testing.T) {
-	out := new(BadModel)
-	err := UnmarshalPayload(samplePayload(), out)
-	if err == nil {
-		t.Fatalf("Did not error out with wrong number of arguments in tag")
-	}
-
-	r := regexp.MustCompile(`two few arguments`)
-
-	if !r.Match([]byte(err.Error())) {
-		t.Fatalf("The err was not due two two few arguments in a tag")
-	}
 }
 
 func TestUnmarshalSetsId(t *testing.T) {
@@ -188,6 +173,23 @@ func TestUnmarshalNestedRelationshipsSideloaded(t *testing.T) {
 	}
 }
 
+func TestUnmarshalNestedRelationshipsEmbedded_withClientIDs(t *testing.T) {
+	out := bytes.NewBuffer(nil)
+	if err := MarshalOnePayloadEmbedded(out, testModel()); err != nil {
+		t.Fatal(err)
+	}
+
+	model := new(Blog)
+
+	if err := UnmarshalPayload(out, model); err != nil {
+		t.Fatal(err)
+	}
+
+	if model.ClientId == "" {
+		t.Fatalf("ClientId not set from request")
+	}
+}
+
 func unmarshalSamplePayload() (*Blog, error) {
 	in := samplePayload()
 	out := new(Blog)
@@ -287,6 +289,7 @@ func samplePayloadWithId() io.Reader {
 func testModel() *Blog {
 	return &Blog{
 		Id:        5,
+		ClientId:  "1",
 		Title:     "Title 1",
 		CreatedAt: time.Now(),
 		Posts: []*Post{

@@ -90,115 +90,124 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 
 		args := strings.Split(tag, ",")
 
-		if len(args) != 2 {
-			er = errors.New(fmt.Sprintf("jsonapi tag, on %s, had two few arguments", fieldType.Name))
+		if len(args) < 1 {
+			er = BadJSONAPIStructTag{fieldType.Name}
 			return false
 		}
 
-		if len(args) >= 1 && args[0] != "" {
-			annotation := args[0]
+		annotation := args[0]
 
-			if annotation == "primary" {
-				if data.Id == "" {
-					return false
-				}
+		if (annotation == "client-id" && len(args) != 1) || (annotation != "client-id" && len(args) != 2) {
+			er = BadJSONAPIStructTag{fieldType.Name}
+			return false
+		}
 
-				if data.Type != args[1] {
-					er = errors.New("Trying to Unmarshal a type that does not match")
-					return false
-				}
-
-				if fieldValue.Kind() == reflect.String {
-					fieldValue.Set(reflect.ValueOf(data.Id))
-				} else if fieldValue.Kind() == reflect.Int {
-					id, err := strconv.Atoi(data.Id)
-					if err != nil {
-						er = err
-						return false
-					}
-					fieldValue.SetInt(int64(id))
-				} else {
-					er = errors.New("Unsuppored data type for primary key, not int or string")
-					return false
-				}
-			} else if annotation == "attr" {
-				attributes := data.Attributes
-				if attributes == nil {
-					return false
-				}
-
-				val := attributes[args[1]]
-
-				// next if the attribute was not included in the request
-				if val == nil {
-					return false
-				}
-
-				v := reflect.ValueOf(val)
-
-				if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
-
-					var at int64
-
-					if v.Kind() == reflect.Float64 {
-						at = int64(v.Interface().(float64))
-					} else if v.Kind() == reflect.Int {
-						at = v.Int()
-					} else {
-						er = errors.New("Only numbers can be parsed as dates, unix timestamps")
-						return false
-					}
-
-					t := time.Unix(at, 0)
-
-					fieldValue.Set(reflect.ValueOf(t))
-
-					return false
-				}
-
-				if fieldValue.Kind() == reflect.Int && v.Kind() == reflect.Float64 {
-					fieldValue.Set(reflect.ValueOf(int(v.Interface().(float64))))
-				} else {
-					fieldValue.Set(reflect.ValueOf(val))
-				}
-			} else if annotation == "relation" {
-				isSlice := fieldValue.Type().Kind() == reflect.Slice
-
-				if data.Relationships == nil || data.Relationships[args[1]] == nil {
-					return false
-				}
-
-				relationship := reflect.ValueOf(data.Relationships[args[1]]).Interface().(map[string]interface{})
-
-				if isSlice {
-					data := relationship["data"].([]interface{})
-					models := reflect.New(fieldValue.Type()).Elem()
-
-					for _, r := range data {
-						m := reflect.New(fieldValue.Type().Elem().Elem())
-
-						if err := unmarshalMap(r, m, included); err != nil {
-							er = err
-							return false
-						}
-
-						models = reflect.Append(models, m)
-					}
-
-					fieldValue.Set(models)
-				} else {
-					m := reflect.New(fieldValue.Type().Elem())
-					if err := unmarshalMap(relationship["data"], m, included); err != nil {
-						er = err
-						return false
-					}
-
-					fieldValue.Set(m)
-				}
-
-			} else {
-				er = errors.New(fmt.Sprintf("Unsupported jsonapi tag annotation, %s", annotation))
+		if annotation == "primary" {
+			if data.Id == "" {
+				return false
 			}
+
+			if data.Type != args[1] {
+				er = errors.New("Trying to Unmarshal a type that does not match")
+				return false
+			}
+
+			if fieldValue.Kind() == reflect.String {
+				fieldValue.Set(reflect.ValueOf(data.Id))
+			} else if fieldValue.Kind() == reflect.Int {
+				id, err := strconv.Atoi(data.Id)
+				if err != nil {
+					er = err
+					return false
+				}
+				fieldValue.SetInt(int64(id))
+			} else {
+				er = errors.New("Unsuppored data type for primary key, not int or string")
+				return false
+			}
+		} else if annotation == "client-id" {
+			if data.ClientId == "" {
+				return false
+			}
+
+			fieldValue.Set(reflect.ValueOf(data.ClientId))
+		} else if annotation == "attr" {
+			attributes := data.Attributes
+			if attributes == nil {
+				return false
+			}
+
+			val := attributes[args[1]]
+
+			// next if the attribute was not included in the request
+			if val == nil {
+				return false
+			}
+
+			v := reflect.ValueOf(val)
+
+			if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
+
+				var at int64
+
+				if v.Kind() == reflect.Float64 {
+					at = int64(v.Interface().(float64))
+				} else if v.Kind() == reflect.Int {
+					at = v.Int()
+				} else {
+					er = errors.New("Only numbers can be parsed as dates, unix timestamps")
+					return false
+				}
+
+				t := time.Unix(at, 0)
+
+				fieldValue.Set(reflect.ValueOf(t))
+
+				return false
+			}
+
+			if fieldValue.Kind() == reflect.Int && v.Kind() == reflect.Float64 {
+				fieldValue.Set(reflect.ValueOf(int(v.Interface().(float64))))
+			} else {
+				fieldValue.Set(reflect.ValueOf(val))
+			}
+		} else if annotation == "relation" {
+			isSlice := fieldValue.Type().Kind() == reflect.Slice
+
+			if data.Relationships == nil || data.Relationships[args[1]] == nil {
+				return false
+			}
+
+			relationship := reflect.ValueOf(data.Relationships[args[1]]).Interface().(map[string]interface{})
+
+			if isSlice {
+				data := relationship["data"].([]interface{})
+				models := reflect.New(fieldValue.Type()).Elem()
+
+				for _, r := range data {
+					m := reflect.New(fieldValue.Type().Elem().Elem())
+
+					if err := unmarshalMap(r, m, included); err != nil {
+						er = err
+						return false
+					}
+
+					models = reflect.Append(models, m)
+				}
+
+				fieldValue.Set(models)
+			} else {
+				m := reflect.New(fieldValue.Type().Elem())
+				if err := unmarshalMap(relationship["data"], m, included); err != nil {
+					er = err
+					return false
+				}
+
+				fieldValue.Set(m)
+			}
+
+		} else {
+			er = errors.New(fmt.Sprintf("Unsupported jsonapi tag annotation, %s", annotation))
 		}
 
 		return false

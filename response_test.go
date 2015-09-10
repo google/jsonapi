@@ -3,13 +3,13 @@ package jsonapi
 import (
 	"bytes"
 	"encoding/json"
-	"regexp"
 	"testing"
 	"time"
 )
 
 type Blog struct {
 	Id            int       `jsonapi:"primary,blogs"`
+	ClientId      string    `jsonapi:"client-id"`
 	Title         string    `jsonapi:"attr,title"`
 	Posts         []*Post   `jsonapi:"relation,posts"`
 	CurrentPost   *Post     `jsonapi:"relation,current_post"`
@@ -32,22 +32,6 @@ type Comment struct {
 	Id     int    `jsonapi:"primary,comments"`
 	PostId int    `jsonapi:"attr,post_id"`
 	Body   string `jsonapi:"attr,body"`
-}
-
-func TestMalformedTagResposne(t *testing.T) {
-	testModel := &BadModel{}
-	out := bytes.NewBuffer(nil)
-	err := MarshalOnePayload(out, testModel)
-
-	if err == nil {
-		t.Fatalf("Did not error out with wrong number of arguments in tag")
-	}
-
-	r := regexp.MustCompile(`two few arguments`)
-
-	if !r.Match([]byte(err.Error())) {
-		t.Fatalf("The err was not due two two few arguments in a tag")
-	}
 }
 
 func TestHasPrimaryAnnotation(t *testing.T) {
