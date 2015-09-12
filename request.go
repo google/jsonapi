@@ -65,7 +65,13 @@ func UnmarshalPayload(in io.Reader, model interface{}) error {
 
 }
 
-func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) error {
+func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("data is not a jsonapi representation of '%v'", model.Type())
+		}
+	}()
+
 	modelValue := model.Elem()
 	modelType := model.Type().Elem()
 
