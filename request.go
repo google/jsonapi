@@ -1,6 +1,7 @@
 package jsonapi
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -178,16 +179,21 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				return false
 			}
 
-			relationship := reflect.ValueOf(data.Relationships[args[1]]).Interface().(map[string]interface{})
-
 			if isSlice {
-				data := relationship["data"].([]interface{})
+				relationship := new(RelationshipManyNode)
+
+				buf := bytes.NewBuffer(nil)
+
+				json.NewEncoder(buf).Encode(data.Relationships[args[1]])
+				json.NewDecoder(buf).Decode(relationship)
+
+				data := relationship.Data
 				models := reflect.New(fieldValue.Type()).Elem()
 
-				for _, r := range data {
+				for _, n := range data {
 					m := reflect.New(fieldValue.Type().Elem().Elem())
 
-					if err := unmarshalMap(r, m, included); err != nil {
+					if err := unmarshalNode(fullNode(n, included), m, included); err != nil {
 						er = err
 						return false
 					}
@@ -197,8 +203,16 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 
 				fieldValue.Set(models)
 			} else {
+				relationship := new(RelationshipOneNode)
+
+				buf := bytes.NewBuffer(nil)
+
+				json.NewEncoder(buf).Encode(data.Relationships[args[1]])
+				json.NewDecoder(buf).Decode(relationship)
+
 				m := reflect.New(fieldValue.Type().Elem())
-				if err := unmarshalMap(relationship["data"], m, included); err != nil {
+
+				if err := unmarshalNode(fullNode(relationship.Data, included), m, included); err != nil {
 					er = err
 					return false
 				}
@@ -220,52 +234,12 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 	return nil
 }
 
-func unmarshalMap(nodeData interface{}, model reflect.Value, included *map[string]*Node) error {
-	h := nodeData.(map[string]interface{})
-	node := fetchNode(h, included)
+func fullNode(n *Node, included *map[string]*Node) *Node {
+	includedKey := fmt.Sprintf("%s,%s", n.Type, n.Id)
 
-	if err := unmarshalNode(node, model, included); err != nil {
-		return err
+	if included != nil && (*included)[includedKey] != nil {
+		return (*included)[includedKey]
 	}
 
-	return nil
-}
-
-func fetchNode(m map[string]interface{}, included *map[string]*Node) *Node {
-	var attributes map[string]interface{}
-	var relationships map[string]interface{}
-
-	if included != nil {
-		key := fmt.Sprintf("%s,%s", m["type"].(string), m["id"].(string))
-		node := (*included)[key]
-
-		if node != nil {
-			attributes = node.Attributes
-			relationships = node.Relationships
-		}
-	}
-
-	return mapToNode(m, attributes, relationships)
-}
-
-func mapToNode(m map[string]interface{}, attributes map[string]interface{}, relationships map[string]interface{}) *Node {
-	node := &Node{Type: m["type"].(string)}
-
-	if m["id"] != nil {
-		node.Id = m["id"].(string)
-	}
-
-	if m["attributes"] == nil {
-		node.Attributes = attributes
-	} else {
-		node.Attributes = m["attributes"].(map[string]interface{})
-	}
-
-	if m["relationships"] == nil {
-		node.Relationships = relationships
-	} else {
-		node.Relationships = m["relationships"].(map[string]interface{})
-	}
-
-	return node
+	return n
 }

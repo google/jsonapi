@@ -174,19 +174,14 @@ func TestUnmarshalNestedRelationshipsSideloaded(t *testing.T) {
 }
 
 func TestUnmarshalNestedRelationshipsEmbedded_withClientIDs(t *testing.T) {
-	out := bytes.NewBuffer(nil)
-	if err := MarshalOnePayloadEmbedded(out, testModel()); err != nil {
-		t.Fatal(err)
-	}
-
 	model := new(Blog)
 
-	if err := UnmarshalPayload(out, model); err != nil {
+	if err := UnmarshalPayload(samplePayload(), model); err != nil {
 		t.Fatal(err)
 	}
 
-	if model.ClientId == "" {
-		t.Fatalf("ClientId not set from request")
+	if model.Posts[0].ClientId == "" {
+		t.Fatalf("ClientId not set from request on related record")
 	}
 }
 
@@ -219,6 +214,7 @@ func samplePayload() io.Reader {
 								"title": "Foo",
 								"body":  "Bar",
 							},
+							ClientId: "1",
 						},
 						&Node{
 							Type: "posts",
@@ -226,6 +222,7 @@ func samplePayload() io.Reader {
 								"title": "X",
 								"body":  "Y",
 							},
+							ClientId: "2",
 						},
 					},
 				},
@@ -236,6 +233,7 @@ func samplePayload() io.Reader {
 							"title": "Bas",
 							"body":  "Fuubar",
 						},
+						ClientId: "3",
 						Relationships: map[string]interface{}{
 							"comments": &RelationshipManyNode{
 								Data: []*Node{
@@ -244,12 +242,14 @@ func samplePayload() io.Reader {
 										Attributes: map[string]interface{}{
 											"body": "Great post!",
 										},
+										ClientId: "4",
 									},
 									&Node{
 										Type: "comments",
 										Attributes: map[string]interface{}{
 											"body": "Needs some work!",
 										},
+										ClientId: "5",
 									},
 								},
 							},

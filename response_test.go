@@ -22,6 +22,7 @@ type Post struct {
 	Blog
 	Id            int        `jsonapi:"primary,posts"`
 	BlogId        int        `jsonapi:"attr,blog_id"`
+	ClientId      string     `jsonapi:"client-id"`
 	Title         string     `jsonapi:"attr,title"`
 	Body          string     `jsonapi:"attr,body"`
 	Comments      []*Comment `jsonapi:"relation,comments"`
@@ -29,9 +30,10 @@ type Post struct {
 }
 
 type Comment struct {
-	Id     int    `jsonapi:"primary,comments"`
-	PostId int    `jsonapi:"attr,post_id"`
-	Body   string `jsonapi:"attr,body"`
+	Id       int    `jsonapi:"primary,comments"`
+	ClientId string `jsonapi:"client-id"`
+	PostId   int    `jsonapi:"attr,post_id"`
+	Body     string `jsonapi:"attr,body"`
 }
 
 func TestHasPrimaryAnnotation(t *testing.T) {
