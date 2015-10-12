@@ -3,6 +3,7 @@ package jsonapi
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"regexp"
 	"strings"
@@ -21,10 +22,11 @@ func TestMalformedTag(t *testing.T) {
 		t.Fatalf("Did not error out with wrong number of arguments in tag")
 	}
 
-	r := regexp.MustCompile(`two few arguments`)
+	fmt.Println(err.Error())
+	r := regexp.MustCompile(`too few arguments`)
 
 	if !r.Match([]byte(err.Error())) {
-		t.Fatalf("The err was not due two two few arguments in a tag")
+		t.Fatalf("The err was not due too few arguments in a tag")
 	}
 }
 
@@ -200,6 +202,18 @@ func TestUnmarshalNestedRelationshipsSideloaded(t *testing.T) {
 	}
 }
 
+func TestUnmarshalNestedRelationshipsEmbedded_withClientIDs(t *testing.T) {
+	model := new(Blog)
+
+	if err := UnmarshalPayload(samplePayload(), model); err != nil {
+		t.Fatal(err)
+	}
+
+	if model.Posts[0].ClientId == "" {
+		t.Fatalf("ClientId not set from request on related record")
+	}
+}
+
 func unmarshalSamplePayload() (*Blog, error) {
 	in := samplePayload()
 	out := new(Blog)
@@ -229,6 +243,7 @@ func samplePayload() io.Reader {
 								"title": "Foo",
 								"body":  "Bar",
 							},
+							ClientId: "1",
 						},
 						&Node{
 							Type: "posts",
@@ -236,6 +251,7 @@ func samplePayload() io.Reader {
 								"title": "X",
 								"body":  "Y",
 							},
+							ClientId: "2",
 						},
 					},
 				},
@@ -246,6 +262,7 @@ func samplePayload() io.Reader {
 							"title": "Bas",
 							"body":  "Fuubar",
 						},
+						ClientId: "3",
 						Relationships: map[string]interface{}{
 							"comments": &RelationshipManyNode{
 								Data: []*Node{
@@ -254,12 +271,14 @@ func samplePayload() io.Reader {
 										Attributes: map[string]interface{}{
 											"body": "Great post!",
 										},
+										ClientId: "4",
 									},
 									&Node{
 										Type: "comments",
 										Attributes: map[string]interface{}{
 											"body": "Needs some work!",
 										},
+										ClientId: "5",
 									},
 								},
 							},
@@ -299,6 +318,7 @@ func samplePayloadWithId() io.Reader {
 func testModel() *Blog {
 	return &Blog{
 		Id:        5,
+		ClientId:  "1",
 		Title:     "Title 1",
 		CreatedAt: time.Now(),
 		Posts: []*Post{

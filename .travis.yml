@@ -2,4 +2,4 @@ language: go
 go:
   - 1.4
   - tip
-script: go test . -v
+script: go test -v .
