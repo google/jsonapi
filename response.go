@@ -223,9 +223,9 @@ func visitModelNode(model interface{}, sideload bool) (*Node, []*Node, error) {
 
 			if isSlice {
 				relationship, incl, err := visitModelNodeRelationships(args[1], fieldValue, sideload)
-				d := relationship.Data
 
 				if err == nil {
+					d := relationship.Data
 					if sideload {
 						included = append(included, incl...)
 						var shallowNodes []*Node
@@ -285,6 +285,10 @@ func visitModelNodeRelationships(relationName string, models reflect.Value, side
 
 	if sideload {
 		included = make([]*Node, 0)
+	}
+
+	if models.Len() == 0 {
+		nodes = make([]*Node, 0)
 	}
 
 	for i := 0; i < models.Len(); i++ {
