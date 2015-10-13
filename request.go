@@ -154,7 +154,6 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			v := reflect.ValueOf(val)
 
 			if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
-
 				var at int64
 
 				if v.Kind() == reflect.Float64 {
@@ -167,6 +166,26 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				}
 
 				t := time.Unix(at, 0)
+
+				fieldValue.Set(reflect.ValueOf(t))
+
+				return false
+			}
+
+			if fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
+				var at int64
+
+				if v.Kind() == reflect.Float64 {
+					at = int64(v.Interface().(float64))
+				} else if v.Kind() == reflect.Int {
+					at = v.Int()
+				} else {
+					er = errors.New("Only numbers can be parsed as dates, unix timestamps")
+					return false
+				}
+
+				v := time.Unix(at, 0)
+				t := &v
 
 				fieldValue.Set(reflect.ValueOf(t))
 
