@@ -66,6 +66,48 @@ func UnmarshalPayload(in io.Reader, model interface{}) error {
 
 }
 
+func UnmarshalManyPayload(in io.Reader, t reflect.Type) ([]interface{}, error) {
+	payload := new(ManyPayload)
+
+	if err := json.NewDecoder(in).Decode(payload); err != nil {
+		return nil, err
+	}
+
+	if payload.Included != nil {
+		includedMap := make(map[string]*Node)
+		for _, included := range payload.Included {
+			key := fmt.Sprintf("%s,%s", included.Type, included.Id)
+			includedMap[key] = included
+		}
+
+		var models []interface{}
+		for _, data := range payload.Data {
+			model := reflect.New(t)
+			err := unmarshalNode(data, reflect.ValueOf(model), &includedMap)
+			if err != nil {
+				return nil, err
+			}
+			models = append(models, model.Interface())
+		}
+
+		return models, nil
+	} else {
+		var models []interface{}
+
+		for _, data := range payload.Data {
+			model := reflect.New(t.Elem())
+			err := unmarshalNode(data, model, nil)
+			if err != nil {
+				return nil, err
+			}
+			models = append(models, model.Interface())
+		}
+
+		return models, nil
+	}
+
+}
+
 func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
