@@ -203,6 +203,22 @@ func visitModelNode(model interface{}, sideload bool) (*Node, []*Node, error) {
 				unix := fieldValue.MethodByName("Unix")
 				val := unix.Call(make([]reflect.Value, 0))[0]
 				node.Attributes[args[1]] = val.Int()
+			} else if fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
+				// A time pointer may be nil
+				t := reflect.ValueOf(fieldValue.Interface())
+				if t.IsNil() {
+					node.Attributes[args[1]] = nil
+				} else {
+					isZeroMethod := fieldValue.MethodByName("IsZero")
+					isZero := isZeroMethod.Call(make([]reflect.Value, 0))[0].Interface().(bool)
+					if isZero {
+						return false
+					}
+
+					unix := fieldValue.MethodByName("Unix")
+					val := unix.Call(make([]reflect.Value, 0))[0]
+					node.Attributes[args[1]] = val.Int()
+				}
 			} else {
 				node.Attributes[args[1]] = fieldValue.Interface()
 			}
