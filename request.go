@@ -82,8 +82,8 @@ func UnmarshalManyPayload(in io.Reader, t reflect.Type) ([]interface{}, error) {
 
 		var models []interface{}
 		for _, data := range payload.Data {
-			model := reflect.New(t)
-			err := unmarshalNode(data, reflect.ValueOf(model), &includedMap)
+			model := reflect.New(t.Elem())
+			err := unmarshalNode(data, model, &includedMap)
 			if err != nil {
 				return nil, err
 			}
@@ -210,6 +210,17 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				t := time.Unix(at, 0)
 
 				fieldValue.Set(reflect.ValueOf(t))
+
+				return false
+			}
+
+			if fieldValue.Type() == reflect.TypeOf([]string(nil)) {
+				values := make([]string, v.Len())
+				for i := 0; i < v.Len(); i++ {
+					values[i] = v.Index(i).Interface().(string)
+				}
+
+				fieldValue.Set(reflect.ValueOf(values))
 
 				return false
 			}
