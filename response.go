@@ -2,20 +2,19 @@ package jsonapi
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 )
 
-type BadJSONAPIStructTag struct {
-	fieldTypeName string
-}
-
-func (e BadJSONAPIStructTag) Error() string {
-	return fmt.Sprintf("jsonapi tag, on %s, had too few arguments", e.fieldTypeName)
-}
+var (
+	ErrBadJSONAPIStructTag = errors.New("Bad jsonapi struct tag format")
+	ErrBadJSONAPIID        = errors.New("id should be either string or int")
+)
 
 // MarshalOnePayload writes a jsonapi response with one, with related records sideloaded, into "included" array.
 // This method encodes a response for a single record only. Hence, data will be a single record rather
@@ -41,13 +40,15 @@ func MarshalOnePayload(w io.Writer, model interface{}) error {
 // and doesn't write out results.
 // Useful is you use your JSON rendering library.
 func MarshalOne(model interface{}) (*OnePayload, error) {
-	rootNode, included, err := visitModelNode(model, true)
+	included := make(map[string]*Node)
+
+	rootNode, err := visitModelNode(model, &included, true)
 	if err != nil {
 		return nil, err
 	}
 	payload := &OnePayload{Data: rootNode}
 
-	payload.Included = uniqueByTypeAndID(included)
+	payload.Included = nodeMapValues(&included)
 
 	return payload, nil
 }
@@ -92,25 +93,26 @@ func MarshalManyPayload(w io.Writer, models []interface{}) error {
 // and doesn't write out results.
 // Useful is you use your JSON rendering library.
 func MarshalMany(models []interface{}) (*ManyPayload, error) {
-	modelsValues := reflect.ValueOf(models)
-	data := make([]*Node, 0, modelsValues.Len())
+	var data []*Node
+	included := make(map[string]*Node)
 
-	var incl []*Node
+	for i := 0; i < len(models); i++ {
+		model := models[i]
 
-	for i := 0; i < modelsValues.Len(); i++ {
-		model := modelsValues.Index(i).Interface()
-
-		node, included, err := visitModelNode(model, true)
+		node, err := visitModelNode(model, &included, true)
 		if err != nil {
 			return nil, err
 		}
 		data = append(data, node)
-		incl = append(incl, included...)
+	}
+
+	if len(models) == 0 {
+		data = make([]*Node, 0)
 	}
 
 	payload := &ManyPayload{
 		Data:     data,
-		Included: uniqueByTypeAndID(incl),
+		Included: nodeMapValues(&included),
 	}
 
 	return payload, nil
@@ -129,7 +131,7 @@ func MarshalMany(models []interface{}) (*ManyPayload, error) {
 //
 // model interface{} should be a pointer to a struct.
 func MarshalOnePayloadEmbedded(w io.Writer, model interface{}) error {
-	rootNode, _, err := visitModelNode(model, false)
+	rootNode, err := visitModelNode(model, nil, false)
 	if err != nil {
 		return err
 	}
@@ -143,110 +145,127 @@ func MarshalOnePayloadEmbedded(w io.Writer, model interface{}) error {
 	return nil
 }
 
-func visitModelNode(model interface{}, sideload bool) (*Node, []*Node, error) {
+func visitModelNode(model interface{}, included *map[string]*Node, sideload bool) (*Node, error) {
 	node := new(Node)
 
 	var er error
-	var included []*Node
 
-	modelType := reflect.TypeOf(model).Elem()
 	modelValue := reflect.ValueOf(model).Elem()
 
-	var i = 0
-	modelType.FieldByNameFunc(func(name string) bool {
-		if er != nil {
-			return false
-		}
-
-		structField := modelType.Field(i)
+	for i := 0; i < modelValue.NumField(); i++ {
+		structField := modelValue.Type().Field(i)
 		tag := structField.Tag.Get("jsonapi")
 		if tag == "" {
-			i++
-			return false
+			continue
 		}
 
 		fieldValue := modelValue.Field(i)
 
-		i++
-
 		args := strings.Split(tag, ",")
 
 		if len(args) < 1 {
-			er = BadJSONAPIStructTag{structField.Name}
-			return false
+			er = ErrBadJSONAPIStructTag
+			break
 		}
 
 		annotation := args[0]
 
-		if (annotation == "client-id" && len(args) != 1) || (annotation != "client-id" && len(args) != 2) {
-			er = BadJSONAPIStructTag{structField.Name}
-			return false
+		if (annotation == "client-id" && len(args) != 1) || (annotation != "client-id" && len(args) < 2) {
+			er = ErrBadJSONAPIStructTag
+			break
 		}
 
 		if annotation == "primary" {
-			node.Id = fmt.Sprintf("%v", fieldValue.Interface())
+			id := fieldValue.Interface()
+
+			str, ok := id.(string)
+			if ok {
+				node.Id = str
+			} else {
+				j, ok := id.(int)
+				if ok {
+					node.Id = strconv.Itoa(j)
+				} else {
+					er = ErrBadJSONAPIID
+					break
+				}
+			}
+
 			node.Type = args[1]
 		} else if annotation == "client-id" {
-			node.ClientId = fieldValue.String()
+			clientID := fieldValue.String()
+			if clientID != "" {
+				node.ClientId = clientID
+			}
 		} else if annotation == "attr" {
+			var omitEmpty bool
+
+			if len(args) > 2 {
+				omitEmpty = args[2] == "omitempty"
+			}
+
 			if node.Attributes == nil {
 				node.Attributes = make(map[string]interface{})
 			}
 
 			if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
-				isZeroMethod := fieldValue.MethodByName("IsZero")
-				isZero := isZeroMethod.Call(make([]reflect.Value, 0))[0].Interface().(bool)
-				if isZero {
-					return false
+				t := fieldValue.Interface().(time.Time)
+
+				if t.IsZero() {
+					continue
 				}
 
-				unix := fieldValue.MethodByName("Unix")
-				val := unix.Call(make([]reflect.Value, 0))[0]
-				node.Attributes[args[1]] = val.Int()
+				node.Attributes[args[1]] = t.Unix()
 			} else if fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
 				// A time pointer may be nil
-				t := reflect.ValueOf(fieldValue.Interface())
-				if t.IsNil() {
-					node.Attributes[args[1]] = nil
-				} else {
-					isZeroMethod := fieldValue.MethodByName("IsZero")
-					isZero := isZeroMethod.Call(make([]reflect.Value, 0))[0].Interface().(bool)
-					if isZero {
-						return false
+				if fieldValue.IsNil() {
+					if omitEmpty {
+						continue
 					}
 
-					unix := fieldValue.MethodByName("Unix")
-					val := unix.Call(make([]reflect.Value, 0))[0]
-					node.Attributes[args[1]] = val.Int()
+					node.Attributes[args[1]] = nil
+				} else {
+					tm := fieldValue.Interface().(*time.Time)
+
+					if tm.IsZero() && omitEmpty {
+						continue
+					}
+
+					node.Attributes[args[1]] = tm.Unix()
 				}
 			} else {
-				node.Attributes[args[1]] = fieldValue.Interface()
+				strAttr, ok := fieldValue.Interface().(string)
+
+				if ok && strAttr == "" && omitEmpty {
+					continue
+				} else if ok {
+					node.Attributes[args[1]] = strAttr
+				} else {
+					node.Attributes[args[1]] = fieldValue.Interface()
+				}
 			}
 		} else if annotation == "relation" {
 			isSlice := fieldValue.Type().Kind() == reflect.Slice
 
 			if (isSlice && fieldValue.Len() < 1) || (!isSlice && fieldValue.IsNil()) {
-				return false
+				continue
 			}
 
 			if node.Relationships == nil {
 				node.Relationships = make(map[string]interface{})
 			}
 
-			if sideload && included == nil {
-				included = make([]*Node, 0)
-			}
-
 			if isSlice {
-				relationship, incl, err := visitModelNodeRelationships(args[1], fieldValue, sideload)
+				relationship, err := visitModelNodeRelationships(args[1], fieldValue, included, sideload)
 
 				if err == nil {
 					d := relationship.Data
 					if sideload {
-						included = append(included, incl...)
 						var shallowNodes []*Node
-						for _, node := range d {
-							shallowNodes = append(shallowNodes, toShallowNode(node))
+
+						for _, n := range d {
+							appendIncluded(included, n)
+							shallowNodes = append(shallowNodes, toShallowNode(n))
 						}
 
 						node.Relationships[args[1]] = &RelationshipManyNode{Data: shallowNodes}
@@ -255,37 +274,34 @@ func visitModelNode(model interface{}, sideload bool) (*Node, []*Node, error) {
 					}
 				} else {
 					er = err
-					return false
+					break
 				}
 			} else {
-				relationship, incl, err := visitModelNode(fieldValue.Interface(), sideload)
+				relationship, err := visitModelNode(fieldValue.Interface(), included, sideload)
 				if err == nil {
 					if sideload {
-						included = append(included, incl...)
-						included = append(included, relationship)
+						appendIncluded(included, relationship)
 						node.Relationships[args[1]] = &RelationshipOneNode{Data: toShallowNode(relationship)}
 					} else {
 						node.Relationships[args[1]] = &RelationshipOneNode{Data: relationship}
 					}
 				} else {
 					er = err
-					return false
+					break
 				}
 			}
 
 		} else {
-			er = fmt.Errorf("Unsupported jsonapi tag annotation, %s", annotation)
-			return false
+			er = ErrBadJSONAPIStructTag
+			break
 		}
-
-		return false
-	})
-
-	if er != nil {
-		return nil, nil, er
 	}
 
-	return node, included, nil
+	if er != nil {
+		return nil, er
+	}
+
+	return node, nil
 }
 
 func toShallowNode(node *Node) *Node {
@@ -295,47 +311,48 @@ func toShallowNode(node *Node) *Node {
 	}
 }
 
-func visitModelNodeRelationships(relationName string, models reflect.Value, sideload bool) (*RelationshipManyNode, []*Node, error) {
+func visitModelNodeRelationships(relationName string, models reflect.Value, included *map[string]*Node, sideload bool) (*RelationshipManyNode, error) {
 	var nodes []*Node
-	var included []*Node
-
-	if sideload {
-		included = make([]*Node, 0)
-	}
 
 	if models.Len() == 0 {
 		nodes = make([]*Node, 0)
 	}
 
 	for i := 0; i < models.Len(); i++ {
-		node, incl, err := visitModelNode(models.Index(i).Interface(), sideload)
+		n := models.Index(i).Interface()
+		node, err := visitModelNode(n, included, sideload)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		nodes = append(nodes, node)
-		included = append(included, incl...)
 	}
 
-	included = append(included, nodes...)
-
-	n := &RelationshipManyNode{Data: nodes}
-
-	return n, included, nil
+	return &RelationshipManyNode{Data: nodes}, nil
 }
 
-func uniqueByTypeAndID(nodes []*Node) []*Node {
-	uniqueIncluded := make(map[string]*Node)
+func appendIncluded(m *map[string]*Node, nodes ...*Node) {
+	included := *m
 
-	for i := 0; i < len(nodes); i++ {
-		n := nodes[i]
+	for _, n := range nodes {
 		k := fmt.Sprintf("%s,%s", n.Type, n.Id)
-		if uniqueIncluded[k] == nil {
-			uniqueIncluded[k] = n
-		} else {
-			nodes = append(nodes[:i], nodes[i+1:]...)
-			i--
+
+		if _, hasNode := included[k]; hasNode {
+			continue
 		}
+
+		included[k] = n
+	}
+}
+
+func nodeMapValues(m *map[string]*Node) []*Node {
+	mp := *m
+	nodes := make([]*Node, len(mp))
+
+	i := 0
+	for _, n := range mp {
+		nodes[i] = n
+		i++
 	}
 
 	return nodes

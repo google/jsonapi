@@ -3,9 +3,7 @@ package jsonapi
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
-	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -18,15 +16,8 @@ type BadModel struct {
 func TestMalformedTag(t *testing.T) {
 	out := new(BadModel)
 	err := UnmarshalPayload(samplePayload(), out)
-	if err == nil {
+	if err == nil || err != ErrBadJSONAPIStructTag {
 		t.Fatalf("Did not error out with wrong number of arguments in tag")
-	}
-
-	fmt.Println(err.Error())
-	r := regexp.MustCompile(`too few arguments`)
-
-	if !r.Match([]byte(err.Error())) {
-		t.Fatalf("The err was not due too few arguments in a tag")
 	}
 }
 

@@ -12,6 +12,13 @@ import (
 	"time"
 )
 
+const unsuportedStructTagMsg = "Unsupported jsonapi tag annotation, %s"
+
+var (
+	ErrTypeMismatch = errors.New("Trying to Unmarshal a type that does not match")
+	ErrInvalidTime  = errors.New("Only numbers can be parsed as dates, unix timestamps")
+)
+
 // Convert an io into a struct instance using jsonapi tags on struct fields.
 // Method supports single request payloads only, at the moment. Bulk creates and updates
 // are not supported yet.
@@ -120,45 +127,37 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 
 	var er error
 
-	var i = 0
-	modelType.FieldByNameFunc(func(name string) bool {
-		if er != nil {
-			return false
-		}
-
+	for i := 0; i < modelValue.NumField(); i++ {
 		fieldType := modelType.Field(i)
 		tag := fieldType.Tag.Get("jsonapi")
 		if tag == "" {
-			i += 1
-			return false
+			continue
 		}
 
 		fieldValue := modelValue.Field(i)
 
-		i += 1
-
 		args := strings.Split(tag, ",")
 
 		if len(args) < 1 {
-			er = BadJSONAPIStructTag{fieldType.Name}
-			return false
+			er = ErrBadJSONAPIStructTag
+			break
 		}
 
 		annotation := args[0]
 
-		if (annotation == "client-id" && len(args) != 1) || (annotation != "client-id" && len(args) != 2) {
-			er = BadJSONAPIStructTag{fieldType.Name}
-			return false
+		if (annotation == "client-id" && len(args) != 1) || (annotation != "client-id" && len(args) < 2) {
+			er = ErrBadJSONAPIStructTag
+			break
 		}
 
 		if annotation == "primary" {
 			if data.Id == "" {
-				return false
+				continue
 			}
 
 			if data.Type != args[1] {
-				er = errors.New("Trying to Unmarshal a type that does not match")
-				return false
+				er = ErrTypeMismatch
+				break
 			}
 
 			if fieldValue.Kind() == reflect.String {
@@ -167,30 +166,30 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				id, err := strconv.Atoi(data.Id)
 				if err != nil {
 					er = err
-					return false
+					break
 				}
 				fieldValue.SetInt(int64(id))
 			} else {
-				er = errors.New("Unsuppored data type for primary key, not int or string")
-				return false
+				er = ErrBadJSONAPIID
+				break
 			}
 		} else if annotation == "client-id" {
 			if data.ClientId == "" {
-				return false
+				continue
 			}
 
 			fieldValue.Set(reflect.ValueOf(data.ClientId))
 		} else if annotation == "attr" {
 			attributes := data.Attributes
-			if attributes == nil {
-				return false
+			if attributes == nil || len(data.Attributes) == 0 {
+				continue
 			}
 
 			val := attributes[args[1]]
 
-			// next if the attribute was not included in the request
+			// continue if the attribute was not included in the request
 			if val == nil {
-				return false
+				continue
 			}
 
 			v := reflect.ValueOf(val)
@@ -203,15 +202,15 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				} else if v.Kind() == reflect.Int {
 					at = v.Int()
 				} else {
-					er = errors.New("Only numbers can be parsed as dates, unix timestamps")
-					return false
+					er = ErrInvalidTime
+					break
 				}
 
 				t := time.Unix(at, 0)
 
 				fieldValue.Set(reflect.ValueOf(t))
 
-				return false
+				continue
 			}
 
 			if fieldValue.Type() == reflect.TypeOf([]string(nil)) {
@@ -222,7 +221,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 
 				fieldValue.Set(reflect.ValueOf(values))
 
-				return false
+				continue
 			}
 
 			if fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
@@ -233,8 +232,8 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				} else if v.Kind() == reflect.Int {
 					at = v.Int()
 				} else {
-					er = errors.New("Only numbers can be parsed as dates, unix timestamps")
-					return false
+					er = ErrInvalidTime
+					break
 				}
 
 				v := time.Unix(at, 0)
@@ -242,7 +241,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 
 				fieldValue.Set(reflect.ValueOf(t))
 
-				return false
+				continue
 			}
 
 			if fieldValue.Kind() == reflect.Int && v.Kind() == reflect.Float64 {
@@ -254,7 +253,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			isSlice := fieldValue.Type().Kind() == reflect.Slice
 
 			if data.Relationships == nil || data.Relationships[args[1]] == nil {
-				return false
+				continue
 			}
 
 			if isSlice {
@@ -273,7 +272,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 
 					if err := unmarshalNode(fullNode(n, included), m, included); err != nil {
 						er = err
-						return false
+						break
 					}
 
 					models = reflect.Append(models, m)
@@ -292,18 +291,16 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 
 				if err := unmarshalNode(fullNode(relationship.Data, included), m, included); err != nil {
 					er = err
-					return false
+					break
 				}
 
 				fieldValue.Set(m)
 			}
 
 		} else {
-			er = errors.New(fmt.Sprintf("Unsupported jsonapi tag annotation, %s", annotation))
+			er = fmt.Errorf(unsuportedStructTagMsg, annotation)
 		}
-
-		return false
-	})
+	}
 
 	if er != nil {
 		return er
