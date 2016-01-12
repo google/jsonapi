@@ -15,8 +15,9 @@ import (
 const unsuportedStructTagMsg = "Unsupported jsonapi tag annotation, %s"
 
 var (
-	ErrTypeMismatch = errors.New("Trying to Unmarshal a type that does not match")
-	ErrInvalidTime  = errors.New("Only numbers can be parsed as dates, unix timestamps")
+	ErrTypeMismatch           = errors.New("Trying to Unmarshal a type that does not match")
+	ErrInvalidTime            = errors.New("Only numbers can be parsed as dates, unix timestamps")
+	ErrUnknownFieldNumberType = errors.New("The struct field was not of a known number type")
 )
 
 // Convert an io into a struct instance using jsonapi tags on struct fields.
@@ -244,11 +245,72 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				continue
 			}
 
-			if fieldValue.Kind() == reflect.Int && v.Kind() == reflect.Float64 {
-				fieldValue.Set(reflect.ValueOf(int(v.Interface().(float64))))
-			} else {
-				fieldValue.Set(reflect.ValueOf(val))
+			if v.Kind() == reflect.Float64 {
+				// Handle JSON numeric case
+				floatValue := v.Interface().(float64)
+
+				// The field may or may not be a pointer to a numeric; the kind var
+				// will not contain a pointer type
+				var kind reflect.Kind
+				if fieldValue.Kind() == reflect.Ptr {
+					kind = fieldType.Type.Elem().Kind()
+				} else {
+					kind = fieldType.Type.Kind()
+				}
+
+				var numericValue reflect.Value
+
+				switch kind {
+				case reflect.Int:
+					n := int(floatValue)
+					numericValue = reflect.ValueOf(&n)
+				case reflect.Int8:
+					n := int8(floatValue)
+					numericValue = reflect.ValueOf(&n)
+				case reflect.Int16:
+					n := int16(floatValue)
+					numericValue = reflect.ValueOf(&n)
+				case reflect.Int32:
+					n := int32(floatValue)
+					numericValue = reflect.ValueOf(&n)
+				case reflect.Int64:
+					n := int64(floatValue)
+					numericValue = reflect.ValueOf(&n)
+				case reflect.Uint:
+					n := uint(floatValue)
+					numericValue = reflect.ValueOf(&n)
+				case reflect.Uint8:
+					n := uint8(floatValue)
+					numericValue = reflect.ValueOf(&n)
+				case reflect.Uint16:
+					n := uint16(floatValue)
+					numericValue = reflect.ValueOf(&n)
+				case reflect.Uint32:
+					n := uint32(floatValue)
+					numericValue = reflect.ValueOf(&n)
+				case reflect.Uint64:
+					n := uint64(floatValue)
+					numericValue = reflect.ValueOf(&n)
+				case reflect.Float32:
+					n := float32(floatValue)
+					numericValue = reflect.ValueOf(&n)
+				case reflect.Float64:
+					n := float64(floatValue)
+					numericValue = reflect.ValueOf(&n)
+				default:
+					er = ErrUnknownFieldNumberType
+					break
+				}
+
+				if fieldValue.Kind() == reflect.Ptr {
+					fieldValue.Set(numericValue)
+				} else {
+					fieldValue.Set(reflect.Indirect(numericValue))
+				}
+
+				continue
 			}
+			fieldValue.Set(reflect.ValueOf(val))
 		} else if annotation == "relation" {
 			isSlice := fieldValue.Type().Kind() == reflect.Slice
 
