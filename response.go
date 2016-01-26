@@ -178,17 +178,18 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 		if annotation == "primary" {
 			id := fieldValue.Interface()
 
-			str, ok := id.(string)
-			if ok {
-				node.Id = str
-			} else {
-				j, ok := id.(int)
-				if ok {
-					node.Id = strconv.Itoa(j)
-				} else {
-					er = ErrBadJSONAPIID
-					break
-				}
+			switch nId := id.(type) {
+			case string:
+				node.Id = nId
+			case int:
+				node.Id = strconv.Itoa(nId)
+			case int64:
+				node.Id = strconv.FormatInt(nId, 10)
+			case uint64:
+				node.Id = strconv.FormatUint(nId, 10)
+			default:
+				er = ErrBadJSONAPIID
+				break
 			}
 
 			node.Type = args[1]
