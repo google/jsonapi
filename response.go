@@ -14,6 +14,7 @@ import (
 var (
 	ErrBadJSONAPIStructTag = errors.New("Bad jsonapi struct tag format")
 	ErrBadJSONAPIID        = errors.New("id should be either string or int")
+	ErrExpectedSlice       = errors.New("models should be a slice of struct pointers")
 )
 
 // MarshalOnePayload writes a jsonapi response with one, with related records sideloaded, into "included" array.
@@ -75,9 +76,13 @@ func MarshalOne(model interface{}) (*OnePayload, error) {
 //
 // Visit https://github.com/shwoodard/jsonapi#list for more info.
 //
-// models []interface{} should be a slice of struct pointers.
-func MarshalManyPayload(w io.Writer, models []interface{}) error {
-	payload, err := MarshalMany(models)
+// models interface{} should be a slice of struct pointers.
+func MarshalManyPayload(w io.Writer, models interface{}) error {
+	m, err := convertToSliceInterface(&models)
+	if err != nil {
+		return err
+	}
+	payload, err := MarshalMany(m)
 	if err != nil {
 		return err
 	}
@@ -357,4 +362,16 @@ func nodeMapValues(m *map[string]*Node) []*Node {
 	}
 
 	return nodes
+}
+
+func convertToSliceInterface(i *interface{}) ([]interface{}, error) {
+	vals := reflect.ValueOf(*i)
+	if vals.Kind() != reflect.Slice {
+		return nil, ErrExpectedSlice
+	}
+	var response []interface{}
+	for x := 0; x < vals.Len(); x++ {
+		response = append(response, vals.Index(x).Interface())
+	}
+	return response, nil
 }
