@@ -320,6 +320,29 @@ func TestMarshalMany(t *testing.T) {
 	}
 }
 
+func TestMarshalMany_WithSliceOfStructPointers(t *testing.T) {
+	var data []*Blog
+	for len(data) < 2 {
+		data = append(data, testBlog())
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalManyPayload(out, data); err != nil {
+		t.Fatal(err)
+	}
+
+	resp := new(ManyPayload)
+	if err := json.NewDecoder(out).Decode(resp); err != nil {
+		t.Fatal(err)
+	}
+
+	d := resp.Data
+
+	if len(d) != 2 {
+		t.Fatalf("data should have two elements")
+	}
+}
+
 func testBlog() *Blog {
 	return &Blog{
 		ID:        5,
