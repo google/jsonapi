@@ -18,6 +18,7 @@ var (
 	ErrTypeMismatch           = errors.New("Trying to Unmarshal a type that does not match")
 	ErrInvalidTime            = errors.New("Only numbers can be parsed as dates, unix timestamps")
 	ErrUnknownFieldNumberType = errors.New("The struct field was not of a known number type")
+	ErrUnsupportedPtrType     = errors.New("Pointer type in struct is not supported")
 )
 
 // Convert an io into a struct instance using jsonapi tags on struct fields.
@@ -310,7 +311,58 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 
 				continue
 			}
+
+			//add support to map val to pointer type struct field
+			if fieldValue.Kind() == reflect.Ptr {
+
+				var concreteVal reflect.Value
+
+				switch cVal := val.(type) {
+				case string:
+					concreteVal = reflect.ValueOf(&cVal)
+				case bool:
+					concreteVal = reflect.ValueOf(&cVal)
+				case float32:
+					concreteVal = reflect.ValueOf(&cVal)
+				case float64:
+					concreteVal = reflect.ValueOf(&cVal)
+				case complex64:
+					concreteVal = reflect.ValueOf(&cVal)
+				case complex128:
+					concreteVal = reflect.ValueOf(&cVal)
+				case int:
+					concreteVal = reflect.ValueOf(&cVal)
+				case int8:
+					concreteVal = reflect.ValueOf(&cVal)
+				case int16:
+					concreteVal = reflect.ValueOf(&cVal)
+				case int32:
+					concreteVal = reflect.ValueOf(&cVal)
+				case uint:
+					concreteVal = reflect.ValueOf(&cVal)
+				case uint8:
+					concreteVal = reflect.ValueOf(&cVal)
+				case uint16:
+					concreteVal = reflect.ValueOf(&cVal)
+				case uint32:
+					concreteVal = reflect.ValueOf(&cVal)
+				case uintptr:
+					concreteVal = reflect.ValueOf(&cVal)
+				default:
+					er = ErrUnsupportedPtrType
+					break
+				}
+
+				if fieldValue.Type() != concreteVal.Type() {
+					er = ErrUnsupportedPtrType
+					break
+				}
+				fieldValue.Set(concreteVal)
+				continue
+			}
+
 			fieldValue.Set(reflect.ValueOf(val))
+
 		} else if annotation == "relation" {
 			isSlice := fieldValue.Type().Kind() == reflect.Slice
 
