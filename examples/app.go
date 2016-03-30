@@ -81,7 +81,7 @@ func main() {
 		}
 
 		if eventType == jsonapi.UnmarshalStop {
-			fmt.Printf("%s: id, %s, stopped at, %v , and took %v to unmarshal paylaod\n", metricPrefix+".jsonapi_unmarshal_time", callGUID, time.Now(), dur)
+			fmt.Printf("%s: id, %s, stopped at, %v , and took %v to unmarshal payload\n", metricPrefix+".jsonapi_unmarshal_time", callGUID, time.Now(), dur)
 		}
 
 		if eventType == jsonapi.MarshalStart {
@@ -89,7 +89,7 @@ func main() {
 		}
 
 		if eventType == jsonapi.MarshalStop {
-			fmt.Printf("%s: id, %s, stopped at, %v , and took %v to marshal paylaod\n", metricPrefix+".jsonapi_marshal_time", callGUID, time.Now(), dur)
+			fmt.Printf("%s: id, %s, stopped at, %v , and took %v to marshal payload\n", metricPrefix+".jsonapi_marshal_time", callGUID, time.Now(), dur)
 		}
 	}
 
