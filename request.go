@@ -15,7 +15,6 @@ import (
 const unsuportedStructTagMsg = "Unsupported jsonapi tag annotation, %s"
 
 var (
-	ErrTypeMismatch           = errors.New("Trying to Unmarshal a type that does not match")
 	ErrInvalidTime            = errors.New("Only numbers can be parsed as dates, unix timestamps")
 	ErrUnknownFieldNumberType = errors.New("The struct field was not of a known number type")
 )
@@ -157,7 +156,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			}
 
 			if data.Type != args[1] {
-				er = ErrTypeMismatch
+				er = fmt.Errorf("Trying to Unmarshal an object of type %#v, but %#v does not match", data.Type, args[1])
 				break
 			}
 
