@@ -29,3 +29,15 @@ type RelationshipManyNode struct {
 	Data  []*Node            `json:"data"`
 	Links *map[string]string `json:"links,omitempty"`
 }
+
+type ErrorPayload struct {
+	Errors []ErrorNode `json:"errors"`
+}
+
+type ErrorNode struct {
+	Id     string `json:"id,omitempty"`
+	Status string `json:"status,omitempty"`
+	Code   string `json:"code,omitempty"`
+	Title  string `json:"title,omitempty"`
+	Detail string `json:"detail,omitempty"`
+}

@@ -3,6 +3,7 @@ package jsonapi
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 )
@@ -233,6 +234,23 @@ func TestMarshalMany(t *testing.T) {
 
 	if len(d) != 2 {
 		t.Fatalf("data should have two elements")
+	}
+}
+
+func TestErrorPayload(t *testing.T) {
+	errors := []ErrorNode{
+		ErrorNode{Detail: "detail1"},
+		ErrorNode{Detail: "detail2"},
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalErrorPayload(out, errors...); err != nil {
+		t.Fatal(err)
+	}
+
+	s := out.String()
+	if !strings.Contains(s, "detail1") || !strings.Contains(s, "detail2") {
+		t.Fatal("Details not found in response")
 	}
 }
 

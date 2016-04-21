@@ -145,6 +145,18 @@ func MarshalOnePayloadEmbedded(w io.Writer, model interface{}) error {
 	return nil
 }
 
+// MarshalErrors marshals Error instances into an error payload.
+func MarshalErrors(errors ...ErrorNode) *ErrorPayload {
+	return &ErrorPayload{Errors: errors}
+}
+
+// MarshalErrorPayload will marshal errors into an ErrorPayload and write it out.
+func MarshalErrorPayload(w io.Writer, errors ...ErrorNode) error {
+	e := MarshalErrors(errors...)
+
+	return json.NewEncoder(w).Encode(&e)
+}
+
 func visitModelNode(model interface{}, included *map[string]*Node, sideload bool) (*Node, error) {
 	node := new(Node)
 
