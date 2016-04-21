@@ -149,7 +149,7 @@ types are shown in the examples, but not required.
 #### `attr`
 
 ```
-`jsonapi:"attr,<key name in attributes hash>"`
+`jsonapi:"attr,<key name in attributes hash>,omitempty"`
 ```
 
 These fields' values will end up in the `attributes`hash for a record.
