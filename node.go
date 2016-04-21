@@ -35,7 +35,7 @@ type ErrorPayload struct {
 	Errors []ErrorNode `json:"errors"`
 }
 
-type ErrorNode struct {
+type Error struct {
 	Id     string      `json:"id,omitempty"`
 	Status string      `json:"status,omitempty"`
 	Code   string      `json:"code,omitempty"`
