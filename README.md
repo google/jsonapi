@@ -295,6 +295,12 @@ func ListBlogs(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
+## Errors
+
+Error responses are fairly easy to create with an `ErrorPayload`, and there
+is a helper method that will take a list of `ErrorNode` structs and an
+`io.Writer` to write the errors.
+
 ## Testing
 
 ### `MarshalOnePayloadEmbedded`
