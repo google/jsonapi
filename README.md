@@ -156,7 +156,9 @@ These fields' values will end up in the `attributes`hash for a record.
 The first argument must be, `attr`, and the second should be the name
 for the key to display in the `attributes` hash for that record. The
 spec indicates that `attributes` key names should be dasherized for
-multiple word field names.
+multiple word field names. The use of `omitempty` in the third argument 
+is optional and will result in that struct field being omitted from the
+result if empty, similar to the standard library's `omitempty`.
 
 #### `relation`
 

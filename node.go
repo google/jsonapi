@@ -35,9 +35,15 @@ type ErrorPayload struct {
 }
 
 type ErrorNode struct {
-	Id     string `json:"id,omitempty"`
-	Status string `json:"status,omitempty"`
-	Code   string `json:"code,omitempty"`
-	Title  string `json:"title,omitempty"`
-	Detail string `json:"detail,omitempty"`
+	Id     string      `json:"id,omitempty"`
+	Status string      `json:"status,omitempty"`
+	Code   string      `json:"code,omitempty"`
+	Title  string      `json:"title,omitempty"`
+	Detail string      `json:"detail,omitempty"`
+	Source ErrorSource `json:"source,omitempty"`
+}
+
+type ErrorSource struct {
+	Pointer   string `json:"pointer,omitempty"`
+	Parameter string `json:"parameter,omitempty"`
 }
