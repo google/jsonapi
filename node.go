@@ -18,6 +18,7 @@ type Node struct {
 	ClientId      string                 `json:"client-id,omitempty"`
 	Attributes    map[string]interface{} `json:"attributes,omitempty"`
 	Relationships map[string]interface{} `json:"relationships,omitempty"`
+	Links         map[string]string      `json:"links,omitempty"`
 }
 
 type RelationshipOneNode struct {
