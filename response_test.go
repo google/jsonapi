@@ -238,9 +238,9 @@ func TestMarshalMany(t *testing.T) {
 }
 
 func TestErrorPayload(t *testing.T) {
-	errors := []ErrorNode{
-		ErrorNode{Detail: "detail1"},
-		ErrorNode{Detail: "detail2"},
+	errors := []Error{
+		Error{Detail: "detail1"},
+		Error{Detail: "detail2"},
 	}
 
 	out := bytes.NewBuffer(nil)

@@ -32,7 +32,7 @@ type RelationshipManyNode struct {
 }
 
 type ErrorPayload struct {
-	Errors []ErrorNode `json:"errors"`
+	Errors []Error `json:"errors"`
 }
 
 type Error struct {
