@@ -320,3 +320,49 @@ func testBlog() *Blog {
 		},
 	}
 }
+
+type BadLinksTag struct {
+	Id    int            `jsonapi:"primary,badLinks"`
+	Body  string         `jsonapi:"attr,body"`
+	Links map[int]string `jsonapi:"links"`
+}
+
+func TestBadLinks(t *testing.T) {
+	bad := BadLinksTag{
+		Id:    10,
+		Body:  "body",
+		Links: map[int]string{1: "link_1"},
+	}
+
+	_, err := MarshalOne(&bad)
+	if err != nil && err != ErrBadJSONAPILinks {
+		t.Fatalf("Unexpected error type: %+v", err)
+	}
+}
+
+type GoodLinksTag struct {
+	Id    int               `jsonapi:"primary,badLinks"`
+	Body  string            `jsonapi:"attr,body"`
+	Links map[string]string `jsonapi:"links"`
+}
+
+func TestGoodLinks(t *testing.T) {
+	good := GoodLinksTag{
+		Id:    10,
+		Body:  "body",
+		Links: map[string]string{"one": "link_1"},
+	}
+
+	data, err := MarshalOne(&good)
+	if err != nil {
+		t.Fatalf("Unexpected error: %+v", err)
+	}
+
+	link, ok := data.Data.Links["one"]
+	if !ok {
+		t.Fatal("Link not found in node")
+	}
+	if link != "link_1" {
+		t.Fatalf("Link value is not correct: %s", link)
+	}
+}

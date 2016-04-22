@@ -14,6 +14,7 @@ import (
 var (
 	ErrBadJSONAPIStructTag = errors.New("Bad jsonapi struct tag format")
 	ErrBadJSONAPIID        = errors.New("id should be either string or int")
+	ErrBadJSONAPILinks     = errors.New("Links must be a map[string]string")
 )
 
 // MarshalOnePayload writes a jsonapi response with one, with related records sideloaded, into "included" array.
@@ -182,7 +183,7 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 
 		annotation := args[0]
 
-		if (annotation == "client-id" && len(args) != 1) || (annotation != "client-id" && len(args) < 2) {
+		if ((annotation == "client-id" || annotation == "links") && len(args) != 1) || ((annotation != "client-id" && annotation != "links") && len(args) < 2) {
 			er = ErrBadJSONAPIStructTag
 			break
 		}
@@ -303,7 +304,22 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 					break
 				}
 			}
+		} else if annotation == "links" {
+			isMap := fieldValue.Type().Kind() == reflect.Map
 
+			if !isMap {
+				er = ErrBadJSONAPILinks
+				break
+			}
+
+			isStringKey := fieldValue.Type().Key().Kind() == reflect.String
+			isStringVal := fieldValue.Type().Elem().Kind() == reflect.String
+			if !(isStringKey && isStringVal) {
+				er = ErrBadJSONAPILinks
+				break
+			}
+
+			node.Links = fieldValue.Interface().(map[string]string)
 		} else {
 			er = ErrBadJSONAPIStructTag
 			break
