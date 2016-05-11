@@ -7,9 +7,10 @@ type OnePayload struct {
 }
 
 type ManyPayload struct {
-	Data     []*Node            `json:"data"`
-	Included []*Node            `json:"included,omitempty"`
-	Links    *map[string]string `json:"links,omitempty"`
+	Data     []*Node                `json:"data"`
+	Included []*Node                `json:"included,omitempty"`
+	Links    *map[string]string     `json:"links,omitempty"`
+	Meta     map[string]interface{} `json:"meta,omitempty"`
 }
 
 type Node struct {
