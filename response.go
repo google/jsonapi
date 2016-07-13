@@ -36,6 +36,22 @@ func MarshalOnePayload(w io.Writer, model interface{}) error {
 	return nil
 }
 
+// MarshalOnePayloadWithoutIncluded will
+func MarshalOnePayloadWithoutIncluded(w io.Writer, model interface{}) error {
+	included := make(map[string]*Node)
+
+	rootNode, err := visitModelNode(model, &included, true)
+	if err != nil {
+		return err
+	}
+
+	if err := json.NewEncoder(w).Encode(&OnePayload{Data: rootNode}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // MarshalOne does the same as MarshalOnePayload except it just returns the payload
 // and doesn't write out results.
 // Useful is you use your JSON rendering library.
