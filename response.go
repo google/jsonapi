@@ -36,7 +36,11 @@ func MarshalOnePayload(w io.Writer, model interface{}) error {
 	return nil
 }
 
-// MarshalOnePayloadWithoutIncluded will
+// MarshalOnePayloadWithoutIncluded writes a jsonapi response with one object,
+// without the related records sideloaded into "included" array. If you want to
+// serialzie the realtions into the "included" array see MarshalOnePayload.
+//
+// model interface{} should be a pointer to a struct.
 func MarshalOnePayloadWithoutIncluded(w io.Writer, model interface{}) error {
 	included := make(map[string]*Node)
 
