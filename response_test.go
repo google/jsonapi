@@ -171,7 +171,7 @@ func TestNoRelations(t *testing.T) {
 	}
 }
 
-func TestMarshalOnePayload(t *testing.T) {
+func TestMarshalOnePayloadWithoutIncluded(t *testing.T) {
 	data := &Post{
 		Id:       1,
 		BlogId:   2,
