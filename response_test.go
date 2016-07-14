@@ -39,6 +39,7 @@ type Comment struct {
 type Book struct {
 	ID          int    `jsonapi:"primary,books"`
 	Author      string `jsonapi:"attr,author"`
+	ISBN        string `jsonapi:"attr,isbn"`
 	Title       string `jsonapi:"attr,title,omitempty"`
 	Pages       *uint  `jsonapi:"attr,pages,omitempty"`
 	PublishedAt time.Time
@@ -61,14 +62,22 @@ func TestOmitsEmptyAnnotation(t *testing.T) {
 	}
 	attributes := jsonData["data"].(map[string]interface{})["attributes"].(map[string]interface{})
 
+	// Verify that the specifically omitted field were omitted
 	if val, exists := attributes["title"]; exists {
 		t.Fatalf("Was expecting the data.attributes.title key/value to have been omitted - it was not and had a value of %v", val)
 	}
 	if val, exists := attributes["pages"]; exists {
 		t.Fatalf("Was expecting the data.attributes.pages key/value to have been omitted - it was not and had a value of %v", val)
 	}
+
+	// Verify the implicity omitted fields were omitted
 	if val, exists := attributes["PublishedAt"]; exists {
-		t.Fatalf("Was expecting the data.attributes.PublishedAt key/value to have been omitted - it was not and had a value of %v", val)
+		t.Fatalf("Was expecting the data.attributes.PublishedAt key/value to have been implicity omitted - it was not and had a value of %v", val)
+	}
+
+	// Verify the unset fields were not omitted
+	if _, exists := attributes["isbn"]; !exists {
+		t.Fatal("Was expecting the data.attributes.isbn key/value to have NOT been omitted")
 	}
 }
 
