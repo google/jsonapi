@@ -60,6 +60,23 @@ func TestUnmarshalSetsAttrs(t *testing.T) {
 	}
 }
 
+func TestUnmarshalRelationshipsWithoutIncluded(t *testing.T) {
+	data, _ := samplePayloadWithoutIncluded()
+	in := bytes.NewReader(data)
+	out := new(Post)
+
+	if err := UnmarshalPayload(in, out); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify each comment has at least an ID
+	for _, comment := range out.Comments {
+		if comment.Id == 0 {
+			t.Fatalf("The comment did not have an ID")
+		}
+	}
+}
+
 func TestUnmarshalRelationships(t *testing.T) {
 	out, err := unmarshalSamplePayload()
 	if err != nil {
@@ -214,6 +231,41 @@ func unmarshalSamplePayload() (*Blog, error) {
 	}
 
 	return out, nil
+}
+
+func samplePayloadWithoutIncluded() (result []byte, err error) {
+	data := map[string]interface{}{
+		"data": map[string]interface{}{
+			"type": "posts",
+			"id":   "1",
+			"attributes": map[string]interface{}{
+				"body":  "Hello",
+				"title": "World",
+			},
+			"relationships": map[string]interface{}{
+				"comments": map[string]interface{}{
+					"data": []interface{}{
+						map[string]interface{}{
+							"type": "comments",
+							"id":   "123",
+						},
+						map[string]interface{}{
+							"type": "comments",
+							"id":   "456",
+						},
+					},
+				},
+				"latest_comment": map[string]interface{}{
+					"data": map[string]interface{}{
+						"type": "comments",
+						"id":   "55555",
+					},
+				},
+			},
+		},
+	}
+	result, err = json.Marshal(data)
+	return
 }
 
 func samplePayload() io.Reader {

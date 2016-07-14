@@ -171,6 +171,44 @@ func TestNoRelations(t *testing.T) {
 	}
 }
 
+func TestMarshalOnePayloadWithoutIncluded(t *testing.T) {
+	data := &Post{
+		Id:       1,
+		BlogId:   2,
+		ClientId: "123e4567-e89b-12d3-a456-426655440000",
+		Title:    "Foo",
+		Body:     "Bar",
+		Comments: []*Comment{
+			&Comment{
+				Id:   20,
+				Body: "First",
+			},
+			&Comment{
+				Id:   21,
+				Body: "Hello World",
+			},
+		},
+		LatestComment: &Comment{
+			Id:   22,
+			Body: "Cool!",
+		},
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalOnePayloadWithoutIncluded(out, data); err != nil {
+		t.Fatal(err)
+	}
+
+	resp := new(OnePayload)
+	if err := json.NewDecoder(out).Decode(resp); err != nil {
+		t.Fatal(err)
+	}
+
+	if resp.Included != nil {
+		t.Fatalf("Encoding json response did not omit included")
+	}
+}
+
 func TestMarshalMany(t *testing.T) {
 	data := []interface{}{
 		&Blog{
