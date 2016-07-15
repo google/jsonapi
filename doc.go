@@ -13,26 +13,26 @@ the library in your jsonapi tags.
 Example structs using a Blog > Post > Comment structure,
 
 	type Blog struct {
-		Id            int       `jsonapi:"primary,blogs"`
+		ID            int       `jsonapi:"primary,blogs"`
 		Title         string    `jsonapi:"attr,title"`
 		Posts         []*Post   `jsonapi:"relation,posts"`
 		CurrentPost   *Post     `jsonapi:"relation,current_post"`
-		CurrentPostId int       `jsonapi:"attr,current_post_id"`
+		CurrentPostID int       `jsonapi:"attr,current_post_id"`
 		CreatedAt     time.Time `jsonapi:"attr,created_at"`
 		ViewCount     int       `jsonapi:"attr,view_count"`
 	}
 
 	type Post struct {
-		Id       int        `jsonapi:"primary,posts"`
-		BlogId   int        `jsonapi:"attr,blog_id"`
+		ID       int        `jsonapi:"primary,posts"`
+		BlogID   int        `jsonapi:"attr,blog_id"`
 		Title    string     `jsonapi:"attr,title"`
 		Body     string     `jsonapi:"attr,body"`
 		Comments []*Comment `jsonapi:"relation,comments"`
 	}
 
 	type Comment struct {
-		Id     int    `jsonapi:"primary,comments"`
-		PostId int    `jsonapi:"attr,post_id"`
+		ID     int    `jsonapi:"primary,comments"`
+		PostID int    `jsonapi:"attr,post_id"`
 		Body   string `jsonapi:"attr,body"`
 	}
 

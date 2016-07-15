@@ -62,7 +62,7 @@ func UnmarshalPayload(in io.Reader, model interface{}) error {
 	if payload.Included != nil {
 		includedMap := make(map[string]*Node)
 		for _, included := range payload.Included {
-			key := fmt.Sprintf("%s,%s", included.Type, included.Id)
+			key := fmt.Sprintf("%s,%s", included.Type, included.ID)
 			includedMap[key] = included
 		}
 
@@ -83,7 +83,7 @@ func UnmarshalManyPayload(in io.Reader, t reflect.Type) ([]interface{}, error) {
 	if payload.Included != nil {
 		includedMap := make(map[string]*Node)
 		for _, included := range payload.Included {
-			key := fmt.Sprintf("%s,%s", included.Type, included.Id)
+			key := fmt.Sprintf("%s,%s", included.Type, included.ID)
 			includedMap[key] = included
 		}
 
@@ -151,7 +151,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 		}
 
 		if annotation == "primary" {
-			if data.Id == "" {
+			if data.ID == "" {
 				continue
 			}
 
@@ -161,9 +161,9 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			}
 
 			if fieldValue.Kind() == reflect.String {
-				fieldValue.Set(reflect.ValueOf(data.Id))
+				fieldValue.Set(reflect.ValueOf(data.ID))
 			} else if fieldValue.Kind() == reflect.Int {
-				id, err := strconv.Atoi(data.Id)
+				id, err := strconv.Atoi(data.ID)
 				if err != nil {
 					er = err
 					break
@@ -174,11 +174,11 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				break
 			}
 		} else if annotation == "client-id" {
-			if data.ClientId == "" {
+			if data.ClientID == "" {
 				continue
 			}
 
-			fieldValue.Set(reflect.ValueOf(data.ClientId))
+			fieldValue.Set(reflect.ValueOf(data.ClientID))
 		} else if annotation == "attr" {
 			attributes := data.Attributes
 			if attributes == nil || len(data.Attributes) == 0 {
@@ -371,7 +371,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 }
 
 func fullNode(n *Node, included *map[string]*Node) *Node {
-	includedKey := fmt.Sprintf("%s,%s", n.Type, n.Id)
+	includedKey := fmt.Sprintf("%s,%s", n.Type, n.ID)
 
 	if included != nil && (*included)[includedKey] != nil {
 		return (*included)[includedKey]
