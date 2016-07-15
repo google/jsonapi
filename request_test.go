@@ -71,7 +71,7 @@ func TestUnmarshalRelationshipsWithoutIncluded(t *testing.T) {
 
 	// Verify each comment has at least an ID
 	for _, comment := range out.Comments {
-		if comment.Id == 0 {
+		if comment.ID == 0 {
 			t.Fatalf("The comment did not have an ID")
 		}
 	}

@@ -173,23 +173,23 @@ func TestNoRelations(t *testing.T) {
 
 func TestMarshalOnePayloadWithoutIncluded(t *testing.T) {
 	data := &Post{
-		Id:       1,
-		BlogId:   2,
-		ClientId: "123e4567-e89b-12d3-a456-426655440000",
+		ID:       1,
+		BlogID:   2,
+		ClientID: "123e4567-e89b-12d3-a456-426655440000",
 		Title:    "Foo",
 		Body:     "Bar",
 		Comments: []*Comment{
 			&Comment{
-				Id:   20,
+				ID:   20,
 				Body: "First",
 			},
 			&Comment{
-				Id:   21,
+				ID:   21,
 				Body: "Hello World",
 			},
 		},
 		LatestComment: &Comment{
-			Id:   22,
+			ID:   22,
 			Body: "Cool!",
 		},
 	}
