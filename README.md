@@ -63,6 +63,7 @@ type Comment struct {
 	Id     int    `json:"id"`
 	PostId int    `json:"post_id"`
 	Body   string `json:"body"`
+	Likes  uint   `json:"likes_count,omitempty"`
 }
 ```
 
@@ -127,7 +128,7 @@ type Comment struct {
 	Id     int    `jsonapi:"primary,comments"`
 	PostId int    `jsonapi:"attr,post_id"`
 	Body   string `jsonapi:"attr,body"`
-	Likes  int    `jsonapi:"attr,likes-count,omitempty"`
+	Likes  uint   `jsonapi:"attr,likes-count,omitempty"`
 }
 ```
 
