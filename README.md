@@ -127,6 +127,7 @@ type Comment struct {
 	Id     int    `jsonapi:"primary,comments"`
 	PostId int    `jsonapi:"attr,post_id"`
 	Body   string `jsonapi:"attr,body"`
+	Likes  int    `jsonapi:"attr,likes-count,omitempty"`
 }
 ```
 
@@ -149,14 +150,17 @@ types are shown in the examples, but not required.
 #### `attr`
 
 ```
-`jsonapi:"attr,<key name in attributes hash>"`
+`jsonapi:"attr,<key name in attributes hash>,<optional: omitempty>"`
 ```
 
 These fields' values will end up in the `attributes`hash for a record.
 The first argument must be, `attr`, and the second should be the name
-for the key to display in the `attributes` hash for that record. The
-spec indicates that `attributes` key names should be dasherized for
-multiple word field names.
+for the key to display in the `attributes` hash for that record. The optional
+third argument is `omitempty` - if it is present the field will not be present
+in the `"attributes"` if the field's value is equivalent to the field types
+empty value (ie if the `count` field is of type `int`, `omitempty` will omit the
+field when `count` has a value of `0`). Lastly, the spec indicates that
+`attributes` key names should be dasherized for multiple word field names.
 
 #### `relation`
 
