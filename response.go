@@ -255,11 +255,16 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 					node.Attributes[args[1]] = tm.Unix()
 				}
 			} else {
-				strAttr, ok := fieldValue.Interface().(string)
+				// Dealing with a fieldValue that is not a time
+				emptyValue := reflect.Zero(fieldValue.Type())
 
-				if ok && strAttr == "" && omitEmpty {
+				// See if we need to omit this field
+				if omitEmpty && fieldValue.Interface() == emptyValue.Interface() {
 					continue
-				} else if ok {
+				}
+
+				strAttr, ok := fieldValue.Interface().(string)
+				if ok {
 					node.Attributes[args[1]] = strAttr
 				} else {
 					node.Attributes[args[1]] = fieldValue.Interface()
