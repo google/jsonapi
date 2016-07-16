@@ -14,8 +14,8 @@ type ManyPayload struct {
 
 type Node struct {
 	Type          string                 `json:"type"`
-	Id            string                 `json:"id"`
-	ClientId      string                 `json:"client-id,omitempty"`
+	ID            string                 `json:"id"`
+	ClientID      string                 `json:"client-id,omitempty"`
 	Attributes    map[string]interface{} `json:"attributes,omitempty"`
 	Relationships map[string]interface{} `json:"relationships,omitempty"`
 }

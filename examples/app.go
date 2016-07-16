@@ -54,7 +54,7 @@ func showBlog(w http.ResponseWriter, r *http.Request) {
 
 	// ...fetch your blog...
 
-	intId, err := strconv.Atoi(id)
+	intID, err := strconv.Atoi(id)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
@@ -63,7 +63,7 @@ func showBlog(w http.ResponseWriter, r *http.Request) {
 	jsonapiRuntime := jsonapi.NewRuntime().Instrument("blogs.show")
 
 	// but, for now
-	blog := testBlogForCreate(intId)
+	blog := testBlogForCreate(intID)
 	w.WriteHeader(200)
 
 	w.Header().Set("Content-Type", "application/vnd.api+json")
@@ -113,52 +113,52 @@ func main() {
 
 func testBlogForCreate(i int) *Blog {
 	return &Blog{
-		Id:        1 * i,
+		ID:        1 * i,
 		Title:     "Title 1",
 		CreatedAt: time.Now(),
 		Posts: []*Post{
 			&Post{
-				Id:    1 * i,
+				ID:    1 * i,
 				Title: "Foo",
 				Body:  "Bar",
 				Comments: []*Comment{
 					&Comment{
-						Id:   1 * i,
+						ID:   1 * i,
 						Body: "foo",
 					},
 					&Comment{
-						Id:   2 * i,
+						ID:   2 * i,
 						Body: "bar",
 					},
 				},
 			},
 			&Post{
-				Id:    2 * i,
+				ID:    2 * i,
 				Title: "Fuubar",
 				Body:  "Bas",
 				Comments: []*Comment{
 					&Comment{
-						Id:   1 * i,
+						ID:   1 * i,
 						Body: "foo",
 					},
 					&Comment{
-						Id:   3 * i,
+						ID:   3 * i,
 						Body: "bas",
 					},
 				},
 			},
 		},
 		CurrentPost: &Post{
-			Id:    1 * i,
+			ID:    1 * i,
 			Title: "Foo",
 			Body:  "Bar",
 			Comments: []*Comment{
 				&Comment{
-					Id:   1 * i,
+					ID:   1 * i,
 					Body: "foo",
 				},
 				&Comment{
-					Id:   2 * i,
+					ID:   2 * i,
 					Body: "bar",
 				},
 			},
@@ -246,25 +246,25 @@ func exerciseHandler() {
 }
 
 type Blog struct {
-	Id            int       `jsonapi:"primary,blogs"`
+	ID            int       `jsonapi:"primary,blogs"`
 	Title         string    `jsonapi:"attr,title"`
 	Posts         []*Post   `jsonapi:"relation,posts"`
 	CurrentPost   *Post     `jsonapi:"relation,current_post"`
-	CurrentPostId int       `jsonapi:"attr,current_post_id"`
+	CurrentPostID int       `jsonapi:"attr,current_post_id"`
 	CreatedAt     time.Time `jsonapi:"attr,created_at"`
 	ViewCount     int       `jsonapi:"attr,view_count"`
 }
 
 type Post struct {
-	Id       int        `jsonapi:"primary,posts"`
-	BlogId   int        `jsonapi:"attr,blog_id"`
+	ID       int        `jsonapi:"primary,posts"`
+	BlogID   int        `jsonapi:"attr,blog_id"`
 	Title    string     `jsonapi:"attr,title"`
 	Body     string     `jsonapi:"attr,body"`
 	Comments []*Comment `jsonapi:"relation,comments"`
 }
 
 type Comment struct {
-	Id     int    `jsonapi:"primary,comments"`
-	PostId int    `jsonapi:"attr,post_id"`
+	ID     int    `jsonapi:"primary,comments"`
+	PostID int    `jsonapi:"attr,post_id"`
 	Body   string `jsonapi:"attr,body"`
 }
