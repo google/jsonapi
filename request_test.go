@@ -13,6 +13,39 @@ type BadModel struct {
 	ID int `jsonapi:"primary"`
 }
 
+func TestStringPointerField(t *testing.T) {
+	// Build Book payload
+	description := "Hello World!"
+	data := map[string]interface{}{
+		"data": map[string]interface{}{
+			"type": "books",
+			"id":   "5",
+			"attributes": map[string]interface{}{
+				"author":      "aren55555",
+				"description": description,
+				"isbn":        "",
+			},
+		},
+	}
+	payload, err := json.Marshal(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Parse JSON API payload
+	book := new(Book)
+	if err := UnmarshalPayload(bytes.NewReader(payload), book); err != nil {
+		t.Fatal(err)
+	}
+
+	if book.Description == nil {
+		t.Fatal("Was not expecting a nil pointer for book.Description")
+	}
+	if expected, actual := description, *book.Description; expected != actual {
+		t.Fatalf("Was expecting descript to be `%s`, got `%s`", expected, actual)
+	}
+}
+
 func TestMalformedTag(t *testing.T) {
 	out := new(BadModel)
 	err := UnmarshalPayload(samplePayload(), out)
