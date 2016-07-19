@@ -244,6 +244,19 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				continue
 			}
 
+			if v.Kind() == reflect.String {
+				stringValue := v.Interface().(string)
+
+				// The field may or may not be a pointer to a string; handle both cases
+				if fieldValue.Kind() == reflect.Ptr {
+					fieldValue.Set(reflect.ValueOf(&stringValue))
+				} else {
+					fieldValue.Set(reflect.Indirect(reflect.ValueOf(&stringValue)))
+				}
+
+				continue
+			}
+
 			if v.Kind() == reflect.Float64 {
 				// Handle JSON numeric case
 				floatValue := v.Interface().(float64)
