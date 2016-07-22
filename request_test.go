@@ -13,6 +13,60 @@ type BadModel struct {
 	ID int `jsonapi:"primary"`
 }
 
+type Foo struct {
+	Id       string   `jsonapi:"primary,foos"`
+	Name     *string  `jsonapi:"attr,name"`
+	IsActive *bool    `jsonapi:"attr,is-active"`
+	IntVal   *int     `jsonapi:"attr,int-val"`
+	FloatVal *float32 `jsonapi:"attr,float-val"`
+}
+
+func TestUnmarshalToStructWithPointerAttr(t *testing.T) {
+	out := new(Foo)
+	in := map[string]interface{}{
+		"name":      "The name",
+		"is-active": true,
+		"int-val":   8,
+		"float-val": 1.1,
+	}
+	if err := UnmarshalPayload(sampleFooPayload(in), out); err != nil {
+		t.Fatalf("Error unmarshalling to Foo")
+	}
+	if *out.Name != "The name" {
+		t.Fatalf("Error unmarshalling to string ptr")
+	}
+	if *out.IsActive != true {
+		t.Fatalf("Error unmarshalling to bool ptr")
+	}
+	if *out.IntVal != 8 {
+		t.Fatalf("Error unmarshalling to int ptr")
+	}
+	if *out.FloatVal != 1.1 {
+		t.Fatalf("Error unmarshalling to float ptr")
+	}
+}
+
+func TestUnmarshalToStructWithPointerAttr_AbsentVal(t *testing.T) {
+	out := new(Foo)
+	in := map[string]interface{}{
+		"name":      "The name",
+		"is-active": true,
+	}
+	if err := UnmarshalPayload(sampleFooPayload(in), out); err != nil {
+		t.Fatalf("Error unmarshalling to Foo")
+	}
+	// these were present in the payload -- expect val to be not nil
+	if out.Name == nil || out.IsActive == nil {
+		t.Fatalf("Error unmarshalling; expected ptr to be not nil")
+	}
+
+	// these were absent in the payload -- expect val to be nil
+	if out.IntVal != nil || out.FloatVal != nil {
+		t.Fatalf("Error unmarshalling; expected ptr to be nil")
+	}
+
+}
+
 func TestMalformedTag(t *testing.T) {
 	out := new(BadModel)
 	err := UnmarshalPayload(samplePayload(), out)
@@ -348,6 +402,22 @@ func samplePayloadWithID() io.Reader {
 				"title":      "New blog",
 				"view_count": 1000,
 			},
+		},
+	}
+
+	out := bytes.NewBuffer(nil)
+
+	json.NewEncoder(out).Encode(payload)
+
+	return out
+}
+
+func sampleFooPayload(m map[string]interface{}) io.Reader {
+	payload := &OnePayload{
+		Data: &Node{
+			Id:         "2",
+			Type:       "foos",
+			Attributes: m,
 		},
 	}
 
