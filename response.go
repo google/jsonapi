@@ -93,7 +93,7 @@ func MarshalOne(model interface{}) (*OnePayload, error) {
 //	 }
 //
 //
-// Visit https://github.com/shwoodard/jsonapi#list for more info.
+// Visit https://github.com/google/jsonapi#list for more info.
 //
 // models []interface{} should be a slice of struct pointers.
 func MarshalManyPayload(w io.Writer, models []interface{}) error {
