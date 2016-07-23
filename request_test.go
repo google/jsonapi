@@ -13,6 +13,94 @@ type BadModel struct {
 	ID int `jsonapi:"primary"`
 }
 
+type WithPointer struct {
+	ID       string   `jsonapi:"primary,with-pointers"`
+	Name     *string  `jsonapi:"attr,name"`
+	IsActive *bool    `jsonapi:"attr,is-active"`
+	IntVal   *int     `jsonapi:"attr,int-val"`
+	FloatVal *float32 `jsonapi:"attr,float-val"`
+}
+
+func TestUnmarshalToStructWithPointerAttr(t *testing.T) {
+	out := new(WithPointer)
+	in := map[string]interface{}{
+		"name":      "The name",
+		"is-active": true,
+		"int-val":   8,
+		"float-val": 1.1,
+	}
+	if err := UnmarshalPayload(sampleWithPointerPayload(in), out); err != nil {
+		t.Fatal(err)
+	}
+	if *out.Name != "The name" {
+		t.Fatalf("Error unmarshalling to string ptr")
+	}
+	if *out.IsActive != true {
+		t.Fatalf("Error unmarshalling to bool ptr")
+	}
+	if *out.IntVal != 8 {
+		t.Fatalf("Error unmarshalling to int ptr")
+	}
+	if *out.FloatVal != 1.1 {
+		t.Fatalf("Error unmarshalling to float ptr")
+	}
+}
+
+func TestUnmarshalToStructWithPointerAttr_AbsentVal(t *testing.T) {
+	out := new(WithPointer)
+	in := map[string]interface{}{
+		"name":      "The name",
+		"is-active": true,
+	}
+
+	if err := UnmarshalPayload(sampleWithPointerPayload(in), out); err != nil {
+		t.Fatalf("Error unmarshalling to Foo")
+	}
+
+	// these were present in the payload -- expect val to be not nil
+	if out.Name == nil || out.IsActive == nil {
+		t.Fatalf("Error unmarshalling; expected ptr to be not nil")
+	}
+
+	// these were absent in the payload -- expect val to be nil
+	if out.IntVal != nil || out.FloatVal != nil {
+		t.Fatalf("Error unmarshalling; expected ptr to be nil")
+	}
+}
+
+func TestStringPointerField(t *testing.T) {
+	// Build Book payload
+	description := "Hello World!"
+	data := map[string]interface{}{
+		"data": map[string]interface{}{
+			"type": "books",
+			"id":   "5",
+			"attributes": map[string]interface{}{
+				"author":      "aren55555",
+				"description": description,
+				"isbn":        "",
+			},
+		},
+	}
+	payload, err := json.Marshal(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Parse JSON API payload
+	book := new(Book)
+	if err := UnmarshalPayload(bytes.NewReader(payload), book); err != nil {
+		t.Fatal(err)
+	}
+
+	if book.Description == nil {
+		t.Fatal("Was not expecting a nil pointer for book.Description")
+	}
+	if expected, actual := description, *book.Description; expected != actual {
+		t.Fatalf("Was expecting descript to be `%s`, got `%s`", expected, actual)
+	}
+}
+
 func TestMalformedTag(t *testing.T) {
 	out := new(BadModel)
 	err := UnmarshalPayload(samplePayload(), out)
@@ -264,6 +352,7 @@ func samplePayloadWithoutIncluded() (result []byte, err error) {
 			},
 		},
 	}
+
 	result, err = json.Marshal(data)
 	return
 }
@@ -333,7 +422,6 @@ func samplePayload() io.Reader {
 	}
 
 	out := bytes.NewBuffer(nil)
-
 	json.NewEncoder(out).Encode(payload)
 
 	return out
@@ -352,7 +440,21 @@ func samplePayloadWithID() io.Reader {
 	}
 
 	out := bytes.NewBuffer(nil)
+	json.NewEncoder(out).Encode(payload)
 
+	return out
+}
+
+func sampleWithPointerPayload(m map[string]interface{}) io.Reader {
+	payload := &OnePayload{
+		Data: &Node{
+			ID:         "2",
+			Type:       "with-pointers",
+			Attributes: m,
+		},
+	}
+
+	out := bytes.NewBuffer(nil)
 	json.NewEncoder(out).Encode(payload)
 
 	return out
@@ -440,7 +542,6 @@ func sampleSerializedEmbeddedTestModel() *Blog {
 	MarshalOnePayloadEmbedded(out, testModel())
 
 	blog := new(Blog)
-
 	UnmarshalPayload(out, blog)
 
 	return blog

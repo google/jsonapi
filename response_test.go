@@ -37,11 +37,12 @@ type Comment struct {
 }
 
 type Book struct {
-	ID          int    `jsonapi:"primary,books"`
-	Author      string `jsonapi:"attr,author"`
-	ISBN        string `jsonapi:"attr,isbn"`
-	Title       string `jsonapi:"attr,title,omitempty"`
-	Pages       *uint  `jsonapi:"attr,pages,omitempty"`
+	ID          int     `jsonapi:"primary,books"`
+	Author      string  `jsonapi:"attr,author"`
+	ISBN        string  `jsonapi:"attr,isbn"`
+	Title       string  `jsonapi:"attr,title,omitempty"`
+	Description *string `jsonapi:"attr,description"`
+	Pages       *uint   `jsonapi:"attr,pages,omitempty"`
 	PublishedAt time.Time
 }
 
