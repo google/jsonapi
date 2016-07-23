@@ -3,6 +3,7 @@ package jsonapi
 import (
 	"bytes"
 	"encoding/json"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -340,6 +341,39 @@ func TestMarshalMany_WithSliceOfStructPointers(t *testing.T) {
 
 	if len(d) != 2 {
 		t.Fatalf("data should have two elements")
+	}
+}
+
+func TestMarshalMany_SliceOfInterfaceAndSliceOfStructsSameJSON(t *testing.T) {
+	structs := []*Book{
+		&Book{ID: 1, Author: "aren55555", ISBN: "abc"},
+		&Book{ID: 2, Author: "shwoodard", ISBN: "xyz"},
+	}
+	interfaces := []interface{}{}
+	for _, s := range structs {
+		interfaces = append(interfaces, s)
+	}
+
+	structsOut := new(bytes.Buffer)
+	if err := MarshalManyPayload(structsOut, structs); err != nil {
+		t.Fatal(err)
+	}
+	interfacesOut := new(bytes.Buffer)
+	if err := MarshalManyPayload(interfacesOut, interfaces); err != nil {
+		t.Fatal(err)
+	}
+
+	structsData, interfacesData := make(map[string]interface{}), make(map[string]interface{})
+
+	if err := json.Unmarshal(structsOut.Bytes(), &structsData); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(interfacesOut.Bytes(), &interfacesData); err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(structsData, interfacesData) {
+		t.Fatal("Was expecting the JSON API generated to be the same")
 	}
 }
 
