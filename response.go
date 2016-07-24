@@ -24,9 +24,10 @@ var (
 	ErrExpectedSlice = errors.New("models should be a slice of struct pointers")
 )
 
-// MarshalOnePayload writes a jsonapi response with one, with related records sideloaded, into "included" array.
-// This method encodes a response for a single record only. Hence, data will be a single record rather
-// than an array of records.  If you want to serialize many records, see, MarshalManyPayload.
+// MarshalOnePayload writes a jsonapi response with one, with related records
+// sideloaded, into "included" array. This method encodes a response for a
+// single record only. Hence, data will be a single record rather than an array
+// of records.  If you want to serialize many records, see, MarshalManyPayload.
 //
 // See UnmarshalPayload for usage example.
 //
@@ -64,9 +65,9 @@ func MarshalOnePayloadWithoutIncluded(w io.Writer, model interface{}) error {
 	return nil
 }
 
-// MarshalOne does the same as MarshalOnePayload except it just returns the payload
-// and doesn't write out results.
-// Useful is you use your JSON rendering library.
+// MarshalOne does the same as MarshalOnePayload except it just returns the
+// payload and doesn't write out results. Useful is you use your JSON rendering
+// library.
 func MarshalOne(model interface{}) (*OnePayload, error) {
 	included := make(map[string]*Node)
 
@@ -81,12 +82,14 @@ func MarshalOne(model interface{}) (*OnePayload, error) {
 	return payload, nil
 }
 
-// MarshalManyPayload writes a jsonapi response with many records, with related records sideloaded, into "included" array.
-// This method encodes a response for a slice of records, hence data will be an array of
-// records rather than a single record.  To serialize a single record, see MarshalOnePayload
+// MarshalManyPayload writes a jsonapi response with many records, with related
+// records sideloaded, into "included" array. This method encodes a response for
+// a slice of records, hence data will be an array of records rather than a
+// single record.  To serialize a single record, see MarshalOnePayload
 //
-// For example you could pass it, w, your http.ResponseWriter, and, models, a slice of Blog
-// struct instance pointers as interface{}'s to write to the response,
+// For example you could pass it, w, your http.ResponseWriter, and, models, a
+// slice of Blog struct instance pointers as interface{}'s to write to the
+// response,
 //
 //	 func ListBlogs(w http.ResponseWriter, r *http.Request) {
 //		 // ... fetch your blogs and filter, offset, limit, etc ...
@@ -121,9 +124,9 @@ func MarshalManyPayload(w io.Writer, models interface{}) error {
 	return nil
 }
 
-// MarshalMany does the same as MarshalManyPayload except it just returns the payload
-// and doesn't write out results.
-// Useful is you use your JSON rendering library.
+// MarshalMany does the same as MarshalManyPayload except it just returns the
+// payload and doesn't write out results. Useful is you use your JSON rendering
+// library.
 func MarshalMany(models []interface{}) (*ManyPayload, error) {
 	var data []*Node
 	included := make(map[string]*Node)
@@ -150,16 +153,17 @@ func MarshalMany(models []interface{}) (*ManyPayload, error) {
 	return payload, nil
 }
 
-// MarshalOnePayloadEmbedded - This method not meant to for use in implementation code, although feel
-// free.  The purpose of this method is for use in tests.  In most cases, your
-// request payloads for create will be embedded rather than sideloaded for related records.
-// This method will serialize a single struct pointer into an embedded json
-// response.  In other words, there will be no, "included", array in the json
-// all relationships will be serailized inline in the data.
+// MarshalOnePayloadEmbedded - This method not meant to for use in
+// implementation code, although feel free.  The purpose of this method is for
+// use in tests.  In most cases, your request payloads for create will be
+// embedded rather than sideloaded for related records. This method will
+// serialize a single struct pointer into an embedded json response.  In other
+// words, there will be no, "included", array in the json all relationships will
+// be serailized inline in the data.
 //
-// However, in tests, you may want to construct payloads to post to create methods
-// that are embedded to most closely resemble the payloads that will be produced by
-// the client.  This is what this method is intended for.
+// However, in tests, you may want to construct payloads to post to create
+// methods that are embedded to most closely resemble the payloads that will be
+// produced by the client.  This is what this method is intended for.
 //
 // model interface{} should be a pointer to a struct.
 func MarshalOnePayloadEmbedded(w io.Writer, model interface{}) error {
@@ -202,7 +206,8 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 
 		annotation := args[0]
 
-		if (annotation == "client-id" && len(args) != 1) || (annotation != "client-id" && len(args) < 2) {
+		if (annotation == clientIDAnnotation && len(args) != 1) ||
+			(annotation != clientIDAnnotation && len(args) < 2) {
 			er = ErrBadJSONAPIStructTag
 			break
 		}
@@ -225,7 +230,7 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 			}
 
 			node.Type = args[1]
-		} else if annotation == "client-id" {
+		} else if annotation == clientIDAnnotation {
 			clientID := fieldValue.String()
 			if clientID != "" {
 				node.ClientID = clientID
@@ -294,7 +299,12 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 			}
 
 			if isSlice {
-				relationship, err := visitModelNodeRelationships(args[1], fieldValue, included, sideload)
+				relationship, err := visitModelNodeRelationships(
+					args[1],
+					fieldValue,
+					included,
+					sideload,
+				)
 
 				if err == nil {
 					d := relationship.Data
@@ -306,7 +316,9 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 							shallowNodes = append(shallowNodes, toShallowNode(n))
 						}
 
-						node.Relationships[args[1]] = &RelationshipManyNode{Data: shallowNodes}
+						node.Relationships[args[1]] = &RelationshipManyNode{
+							Data: shallowNodes,
+						}
 					} else {
 						node.Relationships[args[1]] = relationship
 					}
@@ -315,13 +327,20 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 					break
 				}
 			} else {
-				relationship, err := visitModelNode(fieldValue.Interface(), included, sideload)
+				relationship, err := visitModelNode(
+					fieldValue.Interface(),
+					included,
+					sideload)
 				if err == nil {
 					if sideload {
 						appendIncluded(included, relationship)
-						node.Relationships[args[1]] = &RelationshipOneNode{Data: toShallowNode(relationship)}
+						node.Relationships[args[1]] = &RelationshipOneNode{
+							Data: toShallowNode(relationship),
+						}
 					} else {
-						node.Relationships[args[1]] = &RelationshipOneNode{Data: relationship}
+						node.Relationships[args[1]] = &RelationshipOneNode{
+							Data: relationship,
+						}
 					}
 				} else {
 					er = err

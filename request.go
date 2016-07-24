@@ -14,7 +14,6 @@ import (
 
 const (
 	unsuportedStructTagMsg = "Unsupported jsonapi tag annotation, %s"
-	clientIDAnnotation     = "client-id"
 )
 
 var (
