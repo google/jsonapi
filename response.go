@@ -12,9 +12,16 @@ import (
 )
 
 var (
+	// ErrBadJSONAPIStructTag is returned when the Struct field's JSON API
+	// annotation is invalid.
 	ErrBadJSONAPIStructTag = errors.New("Bad jsonapi struct tag format")
-	ErrBadJSONAPIID        = errors.New("id should be either string or int")
-	ErrExpectedSlice       = errors.New("models should be a slice of struct pointers")
+	// ErrBadJSONAPIID is returned when the Struct JSON API annotated "id" field
+	// was not a valid numeric type.
+	ErrBadJSONAPIID = errors.New("id should be either string, int or uint")
+	// ErrExpectedSlice is returned when a variable or arugment was expected to
+	// be a slice of *Structs; MarshalMany will return this error when its
+	// interface{} argument is invalid.
+	ErrExpectedSlice = errors.New("models should be a slice of struct pointers")
 )
 
 // MarshalOnePayload writes a jsonapi response with one, with related records sideloaded, into "included" array.
