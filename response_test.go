@@ -354,6 +354,7 @@ func TestMarshalMany_SliceOfInterfaceAndSliceOfStructsSameJSON(t *testing.T) {
 		interfaces = append(interfaces, s)
 	}
 
+	// Perform Marshals
 	structsOut := new(bytes.Buffer)
 	if err := MarshalManyPayload(structsOut, structs); err != nil {
 		t.Fatal(err)
@@ -363,8 +364,9 @@ func TestMarshalMany_SliceOfInterfaceAndSliceOfStructsSameJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	structsData, interfacesData := make(map[string]interface{}), make(map[string]interface{})
-
+	// Generic JSON Unmarshal
+	structsData, interfacesData :=
+		make(map[string]interface{}), make(map[string]interface{})
 	if err := json.Unmarshal(structsOut.Bytes(), &structsData); err != nil {
 		t.Fatal(err)
 	}
@@ -372,8 +374,22 @@ func TestMarshalMany_SliceOfInterfaceAndSliceOfStructsSameJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Compare Result
 	if !reflect.DeepEqual(structsData, interfacesData) {
 		t.Fatal("Was expecting the JSON API generated to be the same")
+	}
+}
+
+func TestMarshalMany_InvalidIntefaceArgument(t *testing.T) {
+	out := new(bytes.Buffer)
+	if err := MarshalManyPayload(out, true); err != ErrExpectedSlice {
+		t.Fatal("Was expecting an error")
+	}
+	if err := MarshalManyPayload(out, 25); err != ErrExpectedSlice {
+		t.Fatal("Was expecting an error")
+	}
+	if err := MarshalManyPayload(out, Book{}); err != ErrExpectedSlice {
+		t.Fatal("Was expecting an error")
 	}
 }
 
