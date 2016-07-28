@@ -374,6 +374,10 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				models := reflect.New(fieldValue.Type()).Elem()
 
 				for _, n := range data {
+					if n == nil {
+						continue
+					}
+
 					m := reflect.New(fieldValue.Type().Elem().Elem())
 
 					if err := unmarshalNode(
@@ -399,8 +403,17 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				)
 				json.NewDecoder(buf).Decode(relationship)
 
-				m := reflect.New(fieldValue.Type().Elem())
+				/*
+					http://jsonapi.org/format/#document-resource-object-relationships
+					http://jsonapi.org/format/#document-resource-object-linkage
+					relationship can have a data node set to null (e.g. to disassociate the relationship)
+					so unmarshal and set fieldValue only if data obj is not null
+				*/
+				if relationship.Data == nil {
+					continue
+				}
 
+				m := reflect.New(fieldValue.Type().Elem())
 				if err := unmarshalNode(
 					fullNode(relationship.Data, included),
 					m,
@@ -411,6 +424,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				}
 
 				fieldValue.Set(m)
+
 			}
 
 		} else {

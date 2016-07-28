@@ -184,6 +184,74 @@ func TestUnmarshalRelationships(t *testing.T) {
 	}
 }
 
+func TestUnmarshalNullRelationship(t *testing.T) {
+	sample := map[string]interface{}{
+		"data": map[string]interface{}{
+			"type": "posts",
+			"id":   "1",
+			"attributes": map[string]interface{}{
+				"body":  "Hello",
+				"title": "World",
+			},
+			"relationships": map[string]interface{}{
+				"latest_comment": map[string]interface{}{
+					"data": nil, //set data to nil/null
+				},
+			},
+		},
+	}
+	data, err := json.Marshal(sample)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	in := bytes.NewReader(data)
+	out := new(Post)
+
+	if err := UnmarshalPayload(in, out); err != nil {
+		t.Fatal(err)
+	}
+
+	if out.LatestComment != nil {
+		t.Fatalf("Latest Comment was not set to nil")
+	}
+}
+
+func TestUnmarshalNullRelationshipInSlice(t *testing.T) {
+	sample := map[string]interface{}{
+		"data": map[string]interface{}{
+			"type": "posts",
+			"id":   "1",
+			"attributes": map[string]interface{}{
+				"body":  "Hello",
+				"title": "World",
+			},
+			"relationships": map[string]interface{}{
+				"comments": map[string]interface{}{
+					"data": []interface{}{
+						nil, //set data to nil/null
+					},
+				},
+			},
+		},
+	}
+	data, err := json.Marshal(sample)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	in := bytes.NewReader(data)
+	out := new(Post)
+
+	if err := UnmarshalPayload(in, out); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(out.Comments) != 0 {
+		t.Fatalf("Wrong number of comments; Comments should be empty")
+	}
+}
+
 func TestUnmarshalNestedRelationships(t *testing.T) {
 	out, err := unmarshalSamplePayload()
 	if err != nil {
