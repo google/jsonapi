@@ -1,11 +1,11 @@
 # fastjsonapi
 
-[![Build Status](https://travis-ci.org/google/jsonapi.svg?branch=master)](https://travis-ci.org/google/jsonapi)
+[![Build Status](https://snap-ci.com/gofury/fastjsonapi/branch/master/build_image)](https://snap-ci.com/gofury/fastjsonapi/branch/master)
 
 A fasthttp fork of the Google serailizer/deserializer for json payloads that comply to the
 [JSON API - jsonapi.org](http://jsonapi.org) spec in go.
 
-Also visit, [Godoc](http://godoc.org/github.com/google/jsonapi).
+Also visit, [Godoc](http://godoc.org/github.com/gofury/fastjsonapi).
 
 ## Installation
 
@@ -74,7 +74,7 @@ all of your data easily.
 
 ## Example App
 
-[examples/app.go](https://github.com/google/jsonapi/blob/master/examples/app.go)
+[examples/app.go](https://github.com/gofury/fastjsonapi/blob/master/examples/app.go)
 
 This runnable file demonstrates the implementation of a create, a show,
 and a list [http.Handler](http://golang.org/pkg/net/http#Handler).  It
@@ -186,7 +186,7 @@ about the rest?
 ### Create Record Example
 
 You can Unmarshal a JSON API payload using
-[jsonapi.UnmarshalPayload](http://godoc.org/github.com/google/jsonapi#UnmarshalPayload).
+[jsonapi.UnmarshalPayload](http://godoc.org/github.com/gofury/fastjsonapi#UnmarshalPayload).
 It reads from an [io.Reader](https://golang.org/pkg/io/#Reader)
 containing a JSON API payload for one record (but can have related
 records).  Then, it materializes a struct that you created and passed in
@@ -195,7 +195,7 @@ the top level, in request payloads at the moment. Bulk creates and
 updates are not supported yet.
 
 After saving your record, you can use,
-[MarshalOnePayload](http://godoc.org/github.com/google/jsonapi#MarshalOnePayload),
+[MarshalOnePayload](http://godoc.org/github.com/gofury/fastjsonapi#MarshalOnePayload),
 to write the JSON API response to an
 [io.Writer](https://golang.org/pkg/io/#Writer).
 
@@ -205,7 +205,7 @@ to write the JSON API response to an
 UnmarshalPayload(in io.Reader, model interface{})
 ```
 
-Visit [godoc](http://godoc.org/github.com/google/jsonapi#UnmarshalPayload)
+Visit [godoc](http://godoc.org/github.com/gofury/fastjsonapi#UnmarshalPayload)
 
 #### `MarshalOnePayload`
 
@@ -213,7 +213,7 @@ Visit [godoc](http://godoc.org/github.com/google/jsonapi#UnmarshalPayload)
 MarshalOnePayload(w io.Writer, model interface{}) error
 ```
 
-Visit [godoc](http://godoc.org/github.com/google/jsonapi#MarshalOnePayload)
+Visit [godoc](http://godoc.org/github.com/gofury/fastjsonapi#MarshalOnePayload)
 
 Writes a JSON API response, with related records sideloaded, into an
 `included` array.  This method encodes a response for a single record
@@ -250,7 +250,7 @@ func CreateBlog(w http.ResponseWriter, r *http.Request) {
 MarshalManyPayload(w io.Writer, models []interface{}) error
 ```
 
-Visit [godoc](http://godoc.org/github.com/google/jsonapi#MarshalManyPayload)
+Visit [godoc](http://godoc.org/github.com/gofury/fastjsonapi#MarshalManyPayload)
 
 Takes an `io.Writer` and an slice of `interface{}`.  Note, if you have a
 type safe array of your structs, like,
@@ -306,7 +306,7 @@ func ListBlogs(w http.ResponseWriter, r *http.Request) {
 MarshalOnePayloadEmbedded(w io.Writer, model interface{}) error
 ```
 
-Visit [godoc](http://godoc.org/github.com/google/jsonapi#MarshalOnePayloadEmbedded)
+Visit [godoc](http://godoc.org/github.com/gofury/fastjsonapi#MarshalOnePayloadEmbedded)
 
 This method is not strictly meant to for use in implementation code,
 although feel free.  It was mainly created for use in tests; in most cases,
