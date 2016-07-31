@@ -1,8 +1,8 @@
-# jsonapi
+# fastjsonapi
 
 [![Build Status](https://travis-ci.org/google/jsonapi.svg?branch=master)](https://travis-ci.org/google/jsonapi)
 
-A serailizer/deserializer for json payloads that comply to the
+A fasthttp fork of the Google serailizer/deserializer for json payloads that comply to the
 [JSON API - jsonapi.org](http://jsonapi.org) spec in go.
 
 Also visit, [Godoc](http://godoc.org/github.com/google/jsonapi).
