@@ -1,15 +1,15 @@
-package jsonapi
+package fastjsonapi
 
 import (
 	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
+	"github.com/mailru/easyjson"
 )
 
 const (
@@ -63,10 +63,10 @@ var (
 // Visit https://github.com/google/jsonapi#create for more info.
 //
 // model interface{} should be a pointer to a struct.
-func UnmarshalPayload(in io.Reader, model interface{}) error {
+func UnmarshalPayload(data []byte, model interface{}) error {
 	payload := new(OnePayload)
 
-	if err := json.NewDecoder(in).Decode(payload); err != nil {
+	if err := easyjson.Unmarshal(data, payload); err != nil {
 		return err
 	}
 
@@ -82,10 +82,10 @@ func UnmarshalPayload(in io.Reader, model interface{}) error {
 	return unmarshalNode(payload.Data, reflect.ValueOf(model), nil)
 }
 
-func UnmarshalManyPayload(in io.Reader, t reflect.Type) ([]interface{}, error) {
+func UnmarshalManyPayload(data []byte, t reflect.Type) ([]interface{}, error) {
 	payload := new(ManyPayload)
 
-	if err := json.NewDecoder(in).Decode(payload); err != nil {
+	if err := easyjson.Unmarshal(data, payload); err != nil {
 		return nil, err
 	}
 

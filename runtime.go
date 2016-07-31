@@ -1,4 +1,4 @@
-package jsonapi
+package fastjsonapi
 
 import (
 	"crypto/rand"
@@ -45,15 +45,15 @@ func (r *Runtime) shouldInstrument() bool {
 	return Instrumentation != nil
 }
 
-func (r *Runtime) UnmarshalPayload(reader io.Reader, model interface{}) error {
+func (r *Runtime) UnmarshalPayload(data []byte, model interface{}) error {
 	return r.instrumentCall(UnmarshalStart, UnmarshalStop, func() error {
-		return UnmarshalPayload(reader, model)
+		return UnmarshalPayload(data, model)
 	})
 }
 
-func (r *Runtime) UnmarshalManyPayload(reader io.Reader, kind reflect.Type) (elems []interface{}, err error) {
+func (r *Runtime) UnmarshalManyPayload(data []byte, kind reflect.Type) (elems []interface{}, err error) {
 	r.instrumentCall(UnmarshalStart, UnmarshalStop, func() error {
-		elems, err = UnmarshalManyPayload(reader, kind)
+		elems, err = UnmarshalManyPayload(data, kind)
 		return err
 	})
 
