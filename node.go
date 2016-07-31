@@ -1,4 +1,4 @@
-package jsonapi
+package fastjsonapi
 
 //easyjson:json
 type OnePayload struct {

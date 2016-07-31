@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/google/jsonapi"
+	"github.com/gofury/fastjsonapi"
 )
 
 func createBlog(w http.ResponseWriter, r *http.Request) {

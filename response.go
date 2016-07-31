@@ -1,7 +1,6 @@
-package jsonapi
+package fastjsonapi
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -9,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"github.com/mailru/easyjson"
 )
 
 var (
@@ -29,7 +29,7 @@ func MarshalOnePayload(w io.Writer, model interface{}) error {
 		return err
 	}
 
-	if err := json.NewEncoder(w).Encode(payload); err != nil {
+	if _, err := easyjson.MarshalToWriter(payload, w); err != nil {
 		return err
 	}
 
@@ -49,7 +49,7 @@ func MarshalOnePayloadWithoutIncluded(w io.Writer, model interface{}) error {
 		return err
 	}
 
-	if err := json.NewEncoder(w).Encode(&OnePayload{Data: rootNode}); err != nil {
+	if _, err := easyjson.MarshalToWriter(&OnePayload{Data: rootNode}, w); err != nil {
 		return err
 	}
 
@@ -102,7 +102,7 @@ func MarshalManyPayload(w io.Writer, models []interface{}) error {
 		return err
 	}
 
-	if err := json.NewEncoder(w).Encode(payload); err != nil {
+	if _, err := easyjson.MarshalToWriter(payload, w); err != nil {
 		return err
 	}
 
@@ -158,7 +158,7 @@ func MarshalOnePayloadEmbedded(w io.Writer, model interface{}) error {
 
 	payload := &OnePayload{Data: rootNode}
 
-	if err := json.NewEncoder(w).Encode(payload); err != nil {
+	if _, err := easyjson.MarshalToWriter(payload, w); err != nil {
 		return err
 	}
 

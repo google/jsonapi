@@ -1,4 +1,4 @@
-package jsonapi
+package fastjsonapi
 
 import (
 	"bytes"
