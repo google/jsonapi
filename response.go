@@ -271,9 +271,16 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 				}
 			}
 		} else if annotation == "relation" {
+			var omitEmpty bool
+
+			//add support for 'omitempty' struct tag for marshaling as absent
+			if len(args) > 2 {
+				omitEmpty = args[2] == "omitempty"
+			}
+
 			isSlice := fieldValue.Type().Kind() == reflect.Slice
 
-			if (isSlice && fieldValue.Len() < 1) || (!isSlice && fieldValue.IsNil()) {
+			if omitEmpty && (isSlice && fieldValue.Len() < 1 || (!isSlice && fieldValue.IsNil())) {
 				continue
 			}
 
@@ -282,6 +289,12 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 			}
 
 			if isSlice {
+				//add support for null relationship
+				if fieldValue.IsNil() {
+					node.Relationships[args[1]] = &RelationshipManyNode{Data: nil}
+					continue
+				}
+
 				relationship, err := visitModelNodeRelationships(args[1], fieldValue, included, sideload)
 
 				if err == nil {
@@ -303,6 +316,12 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 					break
 				}
 			} else {
+				//add support for null relationship
+				if fieldValue.IsNil() {
+					node.Relationships[args[1]] = &RelationshipOneNode{Data: nil}
+					continue
+				}
+
 				relationship, err := visitModelNode(fieldValue.Interface(), included, sideload)
 				if err == nil {
 					if sideload {

@@ -46,6 +46,104 @@ type Book struct {
 	PublishedAt time.Time
 }
 
+func TestWithoutOmitsEmptyAnnotationOnRelation(t *testing.T) {
+	blog := &Blog{}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalOnePayload(out, blog); err != nil {
+		t.Fatal(err)
+	}
+
+	var jsonData map[string]interface{}
+	if err := json.Unmarshal(out.Bytes(), &jsonData); err != nil {
+		t.Fatal(err)
+	}
+	relationships := jsonData["data"].(map[string]interface{})["relationships"].(map[string]interface{})
+
+	// Verify the unset relationship were not omitted
+	if val, exists := relationships["posts"]; !exists {
+		t.Fatal("Was expecting the data.relationships.posts key/value to have NOT been omitted")
+	} else if val.(map[string]interface{})["data"] != nil {
+		t.Fatal("Was expecting the data.relationships.posts value to have been nil/null")
+	}
+
+	if val, exists := relationships["current_post"]; !exists {
+		t.Fatal("Was expecting the data.relationships.current_post key/value to have NOT been omitted")
+	} else if val.(map[string]interface{})["data"] != nil {
+		t.Fatal("Was expecting the data.relationships.current_post value to have been nil/null")
+	}
+
+}
+
+func TestWithOmitsEmptyAnnotationOnRelation(t *testing.T) {
+	type BlogOptionalPosts struct {
+		ID          int     `jsonapi:"primary,blogs"`
+		Title       string  `jsonapi:"attr,title"`
+		Posts       []*Post `jsonapi:"relation,posts,omitempty"`
+		CurrentPost *Post   `jsonapi:"relation,current_post,omitempty"`
+	}
+
+	blog := &BlogOptionalPosts{ID: 999}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalOnePayload(out, blog); err != nil {
+		t.Fatal(err)
+	}
+
+	var jsonData map[string]interface{}
+	if err := json.Unmarshal(out.Bytes(), &jsonData); err != nil {
+		t.Fatal(err)
+	}
+	payload := jsonData["data"].(map[string]interface{})
+
+	// Verify relationship was NOT set
+	if val, exists := payload["relationships"]; exists {
+		t.Fatalf("Was expecting the data.relationships key/value to have been empty - it was not and had a value of %v", val)
+	}
+}
+
+func TestWithOmitsEmptyAnnotationOnRelation_MixedData(t *testing.T) {
+	type BlogOptionalPosts struct {
+		ID          int     `jsonapi:"primary,blogs"`
+		Title       string  `jsonapi:"attr,title"`
+		Posts       []*Post `jsonapi:"relation,posts,omitempty"`
+		CurrentPost *Post   `jsonapi:"relation,current_post,omitempty"`
+	}
+
+	blog := &BlogOptionalPosts{
+		ID: 999,
+		CurrentPost: &Post{
+			ID: 123,
+		},
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalOnePayload(out, blog); err != nil {
+		t.Fatal(err)
+	}
+
+	var jsonData map[string]interface{}
+	if err := json.Unmarshal(out.Bytes(), &jsonData); err != nil {
+		t.Fatal(err)
+	}
+	payload := jsonData["data"].(map[string]interface{})
+
+	// Verify relationship was set
+	if _, exists := payload["relationships"]; !exists {
+		t.Fatal("Was expecting the data.relationships key/value to have NOT been empty")
+	}
+
+	relationships := payload["relationships"].(map[string]interface{})
+
+	// Verify the relationship was not omitted, and is not null
+	if val, exists := relationships["current_post"]; !exists {
+		t.Fatal("Was expecting the data.relationships.current_post key/value to have NOT been omitted")
+	} else if val.(map[string]interface{})["data"] == nil {
+		t.Fatal("Was expecting the data.relationships.current_post value to have NOT been nil/null")
+	}
+
+}
+
 func TestOmitsEmptyAnnotation(t *testing.T) {
 	book := &Book{
 		Author:      "aren55555",
