@@ -72,7 +72,6 @@ func TestWithoutOmitsEmptyAnnotationOnRelation(t *testing.T) {
 	} else if val.(map[string]interface{})["data"] != nil {
 		t.Fatal("Was expecting the data.relationships.current_post value to have been nil/null")
 	}
-
 }
 
 func TestWithOmitsEmptyAnnotationOnRelation(t *testing.T) {
@@ -141,7 +140,6 @@ func TestWithOmitsEmptyAnnotationOnRelation_MixedData(t *testing.T) {
 	} else if val.(map[string]interface{})["data"] == nil {
 		t.Fatal("Was expecting the data.relationships.current_post value to have NOT been nil/null")
 	}
-
 }
 
 func TestOmitsEmptyAnnotation(t *testing.T) {
