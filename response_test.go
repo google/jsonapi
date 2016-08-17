@@ -47,6 +47,12 @@ type Book struct {
 	PublishedAt time.Time
 }
 
+type Timestamp struct {
+	ID   int        `jsonapi:"primary,timestamps"`
+	Time time.Time  `jsonapi:"attr,timestamp,iso8601"`
+	Next *time.Time `jsonapi:"attr,next,iso8601"`
+}
+
 func TestOmitsEmptyAnnotation(t *testing.T) {
 	book := &Book{
 		Author:      "aren55555",
@@ -165,6 +171,61 @@ func TestOmitsZeroTimes(t *testing.T) {
 
 	if data.Attributes["created_at"] != nil {
 		t.Fatalf("Created at was serialized even though it was a zero Time")
+	}
+}
+
+func TestMarshalISO8601Time(t *testing.T) {
+	testModel := &Timestamp{
+		ID:   5,
+		Time: time.Date(2016, 8, 17, 8, 27, 12, 23849, time.UTC),
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalOnePayload(out, testModel); err != nil {
+		t.Fatal(err)
+	}
+
+	resp := new(OnePayload)
+	if err := json.NewDecoder(out).Decode(resp); err != nil {
+		t.Fatal(err)
+	}
+
+	data := resp.Data
+
+	if data.Attributes == nil {
+		t.Fatalf("Expected attributes")
+	}
+
+	if data.Attributes["timestamp"] != "2016-08-17T08:27:12Z" {
+		t.Fatal("Timestamp was not serialised into ISO8601 correctly")
+	}
+}
+
+func TestMarshalISO8601TimePointer(t *testing.T) {
+	tm := time.Date(2016, 8, 17, 8, 27, 12, 23849, time.UTC)
+	testModel := &Timestamp{
+		ID:   5,
+		Next: &tm,
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalOnePayload(out, testModel); err != nil {
+		t.Fatal(err)
+	}
+
+	resp := new(OnePayload)
+	if err := json.NewDecoder(out).Decode(resp); err != nil {
+		t.Fatal(err)
+	}
+
+	data := resp.Data
+
+	if data.Attributes == nil {
+		t.Fatalf("Expected attributes")
+	}
+
+	if data.Attributes["next"] != "2016-08-17T08:27:12Z" {
+		t.Fatal("Next was not serialised into ISO8601 correctly")
 	}
 }
 
