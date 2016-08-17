@@ -45,11 +45,16 @@ value arguments are comma separated.  The first argument must be, "primary", and
 the second must be the name that should appear in the "type" field for all data
 objects that represent this type of model.
 
-Value, attr: "attr,<key name in attributes hash>"
+Value, attr: "attr,<key name in attributes hash>[,<extra arguments>]"
 
 These fields' values should end up in the "attribute" hash for a record.  The first
 argument must be, "attr', and the second should be the name for the key to display in
 the the "attributes" hash for that record.
+
+The following extra arguments are also supported:
+
+"omitempty": excludes the fields value from the "attribute" hash.
+"iso8601": uses the ISO8601 timestamp format when serialising or deserialising the time.Time value.
 
 Value, relation: "relation,<key name in relationships hash>"
 
