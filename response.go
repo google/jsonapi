@@ -248,14 +248,22 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 					node.Attributes[args[1]] = tm.Unix()
 				}
 			} else {
-				strAttr, ok := fieldValue.Interface().(string)
+				if fieldValue.Kind() == reflect.Ptr && fieldValue.IsNil() {
+					if omitEmpty {
+						continue
+					}
 
-				if ok && strAttr == "" && omitEmpty {
-					continue
-				} else if ok {
-					node.Attributes[args[1]] = strAttr
+					node.Attributes[args[1]] = nil
 				} else {
-					node.Attributes[args[1]] = fieldValue.Interface()
+					strAttr, ok := fieldValue.Interface().(string)
+
+					if ok && strAttr == "" && omitEmpty {
+						continue
+					} else if ok {
+						node.Attributes[args[1]] = strAttr
+					} else {
+						node.Attributes[args[1]] = fieldValue.Interface()
+					}
 				}
 			}
 		} else if annotation == "relation" {

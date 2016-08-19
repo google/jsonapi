@@ -35,6 +35,7 @@ type Comment struct {
 	ClientId string `jsonapi:"client-id"`
 	PostId   int    `jsonapi:"attr,post_id"`
 	Body     string `jsonapi:"attr,body"`
+	Reviewed *bool  `jsonapi:"attr,reviewed,omitempty"`
 }
 
 func TestHasPrimaryAnnotation(t *testing.T) {
@@ -364,5 +365,30 @@ func TestGoodLinks(t *testing.T) {
 	}
 	if link != "link_1" {
 		t.Fatalf("Link value is not correct: %s", link)
+	}
+}
+
+func TestNilPointerOmitEmpty(t *testing.T) {
+	c := Comment{Id: 42, PostId: 69, Body: "body"}
+	data, err := MarshalOne(&c)
+	if err != nil {
+		t.Fatalf("Error marshaling: %+v", err)
+	}
+
+	_, ok := data.Data.Attributes["reviewed"]
+	if ok {
+		t.Fatal("Expected to NOT find a reviewed property")
+	}
+
+	b := false
+	c.Reviewed = &b
+	data, err = MarshalOne(&c)
+	if err != nil {
+		t.Fatalf("Error marshaling: %+v", err)
+	}
+
+	_, ok = data.Data.Attributes["reviewed"]
+	if !ok {
+		t.Fatalf("Expected to find a reviewed property on %+v", c)
 	}
 }
