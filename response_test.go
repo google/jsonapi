@@ -3,6 +3,7 @@ package jsonapi
 import (
 	"bytes"
 	"encoding/json"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -317,6 +318,78 @@ func TestMarshalMany(t *testing.T) {
 
 	if len(d) != 2 {
 		t.Fatalf("data should have two elements")
+	}
+}
+
+func TestMarshalMany_WithSliceOfStructPointers(t *testing.T) {
+	var data []*Blog
+	for len(data) < 2 {
+		data = append(data, testBlog())
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalManyPayload(out, data); err != nil {
+		t.Fatal(err)
+	}
+
+	resp := new(ManyPayload)
+	if err := json.NewDecoder(out).Decode(resp); err != nil {
+		t.Fatal(err)
+	}
+
+	d := resp.Data
+
+	if len(d) != 2 {
+		t.Fatalf("data should have two elements")
+	}
+}
+
+func TestMarshalMany_SliceOfInterfaceAndSliceOfStructsSameJSON(t *testing.T) {
+	structs := []*Book{
+		&Book{ID: 1, Author: "aren55555", ISBN: "abc"},
+		&Book{ID: 2, Author: "shwoodard", ISBN: "xyz"},
+	}
+	interfaces := []interface{}{}
+	for _, s := range structs {
+		interfaces = append(interfaces, s)
+	}
+
+	// Perform Marshals
+	structsOut := new(bytes.Buffer)
+	if err := MarshalManyPayload(structsOut, structs); err != nil {
+		t.Fatal(err)
+	}
+	interfacesOut := new(bytes.Buffer)
+	if err := MarshalManyPayload(interfacesOut, interfaces); err != nil {
+		t.Fatal(err)
+	}
+
+	// Generic JSON Unmarshal
+	structsData, interfacesData :=
+		make(map[string]interface{}), make(map[string]interface{})
+	if err := json.Unmarshal(structsOut.Bytes(), &structsData); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(interfacesOut.Bytes(), &interfacesData); err != nil {
+		t.Fatal(err)
+	}
+
+	// Compare Result
+	if !reflect.DeepEqual(structsData, interfacesData) {
+		t.Fatal("Was expecting the JSON API generated to be the same")
+	}
+}
+
+func TestMarshalMany_InvalidIntefaceArgument(t *testing.T) {
+	out := new(bytes.Buffer)
+	if err := MarshalManyPayload(out, true); err != ErrExpectedSlice {
+		t.Fatal("Was expecting an error")
+	}
+	if err := MarshalManyPayload(out, 25); err != ErrExpectedSlice {
+		t.Fatal("Was expecting an error")
+	}
+	if err := MarshalManyPayload(out, Book{}); err != ErrExpectedSlice {
+		t.Fatal("Was expecting an error")
 	}
 }
 
