@@ -310,7 +310,7 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 				if iso8601 {
 					node.Attributes[args[1]] = t.UTC().Format(iso8601TimeFormat)
 				} else {
-					node.Attributes[args[1]] = t.Unix()
+					node.Attributes[args[1]] = t
 				}
 			} else if fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
 				// A time pointer may be nil
@@ -330,7 +330,7 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 					if iso8601 {
 						node.Attributes[args[1]] = tm.UTC().Format(iso8601TimeFormat)
 					} else {
-						node.Attributes[args[1]] = tm.Unix()
+						node.Attributes[args[1]] = tm
 					}
 				}
 			} else {
