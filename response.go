@@ -17,7 +17,8 @@ var (
 	ErrBadJSONAPIStructTag = errors.New("Bad jsonapi struct tag format")
 	// ErrBadJSONAPIID is returned when the Struct JSON API annotated "id" field
 	// was not a valid numeric type.
-	ErrBadJSONAPIID = errors.New("id should be either string, int or uint")
+	ErrBadJSONAPIID = errors.New(
+		"id should be either string, int(8,16,32,64) or uint(8,16,32,64)")
 	// ErrExpectedSlice is returned when a variable or arugment was expected to
 	// be a slice of *Structs; MarshalMany will return this error when its
 	// interface{} argument is invalid.
@@ -187,6 +188,7 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 	var er error
 
 	modelValue := reflect.ValueOf(model).Elem()
+	modelType := reflect.ValueOf(model).Type().Elem()
 
 	for i := 0; i < modelValue.NumField(); i++ {
 		structField := modelValue.Type().Field(i)
@@ -196,6 +198,7 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 		}
 
 		fieldValue := modelValue.Field(i)
+		fieldType := modelType.Field(i)
 
 		args := strings.Split(tag, ",")
 
@@ -213,18 +216,44 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 		}
 
 		if annotation == "primary" {
-			id := fieldValue.Interface()
+			v := fieldValue
 
-			switch nID := id.(type) {
-			case string:
-				node.ID = nID
-			case int:
-				node.ID = strconv.Itoa(nID)
-			case int64:
-				node.ID = strconv.FormatInt(nID, 10)
-			case uint64:
-				node.ID = strconv.FormatUint(nID, 10)
+			// Deal with PTRS
+			var kind reflect.Kind
+			if fieldValue.Kind() == reflect.Ptr {
+				kind = fieldType.Type.Elem().Kind()
+				v = reflect.Indirect(fieldValue)
+			} else {
+				kind = fieldType.Type.Kind()
+			}
+
+			// Handle allowed types
+			switch kind {
+			case reflect.String:
+				node.ID = v.Interface().(string)
+			case reflect.Int:
+				node.ID = strconv.FormatInt(int64(v.Interface().(int)), 10)
+			case reflect.Int8:
+				node.ID = strconv.FormatInt(int64(v.Interface().(int8)), 10)
+			case reflect.Int16:
+				node.ID = strconv.FormatInt(int64(v.Interface().(int16)), 10)
+			case reflect.Int32:
+				node.ID = strconv.FormatInt(int64(v.Interface().(int32)), 10)
+			case reflect.Int64:
+				node.ID = strconv.FormatInt(v.Interface().(int64), 10)
+			case reflect.Uint:
+				node.ID = strconv.FormatUint(uint64(v.Interface().(uint)), 10)
+			case reflect.Uint8:
+				node.ID = strconv.FormatUint(uint64(v.Interface().(uint8)), 10)
+			case reflect.Uint16:
+				node.ID = strconv.FormatUint(uint64(v.Interface().(uint16)), 10)
+			case reflect.Uint32:
+				node.ID = strconv.FormatUint(uint64(v.Interface().(uint32)), 10)
+			case reflect.Uint64:
+				node.ID = strconv.FormatUint(v.Interface().(uint64), 10)
 			default:
+				// We had a JSON float (numeric), but our field was not one of the
+				// allowed numeric types
 				er = ErrBadJSONAPIID
 				break
 			}

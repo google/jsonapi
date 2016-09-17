@@ -14,7 +14,7 @@ type BadModel struct {
 }
 
 type WithPointer struct {
-	ID       string   `jsonapi:"primary,with-pointers"`
+	ID       uint64   `jsonapi:"primary,with-pointers"`
 	Name     *string  `jsonapi:"attr,name"`
 	IsActive *bool    `jsonapi:"attr,is-active"`
 	IntVal   *int     `jsonapi:"attr,int-val"`
@@ -133,6 +133,22 @@ func TestUnmarshalSetsID(t *testing.T) {
 	}
 }
 
+func TestUnmarshal_nonNumericID(t *testing.T) {
+	data := samplePayloadWithoutIncluded()
+	data["data"].(map[string]interface{})["id"] = "non-numeric-id"
+	payload, _ := payload(data)
+	in := bytes.NewReader(payload)
+	out := new(Post)
+
+	if err := UnmarshalPayload(in, out); err != ErrBadJSONAPIID {
+		t.Fatalf(
+			"Was expecting a `%s` error, got `%s`",
+			ErrBadJSONAPIID,
+			err,
+		)
+	}
+}
+
 func TestUnmarshalSetsAttrs(t *testing.T) {
 	out, err := unmarshalSamplePayload()
 	if err != nil {
@@ -149,7 +165,7 @@ func TestUnmarshalSetsAttrs(t *testing.T) {
 }
 
 func TestUnmarshalRelationshipsWithoutIncluded(t *testing.T) {
-	data, _ := samplePayloadWithoutIncluded()
+	data, _ := payload(samplePayloadWithoutIncluded())
 	in := bytes.NewReader(data)
 	out := new(Post)
 
@@ -321,8 +337,8 @@ func unmarshalSamplePayload() (*Blog, error) {
 	return out, nil
 }
 
-func samplePayloadWithoutIncluded() (result []byte, err error) {
-	data := map[string]interface{}{
+func samplePayloadWithoutIncluded() map[string]interface{} {
+	return map[string]interface{}{
 		"data": map[string]interface{}{
 			"type": "posts",
 			"id":   "1",
@@ -352,7 +368,9 @@ func samplePayloadWithoutIncluded() (result []byte, err error) {
 			},
 		},
 	}
+}
 
+func payload(data map[string]interface{}) (result []byte, err error) {
 	result, err = json.Marshal(data)
 	return
 }

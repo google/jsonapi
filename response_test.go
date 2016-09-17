@@ -21,7 +21,7 @@ type Blog struct {
 
 type Post struct {
 	Blog
-	ID            int        `jsonapi:"primary,posts"`
+	ID            uint64     `jsonapi:"primary,posts"`
 	BlogID        int        `jsonapi:"attr,blog_id"`
 	ClientID      string     `jsonapi:"client-id"`
 	Title         string     `jsonapi:"attr,title"`
@@ -38,13 +38,65 @@ type Comment struct {
 }
 
 type Book struct {
-	ID          int     `jsonapi:"primary,books"`
+	ID          uint64  `jsonapi:"primary,books"`
 	Author      string  `jsonapi:"attr,author"`
 	ISBN        string  `jsonapi:"attr,isbn"`
 	Title       string  `jsonapi:"attr,title,omitempty"`
 	Description *string `jsonapi:"attr,description"`
 	Pages       *uint   `jsonapi:"attr,pages,omitempty"`
 	PublishedAt time.Time
+}
+
+type Car struct {
+	ID    *string `jsonapi:"primary,cars"`
+	Make  *string `jsonapi:"attr,make,omitempty"`
+	Model *string `jsonapi:"attr,model,omitempty"`
+	Year  *uint   `jsonapi:"attr,year,omitempty"`
+}
+
+func TestMarshalIDPtr(t *testing.T) {
+	id, make, model := "123e4567-e89b-12d3-a456-426655440000", "Ford", "Mustang"
+	car := &Car{
+		ID:    &id,
+		Make:  &make,
+		Model: &model,
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalOnePayload(out, car); err != nil {
+		t.Fatal(err)
+	}
+
+	var jsonData map[string]interface{}
+	if err := json.Unmarshal(out.Bytes(), &jsonData); err != nil {
+		t.Fatal(err)
+	}
+	data := jsonData["data"].(map[string]interface{})
+	// attributes := data["attributes"].(map[string]interface{})
+
+	// Verify that the ID was sent
+	val, exists := data["id"]
+	if !exists {
+		t.Fatal("Was expecting the data.id member to exist")
+	}
+	if val != id {
+		t.Fatalf("Was expecting the data.id member to be `%s`, got `%s`", id, val)
+	}
+}
+
+func TestMarshall_invalidIDType(t *testing.T) {
+	type badIDStruct struct {
+		ID *bool `jsonapi:"primary,cars"`
+	}
+	id := true
+	o := &badIDStruct{ID: &id}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalOnePayload(out, o); err != ErrBadJSONAPIID {
+		t.Fatalf(
+			"Was expecting a `%s` error, got `%s`", ErrBadJSONAPIID, err,
+		)
+	}
 }
 
 func TestOmitsEmptyAnnotation(t *testing.T) {
