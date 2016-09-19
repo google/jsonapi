@@ -124,10 +124,56 @@ func MarshalManyPayload(w io.Writer, models interface{}) error {
 	return nil
 }
 
+// MarshalManyPayload writes a jsonapi response with many records, with related
+// records sideloaded, into "included" array. This method encodes a response for
+// a slice of records, hence data will be an array of records rather than a
+// single record.  To serialize a single record, see MarshalOnePayload
+//
+// For example you could pass it, w, your http.ResponseWriter, and, models, a
+// slice of Blog struct instance pointers as interface{}'s to write to the
+// response,
+//
+//	 func ListBlogs(w http.ResponseWriter, r *http.Request) {
+//		 // ... fetch your blogs and filter, offset, limit, etc ...
+//
+//		 blogs := testBlogsForList()
+//
+//		 w.WriteHeader(200)
+//		 w.Header().Set("Content-Type", "application/vnd.api+json")
+//		 if err := jsonapi.MarshalManyPayload(w, blogs); err != nil {
+//			 http.Error(w, err.Error(), 500)
+//		 }
+//	 }
+//
+//
+// Visit https://github.com/google/jsonapi#list for more info.
+//
+// models interface{} should be a slice of struct pointers.
+func MarshalManyPayloadWithMeta(w io.Writer, models interface{}, meta interface{}) error {
+	m, err := convertToSliceInterface(&models)
+	if err != nil {
+		return err
+	}
+	payload, err := marshalMany(m, meta)
+	if err != nil {
+		return err
+	}
+
+	if err := json.NewEncoder(w).Encode(payload); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // MarshalMany does the same as MarshalManyPayload except it just returns the
 // payload and doesn't write out results. Useful is you use your JSON rendering
 // library.
 func MarshalMany(models []interface{}) (*ManyPayload, error) {
+	return marshalMany(models, nil)
+}
+
+func marshalMany(models []interface{}, meta interface{}) (*ManyPayload, error) {
 	var data []*Node
 	included := make(map[string]*Node)
 
@@ -148,6 +194,14 @@ func MarshalMany(models []interface{}) (*ManyPayload, error) {
 	payload := &ManyPayload{
 		Data:     data,
 		Included: nodeMapValues(&included),
+	}
+
+	if meta != nil {
+		node, err := visitMetaNode(meta)
+		if err != nil {
+			return nil, err
+		}
+		payload.Meta = node
 	}
 
 	return payload, nil
@@ -179,6 +233,90 @@ func MarshalOnePayloadEmbedded(w io.Writer, model interface{}) error {
 	}
 
 	return nil
+}
+
+func visitMetaNode(meta interface{}) (*map[string]interface{}, error) {
+	node := make(map[string]interface{})
+
+	var er error
+
+	metaValue := reflect.ValueOf(meta).Elem()
+
+	for i := 0; i < metaValue.NumField(); i++ {
+		structField := metaValue.Type().Field(i)
+		tag := structField.Tag.Get("jsonapi")
+		if tag == "" {
+			continue
+		}
+
+		fieldValue := metaValue.Field(i)
+
+		args := strings.Split(tag, ",")
+
+		if len(args) < 1 || len(args) > 2 {
+			er = ErrBadJSONAPIStructTag
+			break
+		}
+
+		var omitEmpty bool
+
+		if len(args) == 2 {
+			omitEmpty = args[1] == "omitempty"
+			if !omitEmpty {
+				er = ErrBadJSONAPIStructTag
+				break
+			}
+		}
+
+		if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
+			t := fieldValue.Interface().(time.Time)
+
+			if t.IsZero() {
+				continue
+			}
+
+			node[args[0]] = t.Unix()
+
+		} else if fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
+			// A time pointer may be nil
+			if fieldValue.IsNil() {
+				if omitEmpty {
+					continue
+				}
+
+				node[args[0]] = nil
+			} else {
+				tm := fieldValue.Interface().(*time.Time)
+
+				if tm.IsZero() && omitEmpty {
+					continue
+				}
+
+				node[args[0]] = tm.Unix()
+			}
+		} else {
+			// Dealing with a fieldValue that is not a time
+			emptyValue := reflect.Zero(fieldValue.Type())
+
+			// See if we need to omit this field
+			if omitEmpty && fieldValue.Interface() == emptyValue.Interface() {
+				continue
+			}
+
+			strAttr, ok := fieldValue.Interface().(string)
+			if ok {
+				node[args[0]] = strAttr
+			} else {
+				node[args[0]] = fieldValue.Interface()
+			}
+		}
+	}
+
+	if er != nil {
+		return nil, er
+	}
+
+	return &node, nil
 }
 
 func visitModelNode(model interface{}, included *map[string]*Node, sideload bool) (*Node, error) {

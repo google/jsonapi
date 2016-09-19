@@ -321,6 +321,82 @@ func TestMarshalMany(t *testing.T) {
 	}
 }
 
+func TestMarshalMany_WithMeta(t *testing.T) {
+	type Meta struct {
+		TotalPages int `jsonapi:"total_pages"`
+	}
+	meta := &Meta{
+		TotalPages: 10,
+	}
+
+	data := []interface{}{
+		&Blog{
+			ID:        5,
+			Title:     "Title 1",
+			CreatedAt: time.Now(),
+			Posts: []*Post{
+				&Post{
+					ID:    1,
+					Title: "Foo",
+					Body:  "Bar",
+				},
+				&Post{
+					ID:    2,
+					Title: "Fuubar",
+					Body:  "Bas",
+				},
+			},
+			CurrentPost: &Post{
+				ID:    1,
+				Title: "Foo",
+				Body:  "Bar",
+			},
+		},
+		&Blog{
+			ID:        6,
+			Title:     "Title 2",
+			CreatedAt: time.Now(),
+			Posts: []*Post{
+				&Post{
+					ID:    3,
+					Title: "Foo",
+					Body:  "Bar",
+				},
+				&Post{
+					ID:    4,
+					Title: "Fuubar",
+					Body:  "Bas",
+				},
+			},
+			CurrentPost: &Post{
+				ID:    4,
+				Title: "Foo",
+				Body:  "Bar",
+			},
+		},
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalManyPayloadWithMeta(out, data, meta); err != nil {
+		t.Fatal(err)
+	}
+
+	resp := new(ManyPayload)
+	if err := json.NewDecoder(out).Decode(resp); err != nil {
+		t.Fatal(err)
+	}
+
+	d := resp.Data
+
+	if len(d) != 2 {
+		t.Fatalf("data should have two elements")
+	}
+
+	if (*resp.Meta)["total_pages"].(float64) != 10 {
+		t.Fatalf("meta should be present")
+	}
+}
+
 func TestMarshalMany_WithSliceOfStructPointers(t *testing.T) {
 	var data []*Blog
 	for len(data) < 2 {

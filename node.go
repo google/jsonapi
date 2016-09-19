@@ -13,9 +13,10 @@ type OnePayload struct {
 // ManyPayload is used to represent a generic JSON API payload where many
 // resources (Nodes) were included in an [] in the "data" key
 type ManyPayload struct {
-	Data     []*Node            `json:"data"`
-	Included []*Node            `json:"included,omitempty"`
-	Links    *map[string]string `json:"links,omitempty"`
+	Data     []*Node                 `json:"data"`
+	Included []*Node                 `json:"included,omitempty"`
+	Links    *map[string]string      `json:"links,omitempty"`
+	Meta     *map[string]interface{} `json:"meta,omitempty"`
 }
 
 // Node is used to represent a generic JSON API Resource
