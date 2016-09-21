@@ -45,6 +45,27 @@ func MarshalOnePayload(w io.Writer, model interface{}) error {
 	return nil
 }
 
+// MarshalOnePayloadWithMeta writes a jsonapi response with one, with related records
+// sideloaded, into "included" array. This method encodes a response for a
+// single record only. Hence, data will be a single record rather than an array
+// of records.  If you want to serialize many records, see, MarshalManyPayload.
+//
+// See UnmarshalPayload for usage example.
+//
+// model interface{} should be a pointer to a struct.
+func MarshalOnePayloadWithMeta(w io.Writer, model interface{}, meta interface{}) error {
+	payload, err := marshalOne(model, meta)
+	if err != nil {
+		return err
+	}
+
+	if err := json.NewEncoder(w).Encode(payload); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // MarshalOnePayloadWithoutIncluded writes a jsonapi response with one object,
 // without the related records sideloaded into "included" array. If you want to
 // serialzie the realtions into the "included" array see MarshalOnePayload.
@@ -69,6 +90,10 @@ func MarshalOnePayloadWithoutIncluded(w io.Writer, model interface{}) error {
 // payload and doesn't write out results. Useful is you use your JSON rendering
 // library.
 func MarshalOne(model interface{}) (*OnePayload, error) {
+	return marshalOne(model, nil)
+}
+
+func marshalOne(model interface{}, meta interface{}) (*OnePayload, error) {
 	included := make(map[string]*Node)
 
 	rootNode, err := visitModelNode(model, &included, true)
@@ -78,6 +103,14 @@ func MarshalOne(model interface{}) (*OnePayload, error) {
 	payload := &OnePayload{Data: rootNode}
 
 	payload.Included = nodeMapValues(&included)
+
+	if meta != nil {
+		node, err := visitMetaNode(meta)
+		if err != nil {
+			return nil, err
+		}
+		payload.Meta = node
+	}
 
 	return payload, nil
 }

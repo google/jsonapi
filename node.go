@@ -5,9 +5,10 @@ const clientIDAnnotation = "client-id"
 // OnePayload is used to represent a generic JSON API payload where a single
 // resource (Node) was included as an {} in the "data" key
 type OnePayload struct {
-	Data     *Node              `json:"data"`
-	Included []*Node            `json:"included,omitempty"`
-	Links    *map[string]string `json:"links,omitempty"`
+	Data     *Node                   `json:"data"`
+	Included []*Node                 `json:"included,omitempty"`
+	Links    *map[string]string      `json:"links,omitempty"`
+	Meta     *map[string]interface{} `json:"meta,omitempty"`
 }
 
 // ManyPayload is used to represent a generic JSON API payload where many
