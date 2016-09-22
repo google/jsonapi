@@ -173,9 +173,8 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				break
 			}
 
-			// ID will have to be string per the JSON API spec
+			// ID will have to be transmitted as astring per the JSON API spec
 			v := reflect.ValueOf(data.ID)
-			var idValue reflect.Value
 
 			// Deal with PTRS
 			var kind reflect.Kind
@@ -185,71 +184,63 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				kind = fieldType.Type.Kind()
 			}
 
-			var idErr error
-			switch kind {
-			case reflect.String:
-				idValue = v
-			default:
-				// Attempt to Handle ID struct fields that were not strings
-				floatValue, err := strconv.ParseFloat(data.ID, 64)
-				if err != nil {
-					// Could not convert the value in the "id" attr to a float
-					idErr = ErrBadJSONAPIID
-					break
-				}
-
-				// Convert the float into our allowed numerics
-				switch kind {
-				case reflect.Int:
-					n := int(floatValue)
-					idValue = reflect.ValueOf(&n)
-				case reflect.Int8:
-					n := int8(floatValue)
-					idValue = reflect.ValueOf(&n)
-				case reflect.Int16:
-					n := int16(floatValue)
-					idValue = reflect.ValueOf(&n)
-				case reflect.Int32:
-					n := int32(floatValue)
-					idValue = reflect.ValueOf(&n)
-				case reflect.Int64:
-					n := int64(floatValue)
-					idValue = reflect.ValueOf(&n)
-				case reflect.Uint:
-					n := uint(floatValue)
-					idValue = reflect.ValueOf(&n)
-				case reflect.Uint8:
-					n := uint8(floatValue)
-					idValue = reflect.ValueOf(&n)
-				case reflect.Uint16:
-					n := uint16(floatValue)
-					idValue = reflect.ValueOf(&n)
-				case reflect.Uint32:
-					n := uint32(floatValue)
-					idValue = reflect.ValueOf(&n)
-				case reflect.Uint64:
-					n := uint64(floatValue)
-					idValue = reflect.ValueOf(&n)
-				default:
-					// We had a JSON float (numeric), but our field was not one of the
-					// allowed numeric types
-					idErr = ErrBadJSONAPIID
-					break
-				}
+			// Handle String case
+			if kind == reflect.String {
+				assign(fieldValue, v)
+				continue
 			}
 
-			// Check if we had an issue with the ID
-			if idErr != nil {
-				er = idErr
+			// Value was not a string... only other supported type was a numeric,
+			// which would have been sent as a float value.
+			floatValue, err := strconv.ParseFloat(data.ID, 64)
+			if err != nil {
+				// Could not convert the value in the "id" attr to a float
+				er = ErrBadJSONAPIID
 				break
 			}
 
-			// Assign the Value
-			if fieldValue.Kind() == reflect.Ptr {
-				fieldValue.Set(idValue)
-			} else {
-				fieldValue.Set(reflect.Indirect(idValue))
+			// Convert the numeric float to one of the supported ID numeric types
+			// (int[8,16,32,64] or uint[8,16,32,64])
+			var idValue reflect.Value
+			switch kind {
+			case reflect.Int:
+				n := int(floatValue)
+				idValue = reflect.ValueOf(&n)
+			case reflect.Int8:
+				n := int8(floatValue)
+				idValue = reflect.ValueOf(&n)
+			case reflect.Int16:
+				n := int16(floatValue)
+				idValue = reflect.ValueOf(&n)
+			case reflect.Int32:
+				n := int32(floatValue)
+				idValue = reflect.ValueOf(&n)
+			case reflect.Int64:
+				n := int64(floatValue)
+				idValue = reflect.ValueOf(&n)
+			case reflect.Uint:
+				n := uint(floatValue)
+				idValue = reflect.ValueOf(&n)
+			case reflect.Uint8:
+				n := uint8(floatValue)
+				idValue = reflect.ValueOf(&n)
+			case reflect.Uint16:
+				n := uint16(floatValue)
+				idValue = reflect.ValueOf(&n)
+			case reflect.Uint32:
+				n := uint32(floatValue)
+				idValue = reflect.ValueOf(&n)
+			case reflect.Uint64:
+				n := uint64(floatValue)
+				idValue = reflect.ValueOf(&n)
+			default:
+				// We had a JSON float (numeric), but our field was not one of the
+				// allowed numeric types
+				er = ErrBadJSONAPIID
+				break
 			}
+
+			assign(fieldValue, idValue)
 		} else if annotation == clientIDAnnotation {
 			if data.ClientID == "" {
 				continue
@@ -381,12 +372,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 					break
 				}
 
-				if fieldValue.Kind() == reflect.Ptr {
-					fieldValue.Set(numericValue)
-				} else {
-					fieldValue.Set(reflect.Indirect(numericValue))
-				}
-
+				assign(fieldValue, numericValue)
 				continue
 			}
 
@@ -501,4 +487,14 @@ func fullNode(n *Node, included *map[string]*Node) *Node {
 	}
 
 	return n
+}
+
+// assign will take the value specified and assign it to the field; if
+// field is expecting a ptr assign will assign a ptr.
+func assign(field, value reflect.Value) {
+	if field.Kind() == reflect.Ptr {
+		field.Set(value)
+	} else {
+		field.Set(reflect.Indirect(value))
+	}
 }
