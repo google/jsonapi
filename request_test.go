@@ -14,7 +14,7 @@ type BadModel struct {
 }
 
 type WithPointer struct {
-	ID       string   `jsonapi:"primary,with-pointers"`
+	ID       *uint64  `jsonapi:"primary,with-pointers"`
 	Name     *string  `jsonapi:"attr,name"`
 	IsActive *bool    `jsonapi:"attr,is-active"`
 	IntVal   *int     `jsonapi:"attr,int-val"`
@@ -46,7 +46,36 @@ func TestUnmarshalToStructWithPointerAttr(t *testing.T) {
 	}
 }
 
-func TestUnmarshalToStructWithPointerAttr_AbsentVal(t *testing.T) {
+func TestUnmarshalPayload_ptrsAllNil(t *testing.T) {
+	out := new(WithPointer)
+	if err := UnmarshalPayload(
+		strings.NewReader(`{"data": {}}`), out); err != nil {
+		t.Fatalf("Error unmarshalling to Foo")
+	}
+
+	if out.ID != nil {
+		t.Fatalf("Error unmarshalling; expected ID ptr to be nil")
+	}
+}
+
+func TestUnmarshalPayloadWithPointerID(t *testing.T) {
+	out := new(WithPointer)
+	attrs := map[string]interface{}{}
+
+	if err := UnmarshalPayload(sampleWithPointerPayload(attrs), out); err != nil {
+		t.Fatalf("Error unmarshalling to Foo")
+	}
+
+	// these were present in the payload -- expect val to be not nil
+	if out.ID == nil {
+		t.Fatalf("Error unmarshalling; expected ID ptr to be not nil")
+	}
+	if e, a := uint64(2), *out.ID; e != a {
+		t.Fatalf("Was expecting the ID to have a value of %d, got %d", e, a)
+	}
+}
+
+func TestUnmarshalPayloadWithPointerAttr_AbsentVal(t *testing.T) {
 	out := new(WithPointer)
 	in := map[string]interface{}{
 		"name":      "The name",
@@ -130,6 +159,22 @@ func TestUnmarshalSetsID(t *testing.T) {
 
 	if out.ID != 2 {
 		t.Fatalf("Did not set ID on dst interface")
+	}
+}
+
+func TestUnmarshal_nonNumericID(t *testing.T) {
+	data := samplePayloadWithoutIncluded()
+	data["data"].(map[string]interface{})["id"] = "non-numeric-id"
+	payload, _ := payload(data)
+	in := bytes.NewReader(payload)
+	out := new(Post)
+
+	if err := UnmarshalPayload(in, out); err != ErrBadJSONAPIID {
+		t.Fatalf(
+			"Was expecting a `%s` error, got `%s`",
+			ErrBadJSONAPIID,
+			err,
+		)
 	}
 }
 
@@ -221,7 +266,7 @@ func TestUnmarshalInvalidISO8601(t *testing.T) {
 }
 
 func TestUnmarshalRelationshipsWithoutIncluded(t *testing.T) {
-	data, _ := samplePayloadWithoutIncluded()
+	data, _ := payload(samplePayloadWithoutIncluded())
 	in := bytes.NewReader(data)
 	out := new(Post)
 
@@ -393,8 +438,8 @@ func unmarshalSamplePayload() (*Blog, error) {
 	return out, nil
 }
 
-func samplePayloadWithoutIncluded() (result []byte, err error) {
-	data := map[string]interface{}{
+func samplePayloadWithoutIncluded() map[string]interface{} {
+	return map[string]interface{}{
 		"data": map[string]interface{}{
 			"type": "posts",
 			"id":   "1",
@@ -424,7 +469,9 @@ func samplePayloadWithoutIncluded() (result []byte, err error) {
 			},
 		},
 	}
+}
 
+func payload(data map[string]interface{}) (result []byte, err error) {
 	result, err = json.Marshal(data)
 	return
 }
