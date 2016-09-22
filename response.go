@@ -25,6 +25,8 @@ var (
 	ErrExpectedSlice = errors.New("models should be a slice of struct pointers")
 )
 
+const iso8601TimeFormat = "2006-01-02T15:04:05Z"
+
 // MarshalOnePayload writes a jsonapi response with one, with related records
 // sideloaded, into "included" array. This method encodes a response for a
 // single record only. Hence, data will be a single record rather than an array
@@ -265,10 +267,17 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 				node.ClientID = clientID
 			}
 		} else if annotation == "attr" {
-			var omitEmpty bool
+			var omitEmpty, iso8601 bool
 
 			if len(args) > 2 {
-				omitEmpty = args[2] == "omitempty"
+				for _, arg := range args[2:] {
+					switch arg {
+					case "omitempty":
+						omitEmpty = true
+					case "iso8601":
+						iso8601 = true
+					}
+				}
 			}
 
 			if node.Attributes == nil {
@@ -282,7 +291,11 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 					continue
 				}
 
-				node.Attributes[args[1]] = t.Unix()
+				if iso8601 {
+					node.Attributes[args[1]] = t.UTC().Format(iso8601TimeFormat)
+				} else {
+					node.Attributes[args[1]] = t.Unix()
+				}
 			} else if fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
 				// A time pointer may be nil
 				if fieldValue.IsNil() {
@@ -298,7 +311,11 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 						continue
 					}
 
-					node.Attributes[args[1]] = tm.Unix()
+					if iso8601 {
+						node.Attributes[args[1]] = tm.UTC().Format(iso8601TimeFormat)
+					} else {
+						node.Attributes[args[1]] = tm.Unix()
+					}
 				}
 			} else {
 				// Dealing with a fieldValue that is not a time
