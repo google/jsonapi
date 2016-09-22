@@ -148,6 +148,78 @@ func TestUnmarshalSetsAttrs(t *testing.T) {
 	}
 }
 
+func TestUnmarshalParsesISO8601(t *testing.T) {
+	payload := &OnePayload{
+		Data: &Node{
+			Type: "timestamps",
+			Attributes: map[string]interface{}{
+				"timestamp": "2016-08-17T08:27:12Z",
+			},
+		},
+	}
+
+	in := bytes.NewBuffer(nil)
+	json.NewEncoder(in).Encode(payload)
+
+	out := new(Timestamp)
+
+	if err := UnmarshalPayload(in, out); err != nil {
+		t.Fatal(err)
+	}
+
+	expected := time.Date(2016, 8, 17, 8, 27, 12, 0, time.UTC)
+
+	if !out.Time.Equal(expected) {
+		t.Fatal("Parsing the ISO8601 timestamp failed")
+	}
+}
+
+func TestUnmarshalParsesISO8601TimePointer(t *testing.T) {
+	payload := &OnePayload{
+		Data: &Node{
+			Type: "timestamps",
+			Attributes: map[string]interface{}{
+				"next": "2016-08-17T08:27:12Z",
+			},
+		},
+	}
+
+	in := bytes.NewBuffer(nil)
+	json.NewEncoder(in).Encode(payload)
+
+	out := new(Timestamp)
+
+	if err := UnmarshalPayload(in, out); err != nil {
+		t.Fatal(err)
+	}
+
+	expected := time.Date(2016, 8, 17, 8, 27, 12, 0, time.UTC)
+
+	if !out.Next.Equal(expected) {
+		t.Fatal("Parsing the ISO8601 timestamp failed")
+	}
+}
+
+func TestUnmarshalInvalidISO8601(t *testing.T) {
+	payload := &OnePayload{
+		Data: &Node{
+			Type: "timestamps",
+			Attributes: map[string]interface{}{
+				"timestamp": "17 Aug 16 08:027 MST",
+			},
+		},
+	}
+
+	in := bytes.NewBuffer(nil)
+	json.NewEncoder(in).Encode(payload)
+
+	out := new(Timestamp)
+
+	if err := UnmarshalPayload(in, out); err != ErrInvalidISO8601 {
+		t.Fatalf("Expected ErrInvalidISO8601, got %v", err)
+	}
+}
+
 func TestUnmarshalRelationshipsWithoutIncluded(t *testing.T) {
 	data, _ := samplePayloadWithoutIncluded()
 	in := bytes.NewReader(data)
