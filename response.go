@@ -301,9 +301,9 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 			} else {
 				relationship, err := visitModelNode(fieldValue.Interface(), included, sideload)
 				if err == nil {
+					addRelatedLinkToRelationship(relationship)
 					if sideload {
 						appendIncluded(included, relationship)
-						relationship.Links["related"] = relationship.Links["self"]
 						node.Relationships[args[1]] = &RelationshipOneNode{Data: toShallowNode(relationship), Links: &relationship.Links}
 					} else {
 						node.Relationships[args[1]] = &RelationshipOneNode{Data: relationship, Links: &relationship.Links}
@@ -340,6 +340,12 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 	}
 
 	return node, nil
+}
+
+func addRelatedLinkToRelationship(node *Node) {
+	if node.Links["self"] != "" {
+		node.Links["related"] = node.Links["self"]
+	}
 }
 
 func toShallowNode(node *Node) *Node {

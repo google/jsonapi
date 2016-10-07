@@ -145,7 +145,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 
 		annotation := args[0]
 
-		if (annotation == "client-id" && len(args) != 1) || (annotation != "client-id" && len(args) < 2) {
+		if ((annotation == "client-id" || annotation == "links") && len(args) != 1) || ((annotation != "client-id" && annotation != "links") && len(args) < 2) {
 			er = ErrBadJSONAPIStructTag
 			break
 		}
@@ -358,6 +358,9 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				fieldValue.Set(m)
 			}
 
+		} else if annotation == "links" {
+			//Links on request payload are ignored
+			continue
 		} else {
 			er = fmt.Errorf(unsuportedStructTagMsg, annotation)
 		}
