@@ -85,6 +85,37 @@ func MarshalOne(model interface{}) (*OnePayload, error) {
 	return payload, nil
 }
 
+// MarshalManyPayloadWithoutIncluded writes a jsonapi response with many records,
+// without the related records sideloaded into "included" array. If you want to
+// serialize the relations into the "included" array see MarshalManyPayload.
+//
+// models interface{} should be a slice of struct pointers.
+func MarshalManyPayloadWithoutIncluded(w io.Writer, models interface{}) error {
+	included := make(map[string]*Node)
+
+	modelsSlice, err := convertToSliceInterface(&models)
+	if err != nil {
+		return err
+	}
+
+	rootNodes := []*Node{}
+
+	for _, e := range modelsSlice {
+		rootNode, err := visitModelNode(e, &included, true)
+		if err != nil {
+			return err
+		}
+
+		rootNodes = append(rootNodes, rootNode)
+	}
+
+	if err := json.NewEncoder(w).Encode(&ManyPayload{Data: rootNodes}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // MarshalManyPayload writes a jsonapi response with many records, with related
 // records sideloaded, into "included" array. This method encodes a response for
 // a slice of records, hence data will be an array of records rather than a
