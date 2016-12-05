@@ -394,6 +394,58 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 				}
 			}
 
+		} else if annotation == "links" {
+			var omitEmpty bool
+
+			if len(args) > 2 {
+				omitEmpty = args[2] == "omitempty"
+			}
+
+			if node.Links == nil {
+				node.Links = make(map[string]interface{})
+			}
+
+			if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
+				t := fieldValue.Interface().(time.Time)
+
+				if t.IsZero() {
+					continue
+				}
+
+				node.Links[args[1]] = t
+			} else if fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
+				// A time pointer may be nil
+				if fieldValue.IsNil() {
+					if omitEmpty {
+						continue
+					}
+
+					node.Links[args[1]] = nil
+				} else {
+					tm := fieldValue.Interface().(*time.Time)
+
+					if tm.IsZero() && omitEmpty {
+						continue
+					}
+
+					node.Links[args[1]] = tm
+				}
+			} else {
+				// Dealing with a fieldValue that is not a time
+				emptyValue := reflect.Zero(fieldValue.Type())
+
+				// See if we need to omit this field
+				if omitEmpty && fieldValue.Interface() == emptyValue.Interface() {
+					continue
+				}
+
+				strAttr, ok := fieldValue.Interface().(string)
+				if ok {
+					node.Links[args[1]] = strAttr
+				} else {
+					node.Links[args[1]] = fieldValue.Interface()
+				}
+			}
 		} else {
 			er = ErrBadJSONAPIStructTag
 			break

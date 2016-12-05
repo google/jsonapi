@@ -25,6 +25,7 @@ type Node struct {
 	ClientID      string                 `json:"client-id,omitempty"`
 	Attributes    map[string]interface{} `json:"attributes,omitempty"`
 	Relationships map[string]interface{} `json:"relationships,omitempty"`
+	Links         map[string]interface{} `json:"links,omitempty"`
 }
 
 // RelationshipOneNode is used to represent a generic has one JSON API relation
