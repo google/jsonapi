@@ -66,9 +66,9 @@ func (r *Runtime) MarshalOnePayload(w io.Writer, model interface{}) error {
 	})
 }
 
-func (r *Runtime) MarshalManyPayload(w io.Writer, models interface{}) error {
+func (r *Runtime) MarshalManyPayload(w io.Writer, models interface{}, links *map[string]string) error {
 	return r.instrumentCall(MarshalStart, MarshalStop, func() error {
-		return MarshalManyPayload(w, models)
+		return MarshalManyPayload(w, models, links)
 	})
 }
 
