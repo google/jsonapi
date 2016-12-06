@@ -110,7 +110,7 @@ func MarshalOne(model interface{}) (*OnePayload, error) {
 // Visit https://github.com/google/jsonapi#list for more info.
 //
 // models interface{} should be a slice of struct pointers.
-func MarshalManyPayload(w io.Writer, models interface{}, links *map[string]string) error {
+func MarshalManyPayload(w io.Writer, models interface{}, links map[string]interface{}) error {
 	m, err := convertToSliceInterface(&models)
 	if err != nil {
 		return err
@@ -130,7 +130,7 @@ func MarshalManyPayload(w io.Writer, models interface{}, links *map[string]strin
 // MarshalMany does the same as MarshalManyPayload except it just returns the
 // payload and doesn't write out results. Useful is you use your JSON rendering
 // library.
-func MarshalMany(models []interface{}, links *map[string]string) (*ManyPayload, error) {
+func MarshalMany(models []interface{}, links map[string]interface{}) (*ManyPayload, error) {
 	var data []*Node
 	included := make(map[string]*Node)
 
