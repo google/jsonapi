@@ -175,6 +175,21 @@ relationships and marshal or unmarshal records.  The first argument must
 be, `relation`, and the second should be the name of the relationship,
 used as the key in the `relationships` hash for the record.
 
+#### `links`
+
+```
+`jsonapi:"links,<key name in links hash>,<optional: omitempty>"`
+```
+
+These fields' values will end up in the `links`hash for a record.
+The first argument must be, `links`, and the second should be the name
+for the key to display in the `links` hash for that record. The optional
+third argument is `omitempty` - if it is present the field will not be present
+in the `"links"` if the field's value is equivalent to the field types
+empty value (ie if the `count` field is of type `int`, `omitempty` will omit the
+field when `count` has a value of `0`). Lastly, the spec indicates that
+`links` key names should be dasherized for multiple word field names.
+
 ## Methods Reference
 
 **All `Marshal` and `Unmarshal` methods expect pointers to struct
@@ -247,7 +262,7 @@ func CreateBlog(w http.ResponseWriter, r *http.Request) {
 #### `MarshalManyPayload`
 
 ```go
-MarshalManyPayload(w io.Writer, models []interface{}) error
+MarshalManyPayload(w io.Writer, models []interface{}, links map[string]interface{}) error
 ```
 
 Visit [godoc](http://godoc.org/github.com/google/jsonapi#MarshalManyPayload)
@@ -281,6 +296,8 @@ this,
 func FetchBlogs() ([]interface{}, error)
 ```
 
+Links are permitted on an array of resource objects and can either be a string or an object.  This is appended by passing in a map of strings to interfaces to the `MarshalManyPayload` call.  Nil values can be passed in if no links are required.
+
 #### Handler Example Code
 
 ```go
@@ -292,7 +309,7 @@ func ListBlogs(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(200)
 	w.Header().Set("Content-Type", "application/vnd.api+json")
-	if err := jsonapi.MarshalManyPayload(w, blogs); err != nil {
+	if err := jsonapi.MarshalManyPayload(w, blogs, nil); err != nil {
 		http.Error(w, err.Error(), 500)
 	}
 }
