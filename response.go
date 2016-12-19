@@ -336,7 +336,7 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 		} else if annotation == "relation" {
 			isSlice := fieldValue.Type().Kind() == reflect.Slice
 
-			if (isSlice && fieldValue.Len() < 1) || (!isSlice && fieldValue.IsNil()) {
+			if (!isSlice && fieldValue.IsNil()) {
 				continue
 			}
 
@@ -350,6 +350,11 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 			}
 
 			if isSlice {
+				// Exclude the relationship if the slice is empty AND there are no defined links
+				if (fieldValue.Len() < 1) && (relLinks == nil) {
+					continue
+				}
+
 				relationship, err := visitModelNodeRelationships(
 					args[1],
 					fieldValue,
