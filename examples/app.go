@@ -268,3 +268,68 @@ type Comment struct {
 	PostID int    `jsonapi:"attr,post_id"`
 	Body   string `jsonapi:"attr,body"`
 }
+
+// BLog Links
+
+func (blog Blog) JSONLinks() *map[string]jsonapi.Link {
+	return &map[string]jsonapi.Link{
+		"self": {
+			Href: fmt.Sprintf("https://example.com/blogs/%d", blog.ID),
+		},
+	}
+}
+
+func (blog Blog) JSONRelationshipLinks(relation string) *map[string]jsonapi.Link {
+	if relation == "posts" {
+		return &map[string]jsonapi.Link{
+			"related": {
+				Href: fmt.Sprintf("https://example.com/blogs/%d/posts", blog.ID),
+				Meta: map[string]interface{}{
+					"count": len(blog.Posts),
+				},
+			},
+		}
+	}
+	if relation == "current_post" {
+		return &map[string]jsonapi.Link{
+			"related": {
+				Href: fmt.Sprintf("https://example.com/blogs/%d/current_post", blog.ID),
+			},
+		}
+	}
+	return nil
+}
+
+// Post Links
+
+func (post Post) JSONLinks() *map[string]jsonapi.Link {
+	return &map[string]jsonapi.Link{
+		"self": {
+			Href: fmt.Sprintf("https://example.com/posts/%d", post.ID),
+		},
+	}
+}
+
+func (post Post) JSONRelationshipLinks(relation string) *map[string]jsonapi.Link {
+	if relation == "comments" {
+		return &map[string]jsonapi.Link{
+			"related": {
+				Href: fmt.Sprintf("https://example.com/posts/%d/comments", post.ID),
+				Meta: map[string]interface{}{
+					"count": len(post.Comments),
+				},
+			},
+		}
+	}
+	return nil
+}
+
+// Comment Links
+
+func (comment Comment) JSONLinks() *map[string]jsonapi.Link {
+	return &map[string]jsonapi.Link{
+		"self": {
+			Href: fmt.Sprintf("https://example.com/comments/%d", comment.ID),
+		},
+	}
+}
