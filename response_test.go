@@ -3,6 +3,7 @@ package jsonapi
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -17,6 +18,35 @@ type Blog struct {
 	CurrentPostID int       `jsonapi:"attr,current_post_id"`
 	CreatedAt     time.Time `jsonapi:"attr,created_at"`
 	ViewCount     int       `jsonapi:"attr,view_count"`
+}
+
+func (blog Blog) JSONLinks() *map[string]Link {
+	return &map[string]Link{
+		"self": {
+			Href: fmt.Sprintf("https://example.com/api/blogs/%d", blog.ID),
+		},
+	}
+}
+
+func (blog Blog) JSONRelationshipLinks(relation string) *map[string]Link {
+	if relation == "posts" {
+		return &map[string]Link{
+			"related": {
+				Href: fmt.Sprintf("https://example.com/api/blogs/%d/posts", blog.ID),
+				Meta: map[string]interface{}{
+					"count": len(blog.Posts),
+				},
+			},
+		}
+	}
+	if relation == "current_post" {
+		return &map[string]Link{
+			"related": {
+				Href: fmt.Sprintf("https://example.com/api/blogs/%d/current_post", blog.ID),
+			},
+		}
+	}
+	return nil
 }
 
 type Post struct {
@@ -281,6 +311,30 @@ func TestMarshalISO8601TimePointer(t *testing.T) {
 	}
 }
 
+func TestSupportsLinkable(t *testing.T) {
+	testModel := &Blog{
+		ID:        5,
+		Title:     "Title 1",
+		CreatedAt: time.Now(),
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalOnePayload(out, testModel); err != nil {
+		t.Fatal(err)
+	}
+
+	resp := new(OnePayload)
+	if err := json.NewDecoder(out).Decode(resp); err != nil {
+		t.Fatal(err)
+	}
+
+	data := resp.Data
+
+	if data.Links == nil {
+		t.Fatalf("Expected 'self' links")
+	}
+}
+
 func TestRelations(t *testing.T) {
 	testModel := testBlog()
 
@@ -302,10 +356,18 @@ func TestRelations(t *testing.T) {
 
 	if relations["posts"] == nil {
 		t.Fatalf("Posts relationship was not materialized")
+	} else {
+		if relations["posts"].(map[string]interface{})["links"] == nil {
+			t.Fatalf("Posts relationship links were not materialized")
+		}
 	}
 
 	if relations["current_post"] == nil {
 		t.Fatalf("Current post relationship was not materialized")
+	} else {
+		if relations["current_post"].(map[string]interface{})["links"] == nil {
+			t.Fatalf("Current post relationship links were not materialized")
+		}
 	}
 
 	if len(relations["posts"].(map[string]interface{})["data"].([]interface{})) != 2 {

@@ -344,6 +344,11 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 				node.Relationships = make(map[string]interface{})
 			}
 
+			var relLinks *map[string]Link
+			if linkableModel, ok := model.(RelationshipLinkable); ok {
+				relLinks = linkableModel.JSONRelationshipLinks(args[1])
+			}
+
 			if isSlice {
 				relationship, err := visitModelNodeRelationships(
 					args[1],
@@ -353,6 +358,7 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 				)
 
 				if err == nil {
+					relationship.Links = relLinks
 					d := relationship.Data
 					if sideload {
 						var shallowNodes []*Node
@@ -363,7 +369,8 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 						}
 
 						node.Relationships[args[1]] = &RelationshipManyNode{
-							Data: shallowNodes,
+							Data:  shallowNodes,
+							Links: relationship.Links,
 						}
 					} else {
 						node.Relationships[args[1]] = relationship
@@ -381,11 +388,13 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 					if sideload {
 						appendIncluded(included, relationship)
 						node.Relationships[args[1]] = &RelationshipOneNode{
-							Data: toShallowNode(relationship),
+							Links: relLinks,
+							Data:  toShallowNode(relationship),
 						}
 					} else {
 						node.Relationships[args[1]] = &RelationshipOneNode{
-							Data: relationship,
+							Links: relLinks,
+							Data:  relationship,
 						}
 					}
 				} else {
@@ -402,6 +411,10 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 
 	if er != nil {
 		return nil, er
+	}
+
+	if linkbledModel, ok := model.(Linkable); ok {
+		node.Links = linkbledModel.JSONLinks()
 	}
 
 	return node, nil
