@@ -452,31 +452,11 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 				node.Links = make(map[string]interface{})
 			}
 
-			if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
-				t := fieldValue.Interface().(time.Time)
-
-				if t.IsZero() {
-					continue
-				}
-
-				node.Links[args[1]] = t
-			} else if fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
-				// A time pointer may be nil
-				if fieldValue.IsNil() {
-					if omitEmpty {
-						continue
-					}
-
-					node.Links[args[1]] = nil
-				} else {
-					tm := fieldValue.Interface().(*time.Time)
-
-					if tm.IsZero() && omitEmpty {
-						continue
-					}
-
-					node.Links[args[1]] = tm
-				}
+			if fieldValue.Type() == reflect.TypeOf(time.Time{}) ||
+				fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
+				// link values should not be of type time.Time
+				er = ErrBadJSONAPIStructTag
+				break
 			} else {
 				// Dealing with a fieldValue that is not a time
 				emptyValue := reflect.Zero(fieldValue.Type())
