@@ -433,6 +433,21 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 					concreteVal = reflect.ValueOf(&cVal)
 				case uintptr:
 					concreteVal = reflect.ValueOf(&cVal)
+				case interface{}:
+					n := new(Node)
+
+					var ok bool
+					n.Attributes, ok = val.(map[string]interface{})
+					if !ok {
+						er = ErrUnsupportedPtrType
+						break
+					}
+
+					if err := unmarshalNode(n, fieldValue, included); err != nil {
+						er = ErrUnsupportedPtrType
+						break
+					}
+					concreteVal = fieldValue
 				default:
 					return ErrUnsupportedPtrType
 				}
