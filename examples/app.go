@@ -44,7 +44,7 @@ func listBlogs(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(200)
 	w.Header().Set("Content-Type", "application/vnd.api+json")
-	if err := jsonapiRuntime.MarshalManyPayload(w, blogs, nil); err != nil {
+	if err := jsonapiRuntime.MarshalManyPayload(w, blogs); err != nil {
 		http.Error(w, err.Error(), 500)
 	}
 }

@@ -262,7 +262,7 @@ func CreateBlog(w http.ResponseWriter, r *http.Request) {
 #### `MarshalManyPayload`
 
 ```go
-MarshalManyPayload(w io.Writer, models []interface{}, links map[string]interface{}) error
+MarshalManyPayload(w io.Writer, models []interface{}) error
 ```
 
 Visit [godoc](http://godoc.org/github.com/google/jsonapi#MarshalManyPayload)
@@ -296,7 +296,7 @@ this,
 func FetchBlogs() ([]interface{}, error)
 ```
 
-Links are permitted on an array of resource objects and can either be a string or an object.  This is appended by passing in a map of strings to interfaces to the `MarshalManyPayload` call.  Nil values can be passed in if no links are required.
+Links are permitted on an array of resource objects and can either be a string or an object.  This is appended by passing in a map of strings to interfaces to the `MarshalManyPayloadWithLinks` call.
 
 #### Handler Example Code
 
@@ -309,7 +309,7 @@ func ListBlogs(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(200)
 	w.Header().Set("Content-Type", "application/vnd.api+json")
-	if err := jsonapi.MarshalManyPayload(w, blogs, nil); err != nil {
+	if err := jsonapi.MarshalManyPayload(w, blogs); err != nil {
 		http.Error(w, err.Error(), 500)
 	}
 }
