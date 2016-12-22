@@ -418,7 +418,7 @@ func TestMarshalMany(t *testing.T) {
 	}
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalManyPayload(out, data, nil); err != nil {
+	if err := MarshalManyPayload(out, data); err != nil {
 		t.Fatal(err)
 	}
 
@@ -441,7 +441,7 @@ func TestMarshalMany_WithSliceOfStructPointers(t *testing.T) {
 	}
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalManyPayload(out, data, nil); err != nil {
+	if err := MarshalManyPayload(out, data); err != nil {
 		t.Fatal(err)
 	}
 
@@ -469,11 +469,11 @@ func TestMarshalMany_SliceOfInterfaceAndSliceOfStructsSameJSON(t *testing.T) {
 
 	// Perform Marshals
 	structsOut := new(bytes.Buffer)
-	if err := MarshalManyPayload(structsOut, structs, nil); err != nil {
+	if err := MarshalManyPayload(structsOut, structs); err != nil {
 		t.Fatal(err)
 	}
 	interfacesOut := new(bytes.Buffer)
-	if err := MarshalManyPayload(interfacesOut, interfaces, nil); err != nil {
+	if err := MarshalManyPayload(interfacesOut, interfaces); err != nil {
 		t.Fatal(err)
 	}
 
@@ -495,13 +495,13 @@ func TestMarshalMany_SliceOfInterfaceAndSliceOfStructsSameJSON(t *testing.T) {
 
 func TestMarshalMany_InvalidIntefaceArgument(t *testing.T) {
 	out := new(bytes.Buffer)
-	if err := MarshalManyPayload(out, true, nil); err != ErrExpectedSlice {
+	if err := MarshalManyPayload(out, true); err != ErrExpectedSlice {
 		t.Fatal("Was expecting an error")
 	}
-	if err := MarshalManyPayload(out, 25, nil); err != ErrExpectedSlice {
+	if err := MarshalManyPayload(out, 25); err != ErrExpectedSlice {
 		t.Fatal("Was expecting an error")
 	}
-	if err := MarshalManyPayload(out, Book{}, nil); err != ErrExpectedSlice {
+	if err := MarshalManyPayload(out, Book{}); err != ErrExpectedSlice {
 		t.Fatal("Was expecting an error")
 	}
 }
