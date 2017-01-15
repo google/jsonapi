@@ -271,30 +271,21 @@ type Comment struct {
 
 // BLog Links
 
-func (blog Blog) JSONLinks() *map[string]jsonapi.Link {
-	return &map[string]jsonapi.Link{
-		"self": {
-			Href: fmt.Sprintf("https://example.com/blogs/%d", blog.ID),
-		},
+func (blog Blog) JSONLinks() *map[string]interface{} {
+	return &map[string]interface{}{
+		"self": fmt.Sprintf("https://example.com/blogs/%d", blog.ID),
 	}
 }
 
-func (blog Blog) JSONRelationshipLinks(relation string) *map[string]jsonapi.Link {
+func (blog Blog) JSONRelationshipLinks(relation string) *map[string]interface{} {
 	if relation == "posts" {
-		return &map[string]jsonapi.Link{
-			"related": {
-				Href: fmt.Sprintf("https://example.com/blogs/%d/posts", blog.ID),
-				Meta: map[string]interface{}{
-					"count": len(blog.Posts),
-				},
-			},
+		return &map[string]interface{}{
+			"related": fmt.Sprintf("https://example.com/blogs/%d/posts", blog.ID),
 		}
 	}
 	if relation == "current_post" {
-		return &map[string]jsonapi.Link{
-			"related": {
-				Href: fmt.Sprintf("https://example.com/blogs/%d/current_post", blog.ID),
-			},
+		return &map[string]interface{}{
+			"related": fmt.Sprintf("https://example.com/blogs/%d/current_post", blog.ID),
 		}
 	}
 	return nil
@@ -302,23 +293,16 @@ func (blog Blog) JSONRelationshipLinks(relation string) *map[string]jsonapi.Link
 
 // Post Links
 
-func (post Post) JSONLinks() *map[string]jsonapi.Link {
-	return &map[string]jsonapi.Link{
-		"self": {
-			Href: fmt.Sprintf("https://example.com/posts/%d", post.ID),
-		},
+func (post Post) JSONLinks() *map[string]interface{} {
+	return &map[string]interface{}{
+		"self": fmt.Sprintf("https://example.com/posts/%d", post.ID),
 	}
 }
 
-func (post Post) JSONRelationshipLinks(relation string) *map[string]jsonapi.Link {
+func (post Post) JSONRelationshipLinks(relation string) *map[string]interface{} {
 	if relation == "comments" {
-		return &map[string]jsonapi.Link{
-			"related": {
-				Href: fmt.Sprintf("https://example.com/posts/%d/comments", post.ID),
-				Meta: map[string]interface{}{
-					"count": len(post.Comments),
-				},
-			},
+		return &map[string]interface{}{
+			"related": fmt.Sprintf("https://example.com/posts/%d/comments", post.ID),
 		}
 	}
 	return nil
@@ -326,10 +310,8 @@ func (post Post) JSONRelationshipLinks(relation string) *map[string]jsonapi.Link
 
 // Comment Links
 
-func (comment Comment) JSONLinks() *map[string]jsonapi.Link {
-	return &map[string]jsonapi.Link{
-		"self": {
-			Href: fmt.Sprintf("https://example.com/comments/%d", comment.ID),
-		},
+func (comment Comment) JSONLinks() *map[string]interface{} {
+	return &map[string]interface{}{
+		"self": fmt.Sprintf("https://example.com/comments/%d", comment.ID),
 	}
 }
