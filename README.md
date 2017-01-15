@@ -300,28 +300,20 @@ func ListBlogs(w http.ResponseWriter, r *http.Request) {
 
 ### Links
 
-If you need to include [`link` objects](http://jsonapi.org/format/#document-links) along with response data, implement the `Linkable` interface for document-links, and the `RelationshipLinkable` for relationship links:
+If you need to include [link objects](http://jsonapi.org/format/#document-links) along with response data, implement the `Linkable` interface for document-links, and `RelationshipLinkable` for relationship links:
 
 ```go
-func (post Post) JSONLinks() *map[string]jsonapi.Link {
-	return &map[string]jsonapi.Link{
-		"self": {
-			Href: fmt.Sprintf("https://example.com/posts/%d", post.ID),
-		},
+func (post Post) JSONLinks() *map[string]interface{} {
+	return &map[string]interface{}{
+		"self": "href": fmt.Sprintf("https://example.com/posts/%d", post.ID),
 	}
 }
 
 // Invoked for each relationship defined on the Post struct when marshaled
-func (post Post) JSONRelationshipLinks(relation string) *map[string]jsonapi.Link {
+func (post Post) JSONRelationshipLinks(relation string) *map[string]interface{} {
 	if relation == "comments" {
-		return &map[string]jsonapi.Link{
-			"related": {
-				Href: fmt.Sprintf("https://example.com/posts/%d/comments", post.ID),
-				// Optionally include a meta payload
-				Meta: map[string]interface{}{
-					"count": len(post.Comments),
-				},
-			},
+		return &map[string]interface{}{
+			"related": fmt.Sprintf("https://example.com/posts/%d/comments", post.ID),				
 		}
 	}
 	return nil

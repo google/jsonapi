@@ -336,7 +336,7 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 		} else if annotation == "relation" {
 			isSlice := fieldValue.Type().Kind() == reflect.Slice
 
-			if (!isSlice && fieldValue.IsNil()) {
+			if !isSlice && fieldValue.IsNil() {
 				continue
 			}
 
@@ -344,7 +344,7 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 				node.Relationships = make(map[string]interface{})
 			}
 
-			var relLinks *map[string]Link
+			var relLinks *map[string]interface{}
 			if linkableModel, ok := model.(RelationshipLinkable); ok {
 				relLinks = linkableModel.JSONRelationshipLinks(args[1])
 			}

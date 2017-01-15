@@ -20,29 +20,28 @@ type Blog struct {
 	ViewCount     int       `jsonapi:"attr,view_count"`
 }
 
-func (blog Blog) JSONLinks() *map[string]Link {
-	return &map[string]Link{
-		"self": {
-			Href: fmt.Sprintf("https://example.com/api/blogs/%d", blog.ID),
-		},
+func (blog Blog) JSONLinks() *map[string]interface{} {
+	return &map[string]interface{}{
+		"self": fmt.Sprintf("https://example.com/api/blogs/%d", blog.ID),
 	}
 }
 
-func (blog Blog) JSONRelationshipLinks(relation string) *map[string]Link {
+func (blog Blog) JSONRelationshipLinks(relation string) *map[string]interface{} {
 	if relation == "posts" {
-		return &map[string]Link{
-			"related": {
-				Href: fmt.Sprintf("https://example.com/api/blogs/%d/posts", blog.ID),
-				Meta: map[string]interface{}{
+		return &map[string]interface{}{
+			"related": map[string]interface{}{
+				"href": fmt.Sprintf("https://example.com/api/blogs/%d/posts", blog.ID),
+				"meta": map[string]interface{}{
 					"count": len(blog.Posts),
 				},
 			},
 		}
 	}
 	if relation == "current_post" {
-		return &map[string]Link{
-			"related": {
-				Href: fmt.Sprintf("https://example.com/api/blogs/%d/current_post", blog.ID),
+		return &map[string]interface{}{
+			"self": fmt.Sprintf("https://example.com/api/posts/%s", "3"),
+			"related": map[string]interface{}{
+				"href": fmt.Sprintf("https://example.com/api/blogs/%d/current_post", blog.ID),
 			},
 		}
 	}
