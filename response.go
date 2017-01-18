@@ -131,27 +131,19 @@ func MarshalManyPayload(w io.Writer, models interface{}) error {
 // payload and doesn't write out results. Useful is you use your JSON rendering
 // library.
 func MarshalMany(models []interface{}) (*ManyPayload, error) {
-	var data []*Node
-	included := make(map[string]*Node)
+	payload := &ManyPayload{
+		Data: []*Node{},
+	}
+	included := map[string]*Node{}
 
-	for i := 0; i < len(models); i++ {
-		model := models[i]
-
+	for _, model := range models {
 		node, err := visitModelNode(model, &included, true)
 		if err != nil {
 			return nil, err
 		}
-		data = append(data, node)
+		payload.Data = append(payload.Data, node)
 	}
-
-	if len(models) == 0 {
-		data = make([]*Node, 0)
-	}
-
-	payload := &ManyPayload{
-		Data:     data,
-		Included: nodeMapValues(&included),
-	}
+	payload.Included = nodeMapValues(&included)
 
 	return payload, nil
 }
