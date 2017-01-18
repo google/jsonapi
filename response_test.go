@@ -20,10 +20,10 @@ type Blog struct {
 	ViewCount     int       `jsonapi:"attr,view_count"`
 }
 
-func (b *Blog) JSONLinks() *LinksObject {
-	return &LinksObject{
+func (b *Blog) JSONLinks() *Links {
+	return &Links{
 		"self": fmt.Sprintf("https://example.com/api/blogs/%d", b.ID),
-		"comments": LinkObject{
+		"comments": Link{
 			Href: fmt.Sprintf("https://example.com/api/blogs/%d/comments", b.ID),
 			Meta: map[string]interface{}{
 				"counts": map[string]uint{
@@ -35,10 +35,10 @@ func (b *Blog) JSONLinks() *LinksObject {
 	}
 }
 
-func (b *Blog) JSONRelationshipLinks(relation string) *LinksObject {
+func (b *Blog) JSONRelationshipLinks(relation string) *Links {
 	if relation == "posts" {
-		return &LinksObject{
-			"related": LinkObject{
+		return &Links{
+			"related": Link{
 				Href: fmt.Sprintf("https://example.com/api/blogs/%d/posts", b.ID),
 				Meta: map[string]interface{}{
 					"count": len(b.Posts),
@@ -47,9 +47,9 @@ func (b *Blog) JSONRelationshipLinks(relation string) *LinksObject {
 		}
 	}
 	if relation == "current_post" {
-		return &LinksObject{
+		return &Links{
 			"self": fmt.Sprintf("https://example.com/api/posts/%s", "3"),
-			"related": LinkObject{
+			"related": Link{
 				Href: fmt.Sprintf("https://example.com/api/blogs/%d/current_post", b.ID),
 			},
 		}
@@ -103,8 +103,8 @@ type BadComment struct {
 	Body string `jsonapi:"attr,body"`
 }
 
-func (bc *BadComment) JSONLinks() *LinksObject {
-	return &LinksObject{
+func (bc *BadComment) JSONLinks() *Links {
+	return &Links{
 		"self": []string{"invalid", "should error"},
 	}
 }

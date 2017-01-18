@@ -344,7 +344,7 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 				node.Relationships = make(map[string]interface{})
 			}
 
-			var relLinks *LinksObject
+			var relLinks *Links
 			if linkableModel, ok := model.(RelationshipLinkable); ok {
 				relLinks = linkableModel.JSONRelationshipLinks(args[1])
 			}
