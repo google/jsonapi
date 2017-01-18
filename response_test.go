@@ -20,28 +20,37 @@ type Blog struct {
 	ViewCount     int       `jsonapi:"attr,view_count"`
 }
 
-func (blog Blog) JSONLinks() *map[string]interface{} {
-	return &map[string]interface{}{
-		"self": fmt.Sprintf("https://example.com/api/blogs/%d", blog.ID),
+func (b *Blog) JSONLinks() *LinksObject {
+	return &LinksObject{
+		"self": fmt.Sprintf("https://example.com/api/blogs/%d", b.ID),
+		"comments": LinkObject{
+			Href: fmt.Sprintf("https://example.com/api/blogs/%d/comments", b.ID),
+			Meta: map[string]interface{}{
+				"counts": map[string]uint{
+					"likes":    4,
+					"comments": 20,
+				},
+			},
+		},
 	}
 }
 
-func (blog Blog) JSONRelationshipLinks(relation string) *map[string]interface{} {
+func (b *Blog) JSONRelationshipLinks(relation string) *LinksObject {
 	if relation == "posts" {
-		return &map[string]interface{}{
-			"related": map[string]interface{}{
-				"href": fmt.Sprintf("https://example.com/api/blogs/%d/posts", blog.ID),
-				"meta": map[string]interface{}{
-					"count": len(blog.Posts),
+		return &LinksObject{
+			"related": LinkObject{
+				Href: fmt.Sprintf("https://example.com/api/blogs/%d/posts", b.ID),
+				Meta: map[string]interface{}{
+					"count": len(b.Posts),
 				},
 			},
 		}
 	}
 	if relation == "current_post" {
-		return &map[string]interface{}{
+		return &LinksObject{
 			"self": fmt.Sprintf("https://example.com/api/posts/%s", "3"),
-			"related": map[string]interface{}{
-				"href": fmt.Sprintf("https://example.com/api/blogs/%d/current_post", blog.ID),
+			"related": LinkObject{
+				Href: fmt.Sprintf("https://example.com/api/blogs/%d/current_post", b.ID),
 			},
 		}
 	}
@@ -87,6 +96,17 @@ type Car struct {
 	Make  *string `jsonapi:"attr,make,omitempty"`
 	Model *string `jsonapi:"attr,model,omitempty"`
 	Year  *uint   `jsonapi:"attr,year,omitempty"`
+}
+
+type BadComment struct {
+	ID   uint64 `jsonapi:"primary,bad-comment"`
+	Body string `jsonapi:"attr,body"`
+}
+
+func (bc *BadComment) JSONLinks() *LinksObject {
+	return &LinksObject{
+		"self": []string{"invalid", "should error"},
+	}
 }
 
 func TestMarshalIDPtr(t *testing.T) {
@@ -330,7 +350,63 @@ func TestSupportsLinkable(t *testing.T) {
 	data := resp.Data
 
 	if data.Links == nil {
-		t.Fatalf("Expected 'self' links")
+		t.Fatal("Expected links")
+	}
+	links := *data.Links
+
+	self, hasSelf := links["self"]
+	if !hasSelf {
+		t.Fatal("Expected 'self' link to be present")
+	}
+	if _, isString := self.(string); !isString {
+		t.Fatal("Expected 'self' to contain a string")
+	}
+
+	comments, hasComments := links["comments"]
+	if !hasComments {
+		t.Fatal("expect 'comments' to be present")
+	}
+	commentsMap, isMap := comments.(map[string]interface{})
+	if !isMap {
+		t.Fatal("Expected 'comments' to contain a map")
+	}
+
+	commentsHref, hasHref := commentsMap["href"]
+	if !hasHref {
+		t.Fatal("Expect 'comments' to contain an 'href' key/value")
+	}
+	if _, isString := commentsHref.(string); !isString {
+		t.Fatal("Expected 'href' to contain a string")
+	}
+
+	commentsMeta, hasMeta := commentsMap["meta"]
+	if !hasMeta {
+		t.Fatal("Expect 'comments' to contain a 'meta' key/value")
+	}
+	commentsMetaMap, isMap := commentsMeta.(map[string]interface{})
+	if !isMap {
+		t.Fatal("Expected 'comments' to contain a map")
+	}
+	countsMap, isMap := commentsMetaMap["counts"].(map[string]interface{})
+	if !isMap {
+		t.Fatal("Expected 'counts' to contain a map")
+	}
+	for k, v := range countsMap {
+		if _, isNum := v.(float64); !isNum {
+			t.Fatalf("Exepected value at '%s' to be a numeric (float64)", k)
+		}
+	}
+}
+
+func TestInvalidLinkable(t *testing.T) {
+	testModel := &BadComment{
+		ID:   5,
+		Body: "Hello World",
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalOnePayload(out, testModel); err == nil {
+		t.Fatal("Was expecting an error")
 	}
 }
 

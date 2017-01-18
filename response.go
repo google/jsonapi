@@ -344,13 +344,14 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 				node.Relationships = make(map[string]interface{})
 			}
 
-			var relLinks *map[string]interface{}
+			var relLinks *LinksObject
 			if linkableModel, ok := model.(RelationshipLinkable); ok {
 				relLinks = linkableModel.JSONRelationshipLinks(args[1])
 			}
 
 			if isSlice {
-				// Exclude the relationship if the slice is empty AND there are no defined links
+				// Exclude the relationship if the slice is empty AND there are no
+				// defined links
 				if (fieldValue.Len() < 1) && (relLinks == nil) {
 					continue
 				}
@@ -418,8 +419,12 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 		return nil, er
 	}
 
-	if linkbledModel, ok := model.(Linkable); ok {
-		node.Links = linkbledModel.JSONLinks()
+	if linkableModel, isLinkable := model.(Linkable); isLinkable {
+		jl := linkableModel.JSONLinks()
+		if er := jl.validate(); er != nil {
+			return nil, er
+		}
+		node.Links = linkableModel.JSONLinks()
 	}
 
 	return node, nil
@@ -432,7 +437,8 @@ func toShallowNode(node *Node) *Node {
 	}
 }
 
-func visitModelNodeRelationships(relationName string, models reflect.Value, included *map[string]*Node, sideload bool) (*RelationshipManyNode, error) {
+func visitModelNodeRelationships(relationName string, models reflect.Value,
+	included *map[string]*Node, sideload bool) (*RelationshipManyNode, error) {
 	var nodes []*Node
 
 	if models.Len() == 0 {
