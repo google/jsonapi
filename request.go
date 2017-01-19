@@ -84,6 +84,8 @@ func UnmarshalPayload(in io.Reader, model interface{}) error {
 	return unmarshalNode(payload.Data, reflect.ValueOf(model), nil)
 }
 
+// UnmarshalManyPayload converts an io into a set of struct instances using
+// jsonapi tags on the type's struct fields.
 func UnmarshalManyPayload(in io.Reader, t reflect.Type) ([]interface{}, error) {
 	payload := new(ManyPayload)
 
