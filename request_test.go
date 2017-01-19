@@ -195,7 +195,7 @@ func TestUnmarshalNullRelationship(t *testing.T) {
 			},
 			"relationships": map[string]interface{}{
 				"latest_comment": map[string]interface{}{
-					"data": nil, //set data to nil/null
+					"data": nil, // empty to-one relationship
 				},
 			},
 		},
@@ -228,9 +228,7 @@ func TestUnmarshalNullRelationshipInSlice(t *testing.T) {
 			},
 			"relationships": map[string]interface{}{
 				"comments": map[string]interface{}{
-					"data": []interface{}{
-						nil, //set data to nil/null
-					},
+					"data": []interface{}{}, // empty to-many relationships
 				},
 			},
 		},
