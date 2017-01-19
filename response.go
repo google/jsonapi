@@ -182,7 +182,8 @@ func MarshalOnePayloadEmbedded(w io.Writer, model interface{}) error {
 	return nil
 }
 
-func visitModelNode(model interface{}, included *map[string]*Node, sideload bool) (*Node, error) {
+func visitModelNode(model interface{}, included *map[string]*Node,
+	sideload bool) (*Node, error) {
 	node := new(Node)
 
 	var er error
@@ -209,7 +210,8 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 
 		annotation := args[0]
 
-		if (annotation == annotationClientID && len(args) != 1) || (annotation != annotationClientID && len(args) < 2) {
+		if (annotation == annotationClientID && len(args) != 1) ||
+			(annotation != annotationClientID && len(args) < 2) {
 			er = ErrBadJSONAPIStructTag
 			break
 		}
@@ -351,7 +353,12 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 
 			if isSlice {
 				// to-many relationship
-				relationship, err := visitModelNodeRelationships(args[1], fieldValue, included, sideload)
+				relationship, err := visitModelNodeRelationships(
+					args[1],
+					fieldValue,
+					included,
+					sideload,
+				)
 				if err != nil {
 					er = err
 					break
@@ -364,7 +371,9 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 						shallowNodes = append(shallowNodes, toShallowNode(n))
 					}
 
-					node.Relationships[args[1]] = &RelationshipManyNode{Data: shallowNodes}
+					node.Relationships[args[1]] = &RelationshipManyNode{
+						Data: shallowNodes,
+					}
 				} else {
 					node.Relationships[args[1]] = relationship
 				}
@@ -377,17 +386,23 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 					continue
 				}
 
-				relationship, err := visitModelNode(fieldValue.Interface(), included, sideload)
-				if err == nil {
-					if sideload {
-						appendIncluded(included, relationship)
-						node.Relationships[args[1]] = &RelationshipOneNode{Data: toShallowNode(relationship)}
-					} else {
-						node.Relationships[args[1]] = &RelationshipOneNode{Data: relationship}
-					}
-				} else {
+				relationship, err := visitModelNode(
+					fieldValue.Interface(),
+					included,
+					sideload,
+				)
+				if err != nil {
 					er = err
 					break
+				}
+
+				if sideload {
+					appendIncluded(included, relationship)
+					node.Relationships[args[1]] = &RelationshipOneNode{
+						Data: toShallowNode(relationship),
+					}
+				} else {
+					node.Relationships[args[1]] = &RelationshipOneNode{Data: relationship}
 				}
 			}
 
