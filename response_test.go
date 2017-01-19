@@ -60,17 +60,42 @@ func TestWithoutOmitsEmptyAnnotationOnRelation(t *testing.T) {
 	}
 	relationships := jsonData["data"].(map[string]interface{})["relationships"].(map[string]interface{})
 
-	// Verify the unset relationship were not omitted
-	if val, exists := relationships["posts"]; !exists {
-		t.Fatal("Was expecting the data.relationships.posts key/value to have NOT been omitted")
-	} else if val.(map[string]interface{})["data"] != nil {
-		t.Fatal("Was expecting the data.relationships.posts value to have been nil/null")
+	// Verifiy the "posts" relation was an empty array
+	posts, ok := relationships["posts"]
+	if !ok {
+		t.Fatal("Was expecting the data.relationships.posts key/value to have been present")
+	}
+	postsMap, ok := posts.(map[string]interface{})
+	if !ok {
+		t.Fatal("data.relationships.posts was not a map")
+	}
+	postsData, ok := postsMap["data"]
+	if !ok {
+		t.Fatal("Was expecting the data.relationships.posts.data key/value to have been present")
+	}
+	postsDataSlice, ok := postsData.([]interface{})
+	if !ok {
+		t.Fatal("data.relationships.posts.data was not a slice []")
+	}
+	if len(postsDataSlice) != 0 {
+		t.Fatal("Was expecting the data.relationships.posts.data value to have been an empty array []")
 	}
 
-	if val, exists := relationships["current_post"]; !exists {
+	// Verifiy the "current_post" was a null
+	currentPost, postExists := relationships["current_post"]
+	if !postExists {
 		t.Fatal("Was expecting the data.relationships.current_post key/value to have NOT been omitted")
-	} else if val.(map[string]interface{})["data"] != nil {
-		t.Fatal("Was expecting the data.relationships.current_post value to have been nil/null")
+	}
+	currentPostMap, ok := currentPost.(map[string]interface{})
+	if !ok {
+		t.Fatal("data.relationships.current_post was not a map")
+	}
+	currentPostData, ok := currentPostMap["data"]
+	if !ok {
+		t.Fatal("Was expecting the data.relationships.current_post.data key/value to have been present")
+	}
+	if currentPostData != nil {
+		t.Fatal("Was expecting the data.relationships.current_post.data value to have been nil/null")
 	}
 }
 
