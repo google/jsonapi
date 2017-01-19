@@ -166,14 +166,16 @@ field when `count` has a value of `0`). Lastly, the spec indicates that
 #### `relation`
 
 ```
-`jsonapi:"relation,<key name in relationships hash>"`
+`jsonapi:"relation,<key name in relationships hash>,<optional: omitempty>"`
 ```
 
 Relations are struct fields that represent a one-to-one or one-to-many
 relationship with other structs. JSON API will traverse the graph of
 relationships and marshal or unmarshal records.  The first argument must
 be, `relation`, and the second should be the name of the relationship,
-used as the key in the `relationships` hash for the record.
+used as the key in the `relationships` hash for the record. The optional
+third argument is `omitempty` - if present will prevent non existent to-one and
+to-many from being serialized.
 
 ## Methods Reference
 
