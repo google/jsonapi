@@ -127,6 +127,23 @@ func MarshalManyPayload(w io.Writer, models interface{}) error {
 	return nil
 }
 
+func MarshalManyPayloadWithLinks(w io.Writer, models interface{}, links map[string]interface{}) error {
+	m, err := convertToSliceInterface(&models)
+	if err != nil {
+		return err
+	}
+	payload, err := MarshalManyWithLinks(m, links)
+	if err != nil {
+		return err
+	}
+
+	if err := json.NewEncoder(w).Encode(payload); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // MarshalMany does the same as MarshalManyPayload except it just returns the
 // payload and doesn't write out results. Useful is you use your JSON rendering
 // library.
@@ -144,6 +161,36 @@ func MarshalMany(models []interface{}) (*ManyPayload, error) {
 		payload.Data = append(payload.Data, node)
 	}
 	payload.Included = nodeMapValues(&included)
+
+	return payload, nil
+}
+
+// MarshalMany does the same as MarshalManyPayload except it just returns the
+// payload and doesn't write out results. Useful is you use your JSON rendering
+// library.
+func MarshalManyWithLinks(models []interface{}, links map[string]interface{}) (*ManyPayload, error) {
+	var data []*Node
+	included := make(map[string]*Node)
+
+	for i := 0; i < len(models); i++ {
+		model := models[i]
+
+		node, err := visitModelNode(model, &included, true)
+		if err != nil {
+			return nil, err
+		}
+		data = append(data, node)
+	}
+
+	if len(models) == 0 {
+		data = make([]*Node, 0)
+	}
+
+	payload := &ManyPayload{
+		Data:     data,
+		Included: nodeMapValues(&included),
+		Links:    links,
+	}
 
 	return payload, nil
 }
@@ -386,6 +433,38 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 				}
 			}
 
+		} else if annotation == "links" {
+			var omitEmpty bool
+
+			if len(args) > 2 {
+				omitEmpty = args[2] == "omitempty"
+			}
+
+			if node.Links == nil {
+				node.Links = make(map[string]interface{})
+			}
+
+			if fieldValue.Type() == reflect.TypeOf(time.Time{}) ||
+				fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
+				// link values should not be of type time.Time
+				er = ErrBadJSONAPIStructTag
+				break
+			} else {
+				// Dealing with a fieldValue that is not a time
+				emptyValue := reflect.Zero(fieldValue.Type())
+
+				// See if we need to omit this field
+				if omitEmpty && fieldValue.Interface() == emptyValue.Interface() {
+					continue
+				}
+
+				strAttr, ok := fieldValue.Interface().(string)
+				if ok {
+					node.Links[args[1]] = strAttr
+				} else {
+					node.Links[args[1]] = fieldValue.Interface()
+				}
+			}
 		} else {
 			er = ErrBadJSONAPIStructTag
 			break

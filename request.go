@@ -250,6 +250,9 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			}
 
 			fieldValue.Set(reflect.ValueOf(data.ClientID))
+		} else if annotation == "links" {
+			// ignore but don't error on links annotation
+			continue
 		} else if annotation == "attr" {
 			attributes := data.Attributes
 			if attributes == nil || len(data.Attributes) == 0 {
