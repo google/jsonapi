@@ -169,7 +169,7 @@ func testBlogForCreate(i int) *Blog {
 func testBlogsForList() []interface{} {
 	blogs := make([]interface{}, 0, 10)
 
-	for i := 0; i < 10; i += 1 {
+	for i := 0; i < 10; i++ {
 		blogs = append(blogs, testBlogForCreate(i))
 	}
 
@@ -184,13 +184,13 @@ func exerciseHandler() {
 
 	w := httptest.NewRecorder()
 
-	fmt.Println("============ start list ===========\n")
+	fmt.Println("============ start list ===========")
 	http.DefaultServeMux.ServeHTTP(w, req)
-	fmt.Println("============ stop list ===========\n")
+	fmt.Println("============ stop list ===========")
 
 	jsonReply, _ := ioutil.ReadAll(w.Body)
 
-	fmt.Println("============ jsonapi response from list ===========\n")
+	fmt.Println("============ jsonapi response from list ===========")
 	fmt.Println(string(jsonReply))
 	fmt.Println("============== end raw jsonapi from list =============")
 
@@ -201,13 +201,13 @@ func exerciseHandler() {
 
 	w = httptest.NewRecorder()
 
-	fmt.Println("============ start show ===========\n")
+	fmt.Println("============ start show ===========")
 	http.DefaultServeMux.ServeHTTP(w, req)
-	fmt.Println("============ stop show ===========\n")
+	fmt.Println("============ stop show ===========")
 
 	jsonReply, _ = ioutil.ReadAll(w.Body)
 
-	fmt.Println("\n============ jsonapi response from show ===========\n")
+	fmt.Println("\n============ jsonapi response from show ===========")
 	fmt.Println(string(jsonReply))
 	fmt.Println("============== end raw jsonapi from show =============")
 
@@ -222,14 +222,14 @@ func exerciseHandler() {
 
 	w = httptest.NewRecorder()
 
-	fmt.Println("============ start create ===========\n")
+	fmt.Println("============ start create ===========")
 	http.DefaultServeMux.ServeHTTP(w, req)
-	fmt.Println("============ stop create ===========\n")
+	fmt.Println("============ stop create ===========")
 
 	buf := bytes.NewBuffer(nil)
 	io.Copy(buf, w.Body)
 
-	fmt.Println("\n============ jsonapi response from create ===========\n")
+	fmt.Println("\n============ jsonapi response from create ===========")
 	fmt.Println(buf.String())
 	fmt.Println("============== end raw jsonapi response =============")
 
@@ -240,7 +240,7 @@ func exerciseHandler() {
 	out := bytes.NewBuffer(nil)
 	json.NewEncoder(out).Encode(responseBlog)
 
-	fmt.Println("\n================ Viola! Converted back our Blog struct =================\n")
+	fmt.Println("\n================ Viola! Converted back our Blog struct =================")
 	fmt.Printf("%s\n", out.Bytes())
 	fmt.Println("================ end marshal materialized Blog struct =================")
 }
@@ -288,27 +288,4 @@ func (blog Blog) JSONAPIRelationshipLinks(relation string) *map[string]interface
 		}
 	}
 	return nil
-}
-
-// Post Links
-func (post Post) JSONAPILinks() *map[string]interface{} {
-	return &map[string]interface{}{
-		"self": fmt.Sprintf("https://example.com/posts/%d", post.ID),
-	}
-}
-
-func (post Post) JSONAPIRelationshipLinks(relation string) *map[string]interface{} {
-	if relation == "comments" {
-		return &map[string]interface{}{
-			"related": fmt.Sprintf("https://example.com/posts/%d/comments", post.ID),
-		}
-	}
-	return nil
-}
-
-// Comment Links
-func (comment Comment) JSONAPILinks() *map[string]interface{} {
-	return &map[string]interface{}{
-		"self": fmt.Sprintf("https://example.com/comments/%d", comment.ID),
-	}
 }
