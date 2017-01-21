@@ -21,17 +21,17 @@ func createBlog(w http.ResponseWriter, r *http.Request) {
 	blog := new(Blog)
 
 	if err := jsonapiRuntime.UnmarshalPayload(r.Body, blog); err != nil {
-		http.Error(w, err.Error(), 500)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	// ...do stuff with your blog...
 
-	w.WriteHeader(201)
-	w.Header().Set("Content-Type", "application/vnd.api+json")
+	w.WriteHeader(http.StatusCreated)
+	w.Header().Set("Content-Type", jsonapi.MediaType)
 
 	if err := jsonapiRuntime.MarshalOnePayload(w, blog); err != nil {
-		http.Error(w, err.Error(), 500)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
@@ -42,10 +42,10 @@ func listBlogs(w http.ResponseWriter, r *http.Request) {
 	// but, for now
 	blogs := testBlogsForList()
 
-	w.WriteHeader(200)
-	w.Header().Set("Content-Type", "application/vnd.api+json")
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", jsonapi.MediaType)
 	if err := jsonapiRuntime.MarshalManyPayload(w, blogs); err != nil {
-		http.Error(w, err.Error(), 500)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
@@ -56,7 +56,7 @@ func showBlog(w http.ResponseWriter, r *http.Request) {
 
 	intID, err := strconv.Atoi(id)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -64,11 +64,11 @@ func showBlog(w http.ResponseWriter, r *http.Request) {
 
 	// but, for now
 	blog := testBlogForCreate(intID)
-	w.WriteHeader(200)
+	w.WriteHeader(http.StatusOK)
 
-	w.Header().Set("Content-Type", "application/vnd.api+json")
+	w.Header().Set("Content-Type", jsonapi.MediaType)
 	if err := jsonapiRuntime.MarshalOnePayload(w, blog); err != nil {
-		http.Error(w, err.Error(), 500)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
@@ -95,11 +95,11 @@ func main() {
 
 	http.HandleFunc("/blogs", func(w http.ResponseWriter, r *http.Request) {
 		if !regexp.MustCompile(`application/vnd\.api\+json`).Match([]byte(r.Header.Get("Accept"))) {
-			http.Error(w, "Unsupported Media Type", 415)
+			http.Error(w, "Unsupported Media Type", http.StatusUnsupportedMediaType)
 			return
 		}
 
-		if r.Method == "POST" {
+		if r.Method == http.MethodPost {
 			createBlog(w, r)
 		} else if r.FormValue("id") != "" {
 			showBlog(w, r)
@@ -178,9 +178,9 @@ func testBlogsForList() []interface{} {
 
 func exerciseHandler() {
 	// list
-	req, _ := http.NewRequest("GET", "/blogs", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/blogs", nil)
 
-	req.Header.Set("Accept", "application/vnd.api+json")
+	req.Header.Set("Accept", jsonapi.MediaType)
 
 	w := httptest.NewRecorder()
 
@@ -195,9 +195,9 @@ func exerciseHandler() {
 	fmt.Println("============== end raw jsonapi from list =============")
 
 	// show
-	req, _ = http.NewRequest("GET", "/blogs?id=1", nil)
+	req, _ = http.NewRequest(http.MethodGet, "/blogs?id=1", nil)
 
-	req.Header.Set("Accept", "application/vnd.api+json")
+	req.Header.Set("Accept", jsonapi.MediaType)
 
 	w = httptest.NewRecorder()
 
@@ -216,9 +216,9 @@ func exerciseHandler() {
 	in := bytes.NewBuffer(nil)
 	jsonapi.MarshalOnePayloadEmbedded(in, blog)
 
-	req, _ = http.NewRequest("POST", "/blogs", in)
+	req, _ = http.NewRequest(http.MethodPost, "/blogs", in)
 
-	req.Header.Set("Accept", "application/vnd.api+json")
+	req.Header.Set("Accept", jsonapi.MediaType)
 
 	w = httptest.NewRecorder()
 
