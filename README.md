@@ -229,17 +229,17 @@ func CreateBlog(w http.ResponseWriter, r *http.Request) {
 	blog := new(Blog)
 
 	if err := jsonapi.UnmarshalPayload(r.Body, blog); err != nil {
-		http.Error(w, err.Error(), 500)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	// ...save your blog...
 
-	w.WriteHeader(201)
-	w.Header().Set("Content-Type", "application/vnd.api+json")
+	w.WriteHeader(http.StatusCreated)
+	w.Header().Set("Content-Type", jsonapi.MediaType)
 
 	if err := jsonapi.MarshalOnePayload(w, blog); err != nil {
-		http.Error(w, err.Error(), 500)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 ```
@@ -292,10 +292,10 @@ func ListBlogs(w http.ResponseWriter, r *http.Request) {
   // but, for now
 	blogs := testBlogsForList()
 
-	w.WriteHeader(200)
-	w.Header().Set("Content-Type", "application/vnd.api+json")
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", jsonapi.MediaType)
 	if err := jsonapi.MarshalManyPayload(w, blogs); err != nil {
-		http.Error(w, err.Error(), 500)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 ```
@@ -355,7 +355,7 @@ jsonapi.MarshalOnePayloadEmbedded(out, testModel())
 h := new(BlogsHandler)
 
 w := httptest.NewRecorder()
-r, _ := http.NewRequest("POST", "/blogs", out)
+r, _ := http.NewRequest(http.MethodPost, "/blogs", out)
 
 h.CreateBlog(w, r)
 

@@ -97,10 +97,10 @@ func MarshalOne(model interface{}) (*OnePayload, error) {
 //
 //		 blogs := testBlogsForList()
 //
-//		 w.WriteHeader(200)
-//		 w.Header().Set("Content-Type", "application/vnd.api+json")
+//		 w.WriteHeader(http.StatusOK)
+//		 w.Header().Set("Content-Type", jsonapi.MediaType)
 //		 if err := jsonapi.MarshalManyPayload(w, blogs); err != nil {
-//			 http.Error(w, err.Error(), 500)
+//			 http.Error(w, err.Error(), http.StatusInternalServerError)
 //		 }
 //	 }
 //

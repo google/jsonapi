@@ -54,7 +54,7 @@ var (
 //   	// ...do stuff with your blog...
 //
 //   	w.WriteHeader(201)
-//   	w.Header().Set("Content-Type", "application/vnd.api+json")
+//   	w.Header().Set("Content-Type", jsonapi.MediaType)
 //
 //   	if err := jsonapi.MarshalOnePayload(w, blog); err != nil {
 //   		http.Error(w, err.Error(), 500)
