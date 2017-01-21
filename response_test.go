@@ -20,7 +20,7 @@ type Blog struct {
 	ViewCount     int       `jsonapi:"attr,view_count"`
 }
 
-func (b *Blog) JSONLinks() *Links {
+func (b *Blog) JSONAPILinks() *Links {
 	return &Links{
 		"self": fmt.Sprintf("https://example.com/api/blogs/%d", b.ID),
 		"comments": Link{
@@ -35,7 +35,7 @@ func (b *Blog) JSONLinks() *Links {
 	}
 }
 
-func (b *Blog) JSONRelationshipLinks(relation string) *Links {
+func (b *Blog) JSONAPIRelationshipLinks(relation string) *Links {
 	if relation == "posts" {
 		return &Links{
 			"related": Link{
@@ -224,7 +224,7 @@ type BadComment struct {
 	Body string `jsonapi:"attr,body"`
 }
 
-func (bc *BadComment) JSONLinks() *Links {
+func (bc *BadComment) JSONAPILinks() *Links {
 	return &Links{
 		"self": []string{"invalid", "should error"},
 	}

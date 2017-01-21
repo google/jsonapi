@@ -345,7 +345,7 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 
 			var relLinks *Links
 			if linkableModel, ok := model.(RelationshipLinkable); ok {
-				relLinks = linkableModel.JSONRelationshipLinks(args[1])
+				relLinks = linkableModel.JSONAPIRelationshipLinks(args[1])
 			}
 
 			if isSlice {
@@ -420,11 +420,11 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 	}
 
 	if linkableModel, isLinkable := model.(Linkable); isLinkable {
-		jl := linkableModel.JSONLinks()
+		jl := linkableModel.JSONAPILinks()
 		if er := jl.validate(); er != nil {
 			return nil, er
 		}
-		node.Links = linkableModel.JSONLinks()
+		node.Links = linkableModel.JSONAPILinks()
 	}
 
 	return node, nil

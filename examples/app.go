@@ -269,15 +269,14 @@ type Comment struct {
 	Body   string `jsonapi:"attr,body"`
 }
 
-// BLog Links
-
-func (blog Blog) JSONLinks() *map[string]interface{} {
+// Blog Links
+func (blog Blog) JSONAPILinks() *map[string]interface{} {
 	return &map[string]interface{}{
 		"self": fmt.Sprintf("https://example.com/blogs/%d", blog.ID),
 	}
 }
 
-func (blog Blog) JSONRelationshipLinks(relation string) *map[string]interface{} {
+func (blog Blog) JSONAPIRelationshipLinks(relation string) *map[string]interface{} {
 	if relation == "posts" {
 		return &map[string]interface{}{
 			"related": fmt.Sprintf("https://example.com/blogs/%d/posts", blog.ID),
@@ -292,14 +291,13 @@ func (blog Blog) JSONRelationshipLinks(relation string) *map[string]interface{} 
 }
 
 // Post Links
-
-func (post Post) JSONLinks() *map[string]interface{} {
+func (post Post) JSONAPILinks() *map[string]interface{} {
 	return &map[string]interface{}{
 		"self": fmt.Sprintf("https://example.com/posts/%d", post.ID),
 	}
 }
 
-func (post Post) JSONRelationshipLinks(relation string) *map[string]interface{} {
+func (post Post) JSONAPIRelationshipLinks(relation string) *map[string]interface{} {
 	if relation == "comments" {
 		return &map[string]interface{}{
 			"related": fmt.Sprintf("https://example.com/posts/%d/comments", post.ID),
@@ -309,8 +307,7 @@ func (post Post) JSONRelationshipLinks(relation string) *map[string]interface{} 
 }
 
 // Comment Links
-
-func (comment Comment) JSONLinks() *map[string]interface{} {
+func (comment Comment) JSONAPILinks() *map[string]interface{} {
 	return &map[string]interface{}{
 		"self": fmt.Sprintf("https://example.com/comments/%d", comment.ID),
 	}

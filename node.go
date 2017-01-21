@@ -76,12 +76,12 @@ type Link struct {
 // Linkable is used to include document links in response data
 // e.g. {"self": "http://example.com/posts/1"}
 type Linkable interface {
-	JSONLinks() *Links
+	JSONAPILinks() *Links
 }
 
 // RelationshipLinkable is used to include relationship links  in response data
 // e.g. {"related": "http://example.com/posts/1/comments"}
 type RelationshipLinkable interface {
-	// JSONRelationshipLinks will be invoked for each relationship with the corresponding relation name (e.g. `comments`)
-	JSONRelationshipLinks(relation string) *Links
+	// JSONAPIRelationshipLinks will be invoked for each relationship with the corresponding relation name (e.g. `comments`)
+	JSONAPIRelationshipLinks(relation string) *Links
 }
