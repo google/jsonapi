@@ -360,6 +360,7 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 					er = err
 					break
 				}
+				relationship.Links = relLinks
 
 				if sideload {
 					shallowNodes := []*Node{}
@@ -369,7 +370,8 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 					}
 
 					node.Relationships[args[1]] = &RelationshipManyNode{
-						Data: shallowNodes,
+						Data:  shallowNodes,
+						Links: relationship.Links,
 					}
 				} else {
 					node.Relationships[args[1]] = relationship
@@ -396,10 +398,14 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 				if sideload {
 					appendIncluded(included, relationship)
 					node.Relationships[args[1]] = &RelationshipOneNode{
-						Data: toShallowNode(relationship),
+						Data:  toShallowNode(relationship),
+						Links: relLinks,
 					}
 				} else {
-					node.Relationships[args[1]] = &RelationshipOneNode{Data: relationship}
+					node.Relationships[args[1]] = &RelationshipOneNode{
+						Data:  relationship,
+						Links: relLinks,
+					}
 				}
 			}
 
@@ -412,6 +418,15 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 	if er != nil {
 		return nil, er
 	}
+
+	if linkableModel, isLinkable := model.(Linkable); isLinkable {
+		jl := linkableModel.JSONLinks()
+		if er := jl.validate(); er != nil {
+			return nil, er
+		}
+		node.Links = linkableModel.JSONLinks()
+	}
+
 	return node, nil
 }
 
