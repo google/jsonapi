@@ -25,8 +25,6 @@ var (
 	ErrExpectedSlice = errors.New("models should be a slice of struct pointers")
 )
 
-const iso8601TimeFormat = "2006-01-02T15:04:05Z"
-
 // MarshalOnePayload writes a jsonapi response with one, with related records
 // sideloaded, into "included" array. This method encodes a response for a
 // single record only. Hence, data will be a single record rather than an array
@@ -176,7 +174,8 @@ func MarshalOnePayloadEmbedded(w io.Writer, model interface{}) error {
 	return nil
 }
 
-func visitModelNode(model interface{}, included *map[string]*Node, sideload bool) (*Node, error) {
+func visitModelNode(model interface{}, included *map[string]*Node,
+	sideload bool) (*Node, error) {
 	node := new(Node)
 
 	var er error
@@ -186,7 +185,7 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 
 	for i := 0; i < modelValue.NumField(); i++ {
 		structField := modelValue.Type().Field(i)
-		tag := structField.Tag.Get("jsonapi")
+		tag := structField.Tag.Get(annotationJSONAPI)
 		if tag == "" {
 			continue
 		}
@@ -194,7 +193,7 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 		fieldValue := modelValue.Field(i)
 		fieldType := modelType.Field(i)
 
-		args := strings.Split(tag, ",")
+		args := strings.Split(tag, annotationSeperator)
 
 		if len(args) < 1 {
 			er = ErrBadJSONAPIStructTag
@@ -203,13 +202,13 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 
 		annotation := args[0]
 
-		if (annotation == clientIDAnnotation && len(args) != 1) ||
-			(annotation != clientIDAnnotation && len(args) < 2) {
+		if (annotation == annotationClientID && len(args) != 1) ||
+			(annotation != annotationClientID && len(args) < 2) {
 			er = ErrBadJSONAPIStructTag
 			break
 		}
 
-		if annotation == "primary" {
+		if annotation == annotationPrimary {
 			v := fieldValue
 
 			// Deal with PTRS
@@ -253,20 +252,20 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 			}
 
 			node.Type = args[1]
-		} else if annotation == clientIDAnnotation {
+		} else if annotation == annotationClientID {
 			clientID := fieldValue.String()
 			if clientID != "" {
 				node.ClientID = clientID
 			}
-		} else if annotation == "attr" {
+		} else if annotation == annotationAttribute {
 			var omitEmpty, iso8601 bool
 
 			if len(args) > 2 {
 				for _, arg := range args[2:] {
 					switch arg {
-					case "omitempty":
+					case annotationOmitEmpty:
 						omitEmpty = true
-					case "iso8601":
+					case annotationISO8601:
 						iso8601 = true
 					}
 				}
@@ -325,10 +324,18 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 					node.Attributes[args[1]] = fieldValue.Interface()
 				}
 			}
-		} else if annotation == "relation" {
-			isSlice := fieldValue.Type().Kind() == reflect.Slice
+		} else if annotation == annotationRelation {
+			var omitEmpty bool
 
-			if (isSlice && fieldValue.Len() < 1) || (!isSlice && fieldValue.IsNil()) {
+			//add support for 'omitempty' struct tag for marshaling as absent
+			if len(args) > 2 {
+				omitEmpty = args[2] == annotationOmitEmpty
+			}
+
+			isSlice := fieldValue.Type().Kind() == reflect.Slice
+			if omitEmpty &&
+				(isSlice && fieldValue.Len() < 1 ||
+					(!isSlice && fieldValue.IsNil())) {
 				continue
 			}
 
@@ -337,52 +344,57 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 			}
 
 			if isSlice {
+				// to-many relationship
 				relationship, err := visitModelNodeRelationships(
 					args[1],
 					fieldValue,
 					included,
 					sideload,
 				)
-
-				if err == nil {
-					d := relationship.Data
-					if sideload {
-						var shallowNodes []*Node
-
-						for _, n := range d {
-							appendIncluded(included, n)
-							shallowNodes = append(shallowNodes, toShallowNode(n))
-						}
-
-						node.Relationships[args[1]] = &RelationshipManyNode{
-							Data: shallowNodes,
-						}
-					} else {
-						node.Relationships[args[1]] = relationship
-					}
-				} else {
+				if err != nil {
 					er = err
 					break
 				}
+
+				if sideload {
+					shallowNodes := []*Node{}
+					for _, n := range relationship.Data {
+						appendIncluded(included, n)
+						shallowNodes = append(shallowNodes, toShallowNode(n))
+					}
+
+					node.Relationships[args[1]] = &RelationshipManyNode{
+						Data: shallowNodes,
+					}
+				} else {
+					node.Relationships[args[1]] = relationship
+				}
 			} else {
+				// to-one relationships
+
+				// Handle null relationship case
+				if fieldValue.IsNil() {
+					node.Relationships[args[1]] = &RelationshipOneNode{Data: nil}
+					continue
+				}
+
 				relationship, err := visitModelNode(
 					fieldValue.Interface(),
 					included,
-					sideload)
-				if err == nil {
-					if sideload {
-						appendIncluded(included, relationship)
-						node.Relationships[args[1]] = &RelationshipOneNode{
-							Data: toShallowNode(relationship),
-						}
-					} else {
-						node.Relationships[args[1]] = &RelationshipOneNode{
-							Data: relationship,
-						}
-					}
-				} else {
+					sideload,
+				)
+				if err != nil {
 					er = err
 					break
+				}
+
+				if sideload {
+					appendIncluded(included, relationship)
+					node.Relationships[args[1]] = &RelationshipOneNode{
+						Data: toShallowNode(relationship),
+					}
+				} else {
+					node.Relationships[args[1]] = &RelationshipOneNode{Data: relationship}
 				}
 			}
 
@@ -395,7 +407,6 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 	if er != nil {
 		return nil, er
 	}
-
 	return node, nil
 }
 
@@ -406,15 +417,13 @@ func toShallowNode(node *Node) *Node {
 	}
 }
 
-func visitModelNodeRelationships(relationName string, models reflect.Value, included *map[string]*Node, sideload bool) (*RelationshipManyNode, error) {
-	var nodes []*Node
-
-	if models.Len() == 0 {
-		nodes = make([]*Node, 0)
-	}
+func visitModelNodeRelationships(relationName string, models reflect.Value,
+	included *map[string]*Node, sideload bool) (*RelationshipManyNode, error) {
+	nodes := []*Node{}
 
 	for i := 0; i < models.Len(); i++ {
 		n := models.Index(i).Interface()
+
 		node, err := visitModelNode(n, included, sideload)
 		if err != nil {
 			return nil, err
