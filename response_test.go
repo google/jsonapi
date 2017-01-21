@@ -85,6 +85,127 @@ type Book struct {
 	PublishedAt time.Time
 }
 
+func TestWithoutOmitsEmptyAnnotationOnRelation(t *testing.T) {
+	blog := &Blog{}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalOnePayload(out, blog); err != nil {
+		t.Fatal(err)
+	}
+
+	var jsonData map[string]interface{}
+	if err := json.Unmarshal(out.Bytes(), &jsonData); err != nil {
+		t.Fatal(err)
+	}
+	relationships := jsonData["data"].(map[string]interface{})["relationships"].(map[string]interface{})
+
+	// Verifiy the "posts" relation was an empty array
+	posts, ok := relationships["posts"]
+	if !ok {
+		t.Fatal("Was expecting the data.relationships.posts key/value to have been present")
+	}
+	postsMap, ok := posts.(map[string]interface{})
+	if !ok {
+		t.Fatal("data.relationships.posts was not a map")
+	}
+	postsData, ok := postsMap["data"]
+	if !ok {
+		t.Fatal("Was expecting the data.relationships.posts.data key/value to have been present")
+	}
+	postsDataSlice, ok := postsData.([]interface{})
+	if !ok {
+		t.Fatal("data.relationships.posts.data was not a slice []")
+	}
+	if len(postsDataSlice) != 0 {
+		t.Fatal("Was expecting the data.relationships.posts.data value to have been an empty array []")
+	}
+
+	// Verifiy the "current_post" was a null
+	currentPost, postExists := relationships["current_post"]
+	if !postExists {
+		t.Fatal("Was expecting the data.relationships.current_post key/value to have NOT been omitted")
+	}
+	currentPostMap, ok := currentPost.(map[string]interface{})
+	if !ok {
+		t.Fatal("data.relationships.current_post was not a map")
+	}
+	currentPostData, ok := currentPostMap["data"]
+	if !ok {
+		t.Fatal("Was expecting the data.relationships.current_post.data key/value to have been present")
+	}
+	if currentPostData != nil {
+		t.Fatal("Was expecting the data.relationships.current_post.data value to have been nil/null")
+	}
+}
+
+func TestWithOmitsEmptyAnnotationOnRelation(t *testing.T) {
+	type BlogOptionalPosts struct {
+		ID          int     `jsonapi:"primary,blogs"`
+		Title       string  `jsonapi:"attr,title"`
+		Posts       []*Post `jsonapi:"relation,posts,omitempty"`
+		CurrentPost *Post   `jsonapi:"relation,current_post,omitempty"`
+	}
+
+	blog := &BlogOptionalPosts{ID: 999}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalOnePayload(out, blog); err != nil {
+		t.Fatal(err)
+	}
+
+	var jsonData map[string]interface{}
+	if err := json.Unmarshal(out.Bytes(), &jsonData); err != nil {
+		t.Fatal(err)
+	}
+	payload := jsonData["data"].(map[string]interface{})
+
+	// Verify relationship was NOT set
+	if val, exists := payload["relationships"]; exists {
+		t.Fatalf("Was expecting the data.relationships key/value to have been empty - it was not and had a value of %v", val)
+	}
+}
+
+func TestWithOmitsEmptyAnnotationOnRelation_MixedData(t *testing.T) {
+	type BlogOptionalPosts struct {
+		ID          int     `jsonapi:"primary,blogs"`
+		Title       string  `jsonapi:"attr,title"`
+		Posts       []*Post `jsonapi:"relation,posts,omitempty"`
+		CurrentPost *Post   `jsonapi:"relation,current_post,omitempty"`
+	}
+
+	blog := &BlogOptionalPosts{
+		ID: 999,
+		CurrentPost: &Post{
+			ID: 123,
+		},
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalOnePayload(out, blog); err != nil {
+		t.Fatal(err)
+	}
+
+	var jsonData map[string]interface{}
+	if err := json.Unmarshal(out.Bytes(), &jsonData); err != nil {
+		t.Fatal(err)
+	}
+	payload := jsonData["data"].(map[string]interface{})
+
+	// Verify relationship was set
+	if _, exists := payload["relationships"]; !exists {
+		t.Fatal("Was expecting the data.relationships key/value to have NOT been empty")
+	}
+
+	relationships := payload["relationships"].(map[string]interface{})
+
+	// Verify the relationship was not omitted, and is not null
+	if val, exists := relationships["current_post"]; !exists {
+		t.Fatal("Was expecting the data.relationships.current_post key/value to have NOT been omitted")
+	} else if val.(map[string]interface{})["data"] == nil {
+		t.Fatal("Was expecting the data.relationships.current_post value to have NOT been nil/null")
+	}
+}
+
 type Timestamp struct {
 	ID   int        `jsonapi:"primary,timestamps"`
 	Time time.Time  `jsonapi:"attr,timestamp,iso8601"`

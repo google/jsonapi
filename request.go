@@ -84,6 +84,8 @@ func UnmarshalPayload(in io.Reader, model interface{}) error {
 	return unmarshalNode(payload.Data, reflect.ValueOf(model), nil)
 }
 
+// UnmarshalManyPayload converts an io into a set of struct instances using
+// jsonapi tags on the type's struct fields.
 func UnmarshalManyPayload(in io.Reader, t reflect.Type) ([]interface{}, error) {
 	payload := new(ManyPayload)
 
@@ -155,8 +157,8 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 
 		annotation := args[0]
 
-		if (annotation == clientIDAnnotation && len(args) != 1) ||
-			(annotation != clientIDAnnotation && len(args) < 2) {
+		if (annotation == annotationClientID && len(args) != 1) ||
+			(annotation != annotationClientID && len(args) < 2) {
 			er = ErrBadJSONAPIStructTag
 			break
 		}
@@ -244,7 +246,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			}
 
 			assign(fieldValue, idValue)
-		} else if annotation == clientIDAnnotation {
+		} else if annotation == annotationClientID {
 			if data.ClientID == "" {
 				continue
 			}
@@ -472,6 +474,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			}
 
 			if isSlice {
+				// to-many relationship
 				relationship := new(RelationshipManyNode)
 
 				buf := bytes.NewBuffer(nil)
@@ -499,6 +502,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 
 				fieldValue.Set(models)
 			} else {
+				// to-one relationships
 				relationship := new(RelationshipOneNode)
 
 				buf := bytes.NewBuffer(nil)
@@ -508,8 +512,17 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				)
 				json.NewDecoder(buf).Decode(relationship)
 
-				m := reflect.New(fieldValue.Type().Elem())
+				/*
+					http://jsonapi.org/format/#document-resource-object-relationships
+					http://jsonapi.org/format/#document-resource-object-linkage
+					relationship can have a data node set to null (e.g. to disassociate the relationship)
+					so unmarshal and set fieldValue only if data obj is not null
+				*/
+				if relationship.Data == nil {
+					continue
+				}
 
+				m := reflect.New(fieldValue.Type().Elem())
 				if err := unmarshalNode(
 					fullNode(relationship.Data, included),
 					m,
@@ -520,6 +533,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				}
 
 				fieldValue.Set(m)
+
 			}
 
 		} else {
