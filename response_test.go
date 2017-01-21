@@ -3,6 +3,7 @@ package jsonapi
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -17,6 +18,43 @@ type Blog struct {
 	CurrentPostID int       `jsonapi:"attr,current_post_id"`
 	CreatedAt     time.Time `jsonapi:"attr,created_at"`
 	ViewCount     int       `jsonapi:"attr,view_count"`
+}
+
+func (b *Blog) JSONAPILinks() *Links {
+	return &Links{
+		"self": fmt.Sprintf("https://example.com/api/blogs/%d", b.ID),
+		"comments": Link{
+			Href: fmt.Sprintf("https://example.com/api/blogs/%d/comments", b.ID),
+			Meta: map[string]interface{}{
+				"counts": map[string]uint{
+					"likes":    4,
+					"comments": 20,
+				},
+			},
+		},
+	}
+}
+
+func (b *Blog) JSONAPIRelationshipLinks(relation string) *Links {
+	if relation == "posts" {
+		return &Links{
+			"related": Link{
+				Href: fmt.Sprintf("https://example.com/api/blogs/%d/posts", b.ID),
+				Meta: map[string]interface{}{
+					"count": len(b.Posts),
+				},
+			},
+		}
+	}
+	if relation == "current_post" {
+		return &Links{
+			"self": fmt.Sprintf("https://example.com/api/posts/%s", "3"),
+			"related": Link{
+				Href: fmt.Sprintf("https://example.com/api/blogs/%d/current_post", b.ID),
+			},
+		}
+	}
+	return nil
 }
 
 type Post struct {
@@ -179,6 +217,17 @@ type Car struct {
 	Make  *string `jsonapi:"attr,make,omitempty"`
 	Model *string `jsonapi:"attr,model,omitempty"`
 	Year  *uint   `jsonapi:"attr,year,omitempty"`
+}
+
+type BadComment struct {
+	ID   uint64 `jsonapi:"primary,bad-comment"`
+	Body string `jsonapi:"attr,body"`
+}
+
+func (bc *BadComment) JSONAPILinks() *Links {
+	return &Links{
+		"self": []string{"invalid", "should error"},
+	}
 }
 
 func TestMarshalIDPtr(t *testing.T) {
@@ -402,6 +451,86 @@ func TestMarshalISO8601TimePointer(t *testing.T) {
 	}
 }
 
+func TestSupportsLinkable(t *testing.T) {
+	testModel := &Blog{
+		ID:        5,
+		Title:     "Title 1",
+		CreatedAt: time.Now(),
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalOnePayload(out, testModel); err != nil {
+		t.Fatal(err)
+	}
+
+	resp := new(OnePayload)
+	if err := json.NewDecoder(out).Decode(resp); err != nil {
+		t.Fatal(err)
+	}
+
+	data := resp.Data
+
+	if data.Links == nil {
+		t.Fatal("Expected links")
+	}
+	links := *data.Links
+
+	self, hasSelf := links["self"]
+	if !hasSelf {
+		t.Fatal("Expected 'self' link to be present")
+	}
+	if _, isString := self.(string); !isString {
+		t.Fatal("Expected 'self' to contain a string")
+	}
+
+	comments, hasComments := links["comments"]
+	if !hasComments {
+		t.Fatal("expect 'comments' to be present")
+	}
+	commentsMap, isMap := comments.(map[string]interface{})
+	if !isMap {
+		t.Fatal("Expected 'comments' to contain a map")
+	}
+
+	commentsHref, hasHref := commentsMap["href"]
+	if !hasHref {
+		t.Fatal("Expect 'comments' to contain an 'href' key/value")
+	}
+	if _, isString := commentsHref.(string); !isString {
+		t.Fatal("Expected 'href' to contain a string")
+	}
+
+	commentsMeta, hasMeta := commentsMap["meta"]
+	if !hasMeta {
+		t.Fatal("Expect 'comments' to contain a 'meta' key/value")
+	}
+	commentsMetaMap, isMap := commentsMeta.(map[string]interface{})
+	if !isMap {
+		t.Fatal("Expected 'comments' to contain a map")
+	}
+	countsMap, isMap := commentsMetaMap["counts"].(map[string]interface{})
+	if !isMap {
+		t.Fatal("Expected 'counts' to contain a map")
+	}
+	for k, v := range countsMap {
+		if _, isNum := v.(float64); !isNum {
+			t.Fatalf("Exepected value at '%s' to be a numeric (float64)", k)
+		}
+	}
+}
+
+func TestInvalidLinkable(t *testing.T) {
+	testModel := &BadComment{
+		ID:   5,
+		Body: "Hello World",
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalOnePayload(out, testModel); err == nil {
+		t.Fatal("Was expecting an error")
+	}
+}
+
 func TestRelations(t *testing.T) {
 	testModel := testBlog()
 
@@ -423,10 +552,18 @@ func TestRelations(t *testing.T) {
 
 	if relations["posts"] == nil {
 		t.Fatalf("Posts relationship was not materialized")
+	} else {
+		if relations["posts"].(map[string]interface{})["links"] == nil {
+			t.Fatalf("Posts relationship links were not materialized")
+		}
 	}
 
 	if relations["current_post"] == nil {
 		t.Fatalf("Current post relationship was not materialized")
+	} else {
+		if relations["current_post"].(map[string]interface{})["links"] == nil {
+			t.Fatalf("Current post relationship links were not materialized")
+		}
 	}
 
 	if len(relations["posts"].(map[string]interface{})["data"].([]interface{})) != 2 {
