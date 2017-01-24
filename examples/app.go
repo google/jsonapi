@@ -21,17 +21,17 @@ func createBlog(w http.ResponseWriter, r *http.Request) {
 	blog := new(Blog)
 
 	if err := jsonapiRuntime.UnmarshalPayload(r.Body, blog); err != nil {
-		http.Error(w, err.Error(), 500)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	// ...do stuff with your blog...
 
-	w.WriteHeader(201)
-	w.Header().Set("Content-Type", "application/vnd.api+json")
+	w.WriteHeader(http.StatusCreated)
+	w.Header().Set("Content-Type", jsonapi.MediaType)
 
 	if err := jsonapiRuntime.MarshalOnePayload(w, blog); err != nil {
-		http.Error(w, err.Error(), 500)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
@@ -42,10 +42,10 @@ func listBlogs(w http.ResponseWriter, r *http.Request) {
 	// but, for now
 	blogs := testBlogsForList()
 
-	w.WriteHeader(200)
-	w.Header().Set("Content-Type", "application/vnd.api+json")
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", jsonapi.MediaType)
 	if err := jsonapiRuntime.MarshalManyPayload(w, blogs); err != nil {
-		http.Error(w, err.Error(), 500)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
@@ -56,7 +56,7 @@ func showBlog(w http.ResponseWriter, r *http.Request) {
 
 	intID, err := strconv.Atoi(id)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -64,11 +64,11 @@ func showBlog(w http.ResponseWriter, r *http.Request) {
 
 	// but, for now
 	blog := testBlogForCreate(intID)
-	w.WriteHeader(200)
+	w.WriteHeader(http.StatusOK)
 
-	w.Header().Set("Content-Type", "application/vnd.api+json")
+	w.Header().Set("Content-Type", jsonapi.MediaType)
 	if err := jsonapiRuntime.MarshalOnePayload(w, blog); err != nil {
-		http.Error(w, err.Error(), 500)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
@@ -95,11 +95,11 @@ func main() {
 
 	http.HandleFunc("/blogs", func(w http.ResponseWriter, r *http.Request) {
 		if !regexp.MustCompile(`application/vnd\.api\+json`).Match([]byte(r.Header.Get("Accept"))) {
-			http.Error(w, "Unsupported Media Type", 415)
+			http.Error(w, "Unsupported Media Type", http.StatusUnsupportedMediaType)
 			return
 		}
 
-		if r.Method == "POST" {
+		if r.Method == http.MethodPost {
 			createBlog(w, r)
 		} else if r.FormValue("id") != "" {
 			showBlog(w, r)
@@ -169,7 +169,7 @@ func testBlogForCreate(i int) *Blog {
 func testBlogsForList() []interface{} {
 	blogs := make([]interface{}, 0, 10)
 
-	for i := 0; i < 10; i += 1 {
+	for i := 0; i < 10; i++ {
 		blogs = append(blogs, testBlogForCreate(i))
 	}
 
@@ -178,36 +178,36 @@ func testBlogsForList() []interface{} {
 
 func exerciseHandler() {
 	// list
-	req, _ := http.NewRequest("GET", "/blogs", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/blogs", nil)
 
-	req.Header.Set("Accept", "application/vnd.api+json")
+	req.Header.Set("Accept", jsonapi.MediaType)
 
 	w := httptest.NewRecorder()
 
-	fmt.Println("============ start list ===========\n")
+	fmt.Println("============ start list ===========")
 	http.DefaultServeMux.ServeHTTP(w, req)
-	fmt.Println("============ stop list ===========\n")
+	fmt.Println("============ stop list ===========")
 
 	jsonReply, _ := ioutil.ReadAll(w.Body)
 
-	fmt.Println("============ jsonapi response from list ===========\n")
+	fmt.Println("============ jsonapi response from list ===========")
 	fmt.Println(string(jsonReply))
 	fmt.Println("============== end raw jsonapi from list =============")
 
 	// show
-	req, _ = http.NewRequest("GET", "/blogs?id=1", nil)
+	req, _ = http.NewRequest(http.MethodGet, "/blogs?id=1", nil)
 
-	req.Header.Set("Accept", "application/vnd.api+json")
+	req.Header.Set("Accept", jsonapi.MediaType)
 
 	w = httptest.NewRecorder()
 
-	fmt.Println("============ start show ===========\n")
+	fmt.Println("============ start show ===========")
 	http.DefaultServeMux.ServeHTTP(w, req)
-	fmt.Println("============ stop show ===========\n")
+	fmt.Println("============ stop show ===========")
 
 	jsonReply, _ = ioutil.ReadAll(w.Body)
 
-	fmt.Println("\n============ jsonapi response from show ===========\n")
+	fmt.Println("\n============ jsonapi response from show ===========")
 	fmt.Println(string(jsonReply))
 	fmt.Println("============== end raw jsonapi from show =============")
 
@@ -216,20 +216,20 @@ func exerciseHandler() {
 	in := bytes.NewBuffer(nil)
 	jsonapi.MarshalOnePayloadEmbedded(in, blog)
 
-	req, _ = http.NewRequest("POST", "/blogs", in)
+	req, _ = http.NewRequest(http.MethodPost, "/blogs", in)
 
-	req.Header.Set("Accept", "application/vnd.api+json")
+	req.Header.Set("Accept", jsonapi.MediaType)
 
 	w = httptest.NewRecorder()
 
-	fmt.Println("============ start create ===========\n")
+	fmt.Println("============ start create ===========")
 	http.DefaultServeMux.ServeHTTP(w, req)
-	fmt.Println("============ stop create ===========\n")
+	fmt.Println("============ stop create ===========")
 
 	buf := bytes.NewBuffer(nil)
 	io.Copy(buf, w.Body)
 
-	fmt.Println("\n============ jsonapi response from create ===========\n")
+	fmt.Println("\n============ jsonapi response from create ===========")
 	fmt.Println(buf.String())
 	fmt.Println("============== end raw jsonapi response =============")
 
@@ -240,7 +240,7 @@ func exerciseHandler() {
 	out := bytes.NewBuffer(nil)
 	json.NewEncoder(out).Encode(responseBlog)
 
-	fmt.Println("\n================ Viola! Converted back our Blog struct =================\n")
+	fmt.Println("\n================ Viola! Converted back our Blog struct =================")
 	fmt.Printf("%s\n", out.Bytes())
 	fmt.Println("================ end marshal materialized Blog struct =================")
 }
@@ -267,4 +267,25 @@ type Comment struct {
 	ID     int    `jsonapi:"primary,comments"`
 	PostID int    `jsonapi:"attr,post_id"`
 	Body   string `jsonapi:"attr,body"`
+}
+
+// Blog Links
+func (blog Blog) JSONAPILinks() *map[string]interface{} {
+	return &map[string]interface{}{
+		"self": fmt.Sprintf("https://example.com/blogs/%d", blog.ID),
+	}
+}
+
+func (blog Blog) JSONAPIRelationshipLinks(relation string) *map[string]interface{} {
+	if relation == "posts" {
+		return &map[string]interface{}{
+			"related": fmt.Sprintf("https://example.com/blogs/%d/posts", blog.ID),
+		}
+	}
+	if relation == "current_post" {
+		return &map[string]interface{}{
+			"related": fmt.Sprintf("https://example.com/blogs/%d/current_post", blog.ID),
+		}
+	}
+	return nil
 }

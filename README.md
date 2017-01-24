@@ -166,14 +166,16 @@ field when `count` has a value of `0`). Lastly, the spec indicates that
 #### `relation`
 
 ```
-`jsonapi:"relation,<key name in relationships hash>"`
+`jsonapi:"relation,<key name in relationships hash>,<optional: omitempty>"`
 ```
 
 Relations are struct fields that represent a one-to-one or one-to-many
 relationship with other structs. JSON API will traverse the graph of
 relationships and marshal or unmarshal records.  The first argument must
 be, `relation`, and the second should be the name of the relationship,
-used as the key in the `relationships` hash for the record.
+used as the key in the `relationships` hash for the record. The optional
+third argument is `omitempty` - if present will prevent non existent to-one and
+to-many from being serialized.
 
 ## Methods Reference
 
@@ -227,17 +229,17 @@ func CreateBlog(w http.ResponseWriter, r *http.Request) {
 	blog := new(Blog)
 
 	if err := jsonapi.UnmarshalPayload(r.Body, blog); err != nil {
-		http.Error(w, err.Error(), 500)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	// ...save your blog...
 
-	w.WriteHeader(201)
-	w.Header().Set("Content-Type", "application/vnd.api+json")
+	w.WriteHeader(http.StatusCreated)
+	w.Header().Set("Content-Type", jsonapi.MediaType)
 
 	if err := jsonapi.MarshalOnePayload(w, blog); err != nil {
-		http.Error(w, err.Error(), 500)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 ```
@@ -290,11 +292,33 @@ func ListBlogs(w http.ResponseWriter, r *http.Request) {
   // but, for now
 	blogs := testBlogsForList()
 
-	w.WriteHeader(200)
-	w.Header().Set("Content-Type", "application/vnd.api+json")
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", jsonapi.MediaType)
 	if err := jsonapi.MarshalManyPayload(w, blogs); err != nil {
-		http.Error(w, err.Error(), 500)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+```
+
+### Links
+
+If you need to include [link objects](http://jsonapi.org/format/#document-links) along with response data, implement the `Linkable` interface for document-links, and `RelationshipLinkable` for relationship links:
+
+```go
+func (post Post) JSONAPILinks() *map[string]interface{} {
+	return &map[string]interface{}{
+		"self": "href": fmt.Sprintf("https://example.com/posts/%d", post.ID),
+	}
+}
+
+// Invoked for each relationship defined on the Post struct when marshaled
+func (post Post) JSONAPIRelationshipLinks(relation string) *map[string]interface{} {
+	if relation == "comments" {
+		return &map[string]interface{}{
+			"related": fmt.Sprintf("https://example.com/posts/%d/comments", post.ID),				
+		}
+	}
+	return nil
 }
 ```
 
@@ -331,7 +355,7 @@ jsonapi.MarshalOnePayloadEmbedded(out, testModel())
 h := new(BlogsHandler)
 
 w := httptest.NewRecorder()
-r, _ := http.NewRequest("POST", "/blogs", out)
+r, _ := http.NewRequest(http.MethodPost, "/blogs", out)
 
 h.CreateBlog(w, r)
 
