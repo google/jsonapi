@@ -89,25 +89,19 @@ func MarshalOne(model interface{}) (*OnePayload, error) {
 //
 // models interface{} should be a slice of struct pointers.
 func MarshalManyPayloadWithoutIncluded(w io.Writer, models interface{}) error {
-	included := make(map[string]*Node)
-
-	modelsSlice, err := convertToSliceInterface(&models)
+	m, err := convertToSliceInterface(&models)
+	if err != nil {
+		return err
+	}
+	payload, err := MarshalMany(m)
 	if err != nil {
 		return err
 	}
 
-	rootNodes := []*Node{}
+	// Empty the included
+	payload.Included = []*Node{}
 
-	for _, e := range modelsSlice {
-		rootNode, err := visitModelNode(e, &included, true)
-		if err != nil {
-			return err
-		}
-
-		rootNodes = append(rootNodes, rootNode)
-	}
-
-	if err := json.NewEncoder(w).Encode(&ManyPayload{Data: rootNodes}); err != nil {
+	if err := json.NewEncoder(w).Encode(payload); err != nil {
 		return err
 	}
 
