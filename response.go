@@ -48,7 +48,7 @@ func MarshalOnePayload(w io.Writer, model interface{}) error {
 
 // MarshalOnePayloadWithoutIncluded writes a jsonapi response with one object,
 // without the related records sideloaded into "included" array. If you want to
-// serialzie the realtions into the "included" array see MarshalOnePayload.
+// serialize the relations into the "included" array see MarshalOnePayload.
 //
 // model interface{} should be a pointer to a struct.
 func MarshalOnePayloadWithoutIncluded(w io.Writer, model interface{}) error {
@@ -81,6 +81,31 @@ func MarshalOne(model interface{}) (*OnePayload, error) {
 	payload.Included = nodeMapValues(&included)
 
 	return payload, nil
+}
+
+// MarshalManyPayloadWithoutIncluded writes a jsonapi response with many records,
+// without the related records sideloaded into "included" array. If you want to
+// serialize the relations into the "included" array see MarshalManyPayload.
+//
+// models interface{} should be a slice of struct pointers.
+func MarshalManyPayloadWithoutIncluded(w io.Writer, models interface{}) error {
+	m, err := convertToSliceInterface(&models)
+	if err != nil {
+		return err
+	}
+	payload, err := MarshalMany(m)
+	if err != nil {
+		return err
+	}
+
+	// Empty the included
+	payload.Included = []*Node{}
+
+	if err := json.NewEncoder(w).Encode(payload); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // MarshalManyPayload writes a jsonapi response with many records, with related
