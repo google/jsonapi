@@ -550,6 +550,89 @@ func TestUnmarshalManyPayload(t *testing.T) {
 	}
 }
 
+func TestManyPayload_withLinks(t *testing.T) {
+	firstPageURL := "http://somesite.com/movies?page[limit]=50&page[offset]=50"
+	prevPageURL := "http://somesite.com/movies?page[limit]=50&page[offset]=0"
+	nextPageURL := "http://somesite.com/movies?page[limit]=50&page[offset]=100"
+	lastPageURL := "http://somesite.com/movies?page[limit]=50&page[offset]=500"
+
+	sample := map[string]interface{}{
+		"data": []interface{}{
+			map[string]interface{}{
+				"type": "posts",
+				"id":   "1",
+				"attributes": map[string]interface{}{
+					"body":  "First",
+					"title": "Post",
+				},
+			},
+			map[string]interface{}{
+				"type": "posts",
+				"id":   "2",
+				"attributes": map[string]interface{}{
+					"body":  "Second",
+					"title": "Post",
+				},
+			},
+		},
+		"links": map[string]interface{}{
+			KeyFirstPage:    firstPageURL,
+			KeyPreviousPage: prevPageURL,
+			KeyNextPage:     nextPageURL,
+			KeyLastPage:     lastPageURL,
+		},
+	}
+
+	data, err := json.Marshal(sample)
+	if err != nil {
+		t.Fatal(err)
+	}
+	in := bytes.NewReader(data)
+
+	payload := new(ManyPayload)
+	if err = json.NewDecoder(in).Decode(payload); err != nil {
+		t.Fatal(err)
+	}
+
+	if payload.Links == nil {
+		t.Fatal("Was expecting a non nil ptr Link field")
+	}
+
+	links := *payload.Links
+
+	first, ok := links[KeyFirstPage]
+	if !ok {
+		t.Fatal("Was expecting a non nil ptr Link field")
+	}
+	if e, a := firstPageURL, first; e != a {
+		t.Fatalf("Was expecting links.%s to have a value of %s, got %s", KeyFirstPage, e, a)
+	}
+
+	prev, ok := links[KeyPreviousPage]
+	if !ok {
+		t.Fatal("Was expecting a non nil ptr Link field")
+	}
+	if e, a := prevPageURL, prev; e != a {
+		t.Fatalf("Was expecting links.%s to have a value of %s, got %s", KeyPreviousPage, e, a)
+	}
+
+	next, ok := links[KeyNextPage]
+	if !ok {
+		t.Fatal("Was expecting a non nil ptr Link field")
+	}
+	if e, a := nextPageURL, next; e != a {
+		t.Fatalf("Was expecting links.%s to have a value of %s, got %s", KeyNextPage, e, a)
+	}
+
+	last, ok := links[KeyLastPage]
+	if !ok {
+		t.Fatal("Was expecting a non nil ptr Link field")
+	}
+	if e, a := lastPageURL, last; e != a {
+		t.Fatalf("Was expecting links.%s to have a value of %s, got %s", KeyLastPage, e, a)
+	}
+}
+
 func samplePayloadWithoutIncluded() map[string]interface{} {
 	return map[string]interface{}{
 		"data": map[string]interface{}{
