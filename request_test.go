@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -502,6 +503,51 @@ func unmarshalSamplePayload() (*Blog, error) {
 	}
 
 	return out, nil
+}
+
+func TestUnmarshalManyPayload(t *testing.T) {
+	sample := map[string]interface{}{
+		"data": []interface{}{
+			map[string]interface{}{
+				"type": "posts",
+				"id":   "1",
+				"attributes": map[string]interface{}{
+					"body":  "First",
+					"title": "Post",
+				},
+			},
+			map[string]interface{}{
+				"type": "posts",
+				"id":   "2",
+				"attributes": map[string]interface{}{
+					"body":  "Second",
+					"title": "Post",
+				},
+			},
+		},
+	}
+
+	data, err := json.Marshal(sample)
+	if err != nil {
+		t.Fatal(err)
+	}
+	in := bytes.NewReader(data)
+
+	posts, err := UnmarshalManyPayload(in, reflect.TypeOf(new(Post)))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(posts) != 2 {
+		t.Fatal("Wrong number of posts")
+	}
+
+	for _, p := range posts {
+		_, ok := p.(*Post)
+		if !ok {
+			t.Fatal("Was expecting a Post")
+		}
+	}
 }
 
 func samplePayloadWithoutIncluded() map[string]interface{} {
