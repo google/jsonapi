@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"regexp"
 	"strconv"
 	"time"
@@ -72,6 +73,33 @@ func showBlog(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func echoBlogs(w http.ResponseWriter, r *http.Request) {
+	jsonapiRuntime := jsonapi.NewRuntime().Instrument("blogs.echo")
+
+	// Fetch the blogs from the HTTP request body
+	data, err := jsonapiRuntime.UnmarshalManyPayload(r.Body, reflect.TypeOf(new(Blog)))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	// Type assert the []interface{} to []*Blog
+	blogs := []*Blog{}
+	for _, b := range data {
+		blog, ok := b.(*Blog)
+		if !ok {
+			http.Error(w, "Unexpected type", http.StatusInternalServerError)
+		}
+		blogs = append(blogs, blog)
+	}
+
+	// Echo the blogs to the response body
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", jsonapi.MediaType)
+	if err := jsonapiRuntime.MarshalManyPayload(w, blogs); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 func main() {
 	jsonapi.Instrumentation = func(r *jsonapi.Runtime, eventType jsonapi.Event, callGUID string, dur time.Duration) {
 		metricPrefix := r.Value("instrument").(string)
@@ -101,6 +129,8 @@ func main() {
 
 		if r.Method == http.MethodPost {
 			createBlog(w, r)
+		} else if r.Method == http.MethodPut {
+			echoBlogs(w, r)
 		} else if r.FormValue("id") != "" {
 			showBlog(w, r)
 		} else {
@@ -207,7 +237,7 @@ func exerciseHandler() {
 
 	jsonReply, _ = ioutil.ReadAll(w.Body)
 
-	fmt.Println("\n============ jsonapi response from show ===========")
+	fmt.Println("============ jsonapi response from show ===========")
 	fmt.Println(string(jsonReply))
 	fmt.Println("============== end raw jsonapi from show =============")
 
@@ -229,7 +259,33 @@ func exerciseHandler() {
 	buf := bytes.NewBuffer(nil)
 	io.Copy(buf, w.Body)
 
-	fmt.Println("\n============ jsonapi response from create ===========")
+	fmt.Println("============ jsonapi response from create ===========")
+	fmt.Println(buf.String())
+	fmt.Println("============== end raw jsonapi response =============")
+
+	// echo
+	blogs := []interface{}{
+		testBlogForCreate(1),
+		testBlogForCreate(2),
+		testBlogForCreate(3),
+	}
+	in = bytes.NewBuffer(nil)
+	jsonapi.MarshalManyPayload(in, blogs)
+
+	req, _ = http.NewRequest(http.MethodPut, "/blogs", in)
+
+	req.Header.Set("Accept", jsonapi.MediaType)
+
+	w = httptest.NewRecorder()
+
+	fmt.Println("============ start echo ===========")
+	http.DefaultServeMux.ServeHTTP(w, req)
+	fmt.Println("============ stop echo ===========")
+
+	buf = bytes.NewBuffer(nil)
+	io.Copy(buf, w.Body)
+
+	fmt.Println("============ jsonapi response from create ===========")
 	fmt.Println(buf.String())
 	fmt.Println("============== end raw jsonapi response =============")
 
@@ -240,8 +296,8 @@ func exerciseHandler() {
 	out := bytes.NewBuffer(nil)
 	json.NewEncoder(out).Encode(responseBlog)
 
-	fmt.Println("\n================ Viola! Converted back our Blog struct =================")
-	fmt.Printf("%s\n", out.Bytes())
+	fmt.Println("================ Viola! Converted back our Blog struct =================")
+	fmt.Println(string(out.Bytes()))
 	fmt.Println("================ end marshal materialized Blog struct =================")
 }
 

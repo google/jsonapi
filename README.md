@@ -324,7 +324,7 @@ func CreateBlogs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, blog := range blogs {
-		b, ok := blog.(Blog)
+		b, ok := blog.(*Blog)
 		// ...save each of your blogs
 	}
 
