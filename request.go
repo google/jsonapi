@@ -93,31 +93,19 @@ func UnmarshalManyPayload(in io.Reader, t reflect.Type) ([]interface{}, error) {
 		return nil, err
 	}
 
+	models := []interface{}{}         // will be populated from the "data"
+	includedMap := map[string]*Node{} // will be populate from the "included"
+
 	if payload.Included != nil {
-		includedMap := make(map[string]*Node)
 		for _, included := range payload.Included {
 			key := fmt.Sprintf("%s,%s", included.Type, included.ID)
 			includedMap[key] = included
 		}
-
-		var models []interface{}
-		for _, data := range payload.Data {
-			model := reflect.New(t.Elem())
-			err := unmarshalNode(data, model, &includedMap)
-			if err != nil {
-				return nil, err
-			}
-			models = append(models, model.Interface())
-		}
-
-		return models, nil
 	}
-
-	var models []interface{}
 
 	for _, data := range payload.Data {
 		model := reflect.New(t.Elem())
-		err := unmarshalNode(data, model, nil)
+		err := unmarshalNode(data, model, &includedMap)
 		if err != nil {
 			return nil, err
 		}
