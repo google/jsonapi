@@ -222,7 +222,7 @@ Writes a JSON API response, with related records sideloaded, into an
 only. If you want to serialize many records, see,
 [MarshalManyPayload](#marshalmanypayload).
 
-#### Handler Example Code
+##### Handler Example Code
 
 ```go
 func CreateBlog(w http.ResponseWriter, r *http.Request) {
@@ -270,7 +270,6 @@ blogInterface := make([]interface{}, len(blogs))
 for i, blog := range blogs {
   blogInterface[i] = blog
 }
-
 ```
 
 Alternatively, you can insert your `Blog`s into a slice of `interface{}`
@@ -283,7 +282,7 @@ this,
 func FetchBlogs() ([]interface{}, error)
 ```
 
-#### Handler Example Code
+##### Handler Example Code
 
 ```go
 func ListBlogs(w http.ResponseWriter, r *http.Request) {
@@ -299,6 +298,44 @@ func ListBlogs(w http.ResponseWriter, r *http.Request) {
 	}
 }
 ```
+
+### Create Records Example
+
+#### `UnmarshalManyPayload`
+
+```go
+UnmarshalManyPayload(in io.Reader, t reflect.Type) ([]interface{}, error)
+```
+
+Visit [godoc](http://godoc.org/github.com/google/jsonapi#UnmarshalManyPayload)
+
+Takes an `io.Reader` and a `reflect.Type` representing the uniform type
+contained within the `"data"` JSON API member.
+
+##### Handler Example Code
+
+```go
+func CreateBlogs(w http.ResponseWriter, r *http.Request) {
+	// ...create many blogs at once
+
+	blogs, err := UnmarshalManyPayload(r.Body, reflect.TypeOf(new(Blog)))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, blog := range blogs {
+		b, ok := blog.(Blog)
+		// ...save each of your blogs
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	w.Header().Set("Content-Type", jsonapi.MediaType)
+	if err := jsonapi.MarshalManyPayload(w, blogs); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+```
+
 
 ### Links
 
