@@ -376,7 +376,6 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 			if isSlice {
 				// to-many relationship
 				relationship, err := visitModelNodeRelationships(
-					args[1],
 					fieldValue,
 					included,
 					sideload,
@@ -462,8 +461,8 @@ func toShallowNode(node *Node) *Node {
 	}
 }
 
-func visitModelNodeRelationships(relationName string, models reflect.Value,
-	included *map[string]*Node, sideload bool) (*RelationshipManyNode, error) {
+func visitModelNodeRelationships(models reflect.Value, included *map[string]*Node,
+	sideload bool) (*RelationshipManyNode, error) {
 	nodes := []*Node{}
 
 	for i := 0; i < models.Len(); i++ {
