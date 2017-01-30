@@ -151,7 +151,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			break
 		}
 
-		if annotation == "primary" {
+		if annotation == annotationPrimary {
 			if data.ID == "" {
 				continue
 			}
@@ -240,7 +240,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			}
 
 			fieldValue.Set(reflect.ValueOf(data.ClientID))
-		} else if annotation == "attr" {
+		} else if annotation == annotationAttribute {
 			attributes := data.Attributes
 			if attributes == nil || len(data.Attributes) == 0 {
 				continue
@@ -250,7 +250,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 
 			if len(args) > 2 {
 				for _, arg := range args[2:] {
-					if arg == "iso8601" {
+					if arg == annotationISO8601 {
 						iso8601 = true
 					}
 				}
@@ -454,7 +454,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 
 			fieldValue.Set(reflect.ValueOf(val))
 
-		} else if annotation == "relation" {
+		} else if annotation == annotationRelation {
 			isSlice := fieldValue.Type().Kind() == reflect.Slice
 
 			if data.Relationships == nil || data.Relationships[args[1]] == nil {
