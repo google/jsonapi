@@ -13,8 +13,6 @@ import (
 )
 
 const (
-	invalidTypeErrorTitle  = "Invalid Type"
-	invalidTypeErrorDetail = "Invalid type encountered while unmarshalling."
 	unsuportedStructTagMsg = "Unsupported jsonapi tag annotation, %s"
 )
 
@@ -25,6 +23,15 @@ var (
 	// ErrInvalidISO8601 is returned when a struct has a time.Time type field and includes
 	// "iso8601" in the tag spec, but the JSON value was not an ISO8601 timestamp string.
 	ErrInvalidISO8601 = errors.New("Only strings can be parsed as dates, ISO8601 timestamps")
+	// ErrUnknownFieldNumberType is returned when the JSON value was a float
+	// (numeric) but the Struct field was a non numeric type (i.e. not int, uint,
+	// float, etc)
+	ErrUnknownFieldNumberType = errors.New("The struct field was not of a known number type")
+	// ErrUnsupportedPtrType is returned when the Struct field was a pointer but
+	// the JSON value was of a different type
+	ErrUnsupportedPtrType = errors.New("Pointer type in struct is not supported")
+	// ErrInvalidType is returned when the given type is incompatible with the expected type.
+	ErrInvalidType = errors.New("Invalid type provided") // I wish we used punctuation.
 )
 
 // UnmarshalPayload converts an io into a struct instance using jsonapi tags on
@@ -289,12 +296,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				} else if v.Kind() == reflect.Int {
 					at = v.Int()
 				} else {
-					// Return error immediately to ensure a runtime panic doesn't swallow it.
-					return &ErrorObject{
-						Title:  invalidTypeErrorTitle,
-						Detail: invalidTypeErrorDetail,
-						Meta:   &map[string]interface{}{"field": args[1], "received": v.Kind().String(), "expected": reflect.Int64.String()},
-					}
+					return ErrInvalidTime
 				}
 
 				t := time.Unix(at, 0)
@@ -345,12 +347,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				} else if v.Kind() == reflect.Int {
 					at = v.Int()
 				} else {
-					// Return error immediately to ensure a runtime panic doesn't swallow it.
-					return &ErrorObject{
-						Title:  invalidTypeErrorTitle,
-						Detail: invalidTypeErrorDetail,
-						Meta:   &map[string]interface{}{"field": args[1], "received": v.Kind().String(), "expected": reflect.Int64.String()},
-					}
+					return ErrInvalidTime
 				}
 
 				v := time.Unix(at, 0)
@@ -414,12 +411,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 					n := floatValue
 					numericValue = reflect.ValueOf(&n)
 				default:
-					// Return error immediately to ensure a runtime panic doesn't swallow it.
-					return &ErrorObject{
-						Title:  invalidTypeErrorTitle,
-						Detail: invalidTypeErrorDetail,
-						Meta:   &map[string]interface{}{"field": args[1], "received": reflect.Float64.String(), "expected": kind.String()},
-					}
+					return ErrUnknownFieldNumberType
 				}
 
 				assign(fieldValue, numericValue)
@@ -442,21 +434,11 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				case uintptr:
 					concreteVal = reflect.ValueOf(&cVal)
 				default:
-					// Return error immediately to ensure a runtime panic doesn't swallow it.
-					return &ErrorObject{
-						Title:  invalidTypeErrorTitle,
-						Detail: invalidTypeErrorDetail,
-						Meta:   &map[string]interface{}{"field": args[1], "received": v.Kind().String(), "expected": fieldType.Type.Elem().String()},
-					}
+					return ErrUnsupportedPtrType
 				}
 
 				if fieldValue.Type() != concreteVal.Type() {
-					// Return error immediately to ensure a runtime panic doesn't swallow it.
-					return &ErrorObject{
-						Title:  invalidTypeErrorTitle,
-						Detail: invalidTypeErrorDetail,
-						Meta:   &map[string]interface{}{"field": args[1], "received": v.Kind().String(), "expected": fieldType.Type.Elem().String()},
-					}
+					return ErrUnsupportedPtrType
 				}
 
 				fieldValue.Set(concreteVal)
@@ -465,11 +447,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 
 			// As a final catch-all, ensure types line up to avoid a runtime panic.
 			if fieldValue.Kind() != v.Kind() {
-				return &ErrorObject{
-					Title:  invalidTypeErrorTitle,
-					Detail: invalidTypeErrorDetail,
-					Meta:   &map[string]interface{}{"field": args[1], "received": v.Kind().String(), "expected": fieldValue.Kind().String()},
-				}
+				return ErrInvalidType
 			}
 			fieldValue.Set(reflect.ValueOf(val))
 

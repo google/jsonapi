@@ -3,7 +3,6 @@ package jsonapi
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"reflect"
 	"strings"
@@ -112,8 +111,7 @@ func TestUnmarshalToStructWithPointerAttr_BadType(t *testing.T) {
 	in := map[string]interface{}{
 		"name": true, // This is the wrong type.
 	}
-	expectedError := &ErrorObject{Title: invalidTypeErrorTitle, Detail: invalidTypeErrorDetail, Meta: &map[string]interface{}{"field": "name", "received": "bool", "expected": "string"}}
-	expectedErrorMessage := fmt.Sprintf("Error: %s %s\n", expectedError.Title, expectedError.Detail)
+	expectedErrorMessage := ErrUnsupportedPtrType.Error()
 
 	err := UnmarshalPayload(sampleWithPointerPayload(in), out)
 
@@ -122,9 +120,6 @@ func TestUnmarshalToStructWithPointerAttr_BadType(t *testing.T) {
 	}
 	if err.Error() != expectedErrorMessage {
 		t.Fatalf("Unexpected error message: %s", err.Error())
-	}
-	if e, ok := err.(*ErrorObject); !ok || !reflect.DeepEqual(e, expectedError) {
-		t.Fatalf("Unexpected error type.")
 	}
 }
 
@@ -184,18 +179,19 @@ func TestUnmarshalInvalidJSON_BadType(t *testing.T) {
 	var badTypeTests = []struct {
 		Field    string
 		BadValue interface{}
-		Error    *ErrorObject
+		Error    error
 	}{ // The `Field` values here correspond to the `ModelBadTypes` jsonapi fields.
-		{Field: "string_field", BadValue: 0, Error: &ErrorObject{Title: invalidTypeErrorTitle, Detail: invalidTypeErrorDetail, Meta: &map[string]interface{}{"field": "string_field", "received": "float64", "expected": "string"}}},
-		{Field: "float_field", BadValue: "A string.", Error: &ErrorObject{Title: invalidTypeErrorTitle, Detail: invalidTypeErrorDetail, Meta: &map[string]interface{}{"field": "float_field", "received": "string", "expected": "float64"}}},
-		{Field: "time_field", BadValue: "A string.", Error: &ErrorObject{Title: invalidTypeErrorTitle, Detail: invalidTypeErrorDetail, Meta: &map[string]interface{}{"field": "time_field", "received": "string", "expected": "int64"}}},
-		{Field: "time_ptr_field", BadValue: "A string.", Error: &ErrorObject{Title: invalidTypeErrorTitle, Detail: invalidTypeErrorDetail, Meta: &map[string]interface{}{"field": "time_ptr_field", "received": "string", "expected": "int64"}}},
+		{Field: "string_field", BadValue: 0, Error: ErrUnknownFieldNumberType},  // Expected string.
+		{Field: "float_field", BadValue: "A string.", Error: ErrInvalidType},    // Expected float64.
+		{Field: "time_field", BadValue: "A string.", Error: ErrInvalidTime},     // Expected int64.
+		{Field: "time_ptr_field", BadValue: "A string.", Error: ErrInvalidTime}, // Expected *time / int64.
 	}
-	for _, test := range badTypeTests {
+	for idx, test := range badTypeTests {
+		println("index:", idx)
 		out := new(ModelBadTypes)
 		in := map[string]interface{}{}
 		in[test.Field] = test.BadValue
-		expectedErrorMessage := fmt.Sprintf("Error: %s %s\n", test.Error.Title, test.Error.Detail)
+		expectedErrorMessage := test.Error.Error()
 
 		err := UnmarshalPayload(samplePayloadWithBadTypes(in), out)
 
@@ -204,9 +200,6 @@ func TestUnmarshalInvalidJSON_BadType(t *testing.T) {
 		}
 		if err.Error() != expectedErrorMessage {
 			t.Fatalf("Unexpected error message: %s", err.Error())
-		}
-		if e, ok := err.(*ErrorObject); !ok || !reflect.DeepEqual(e, test.Error) {
-			t.Fatalf("Expected:\n%#v%#v\nto equal:\n%#v%#v", e, *e.Meta, test.Error, *test.Error.Meta)
 		}
 	}
 }
