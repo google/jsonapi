@@ -104,8 +104,7 @@ func (r *Runtime) instrumentCall(start Event, stop Event, c func() error) error 
 // citation: http://play.golang.org/p/4FkNSiUDMg
 func newUUID() (string, error) {
 	uuid := make([]byte, 16)
-	n, err := io.ReadFull(rand.Reader, uuid)
-	if n != len(uuid) || err != nil {
+	if _, err := io.ReadFull(rand.Reader, uuid); err != nil {
 		return "", err
 	}
 	// variant bits; see section 4.1.1
