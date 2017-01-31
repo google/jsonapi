@@ -30,6 +30,8 @@ var (
 	// ErrUnsupportedPtrType is returned when the Struct field was a pointer but
 	// the JSON value was of a different type
 	ErrUnsupportedPtrType = errors.New("Pointer type in struct is not supported")
+	// ErrInvalidType is returned when the given type is incompatible with the expected type.
+	ErrInvalidType = errors.New("Invalid type provided") // I wish we used punctuation.
 )
 
 // UnmarshalPayload converts an io into a struct instance using jsonapi tags on
@@ -294,8 +296,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				} else if v.Kind() == reflect.Int {
 					at = v.Int()
 				} else {
-					er = ErrInvalidTime
-					break
+					return ErrInvalidTime
 				}
 
 				t := time.Unix(at, 0)
@@ -346,8 +347,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				} else if v.Kind() == reflect.Int {
 					at = v.Int()
 				} else {
-					er = ErrInvalidTime
-					break
+					return ErrInvalidTime
 				}
 
 				v := time.Unix(at, 0)
@@ -408,13 +408,10 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 					n := float32(floatValue)
 					numericValue = reflect.ValueOf(&n)
 				case reflect.Float64:
-					n := float64(floatValue)
+					n := floatValue
 					numericValue = reflect.ValueOf(&n)
 				default:
-					// We had a JSON float (numeric), but our field was a non numeric
-					// type
-					er = ErrUnknownFieldNumberType
-					break
+					return ErrUnknownFieldNumberType
 				}
 
 				assign(fieldValue, numericValue)
@@ -437,21 +434,21 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				case uintptr:
 					concreteVal = reflect.ValueOf(&cVal)
 				default:
-					er = ErrUnsupportedPtrType
-					break
+					return ErrUnsupportedPtrType
 				}
 
 				if fieldValue.Type() != concreteVal.Type() {
-					// TODO: use fmt.Errorf so that you can have a more informative
-					// message that reports the attempted type that was not supported.
-					er = ErrUnsupportedPtrType
-					break
+					return ErrUnsupportedPtrType
 				}
 
 				fieldValue.Set(concreteVal)
 				continue
 			}
 
+			// As a final catch-all, ensure types line up to avoid a runtime panic.
+			if fieldValue.Kind() != v.Kind() {
+				return ErrInvalidType
+			}
 			fieldValue.Set(reflect.ValueOf(val))
 
 		} else if annotation == annotationRelation {
@@ -529,11 +526,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 		}
 	}
 
-	if er != nil {
-		return er
-	}
-
-	return nil
+	return er
 }
 
 func fullNode(n *Node, included *map[string]*Node) *Node {
