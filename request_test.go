@@ -3,6 +3,7 @@ package jsonapi
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"reflect"
 	"strings"
@@ -186,21 +187,22 @@ func TestUnmarshalInvalidJSON_BadType(t *testing.T) {
 		{Field: "time_field", BadValue: "A string.", Error: ErrInvalidTime},     // Expected int64.
 		{Field: "time_ptr_field", BadValue: "A string.", Error: ErrInvalidTime}, // Expected *time / int64.
 	}
-	for idx, test := range badTypeTests {
-		println("index:", idx)
-		out := new(ModelBadTypes)
-		in := map[string]interface{}{}
-		in[test.Field] = test.BadValue
-		expectedErrorMessage := test.Error.Error()
+	for _, test := range badTypeTests {
+		t.Run(fmt.Sprintf("Test_%s", test.Field), func(t *testing.T) {
+			out := new(ModelBadTypes)
+			in := map[string]interface{}{}
+			in[test.Field] = test.BadValue
+			expectedErrorMessage := test.Error.Error()
 
-		err := UnmarshalPayload(samplePayloadWithBadTypes(in), out)
+			err := UnmarshalPayload(samplePayloadWithBadTypes(in), out)
 
-		if err == nil {
-			t.Fatalf("Expected error due to invalid type.")
-		}
-		if err.Error() != expectedErrorMessage {
-			t.Fatalf("Unexpected error message: %s", err.Error())
-		}
+			if err == nil {
+				t.Fatalf("Expected error due to invalid type.")
+			}
+			if err.Error() != expectedErrorMessage {
+				t.Fatalf("Unexpected error message: %s", err.Error())
+			}
+		})
 	}
 }
 
