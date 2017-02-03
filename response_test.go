@@ -343,9 +343,10 @@ func TestHasPrimaryAnnotation(t *testing.T) {
 
 func TestSupportsAttributes(t *testing.T) {
 	testModel := &Blog{
-		ID:        5,
-		Title:     "Title 1",
-		CreatedAt: time.Now(),
+		ID:              5,
+		Title:           "Title 1",
+		CreatedAt:       time.Now(),
+		BookmarkedPages: []int{20, 30},
 	}
 
 	out := bytes.NewBuffer(nil)
@@ -366,6 +367,10 @@ func TestSupportsAttributes(t *testing.T) {
 
 	if data.Attributes["title"] != "Title 1" {
 		t.Fatalf("Attributes hash not populated using tags correctly")
+	}
+
+	if data.Attributes["bookmarked_pages"] == nil {
+		t.Fatalf("[]int attribute not serialized correctly")
 	}
 }
 
