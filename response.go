@@ -373,6 +373,11 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 				relLinks = linkableModel.JSONAPIRelationshipLinks(args[1])
 			}
 
+			var relMeta *Meta
+			if metableModel, ok := model.(RelationshipMetable); ok {
+				relMeta = metableModel.JSONAPIRelationshipMeta(args[1])
+			}
+
 			if isSlice {
 				// to-many relationship
 				relationship, err := visitModelNodeRelationships(
@@ -385,6 +390,7 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 					break
 				}
 				relationship.Links = relLinks
+				relationship.Meta = relMeta
 
 				if sideload {
 					shallowNodes := []*Node{}
@@ -396,6 +402,7 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 					node.Relationships[args[1]] = &RelationshipManyNode{
 						Data:  shallowNodes,
 						Links: relationship.Links,
+						Meta:  relationship.Meta,
 					}
 				} else {
 					node.Relationships[args[1]] = relationship
@@ -424,11 +431,13 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 					node.Relationships[args[1]] = &RelationshipOneNode{
 						Data:  toShallowNode(relationship),
 						Links: relLinks,
+						Meta:  relMeta,
 					}
 				} else {
 					node.Relationships[args[1]] = &RelationshipOneNode{
 						Data:  relationship,
 						Links: relLinks,
+						Meta:  relMeta,
 					}
 				}
 			}
@@ -449,6 +458,10 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 			return nil, er
 		}
 		node.Links = linkableModel.JSONAPILinks()
+	}
+
+	if metableModel, ok := model.(Metable); ok {
+		node.Meta = metableModel.JSONAPIMeta()
 	}
 
 	return node, nil
