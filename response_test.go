@@ -10,14 +10,15 @@ import (
 )
 
 type Blog struct {
-	ID            int       `jsonapi:"primary,blogs"`
-	ClientID      string    `jsonapi:"client-id"`
-	Title         string    `jsonapi:"attr,title"`
-	Posts         []*Post   `jsonapi:"relation,posts"`
-	CurrentPost   *Post     `jsonapi:"relation,current_post"`
-	CurrentPostID int       `jsonapi:"attr,current_post_id"`
-	CreatedAt     time.Time `jsonapi:"attr,created_at"`
-	ViewCount     int       `jsonapi:"attr,view_count"`
+	ID              int       `jsonapi:"primary,blogs"`
+	ClientID        string    `jsonapi:"client-id"`
+	Title           string    `jsonapi:"attr,title"`
+	Posts           []*Post   `jsonapi:"relation,posts"`
+	CurrentPost     *Post     `jsonapi:"relation,current_post"`
+	CurrentPostID   int       `jsonapi:"attr,current_post_id"`
+	CreatedAt       time.Time `jsonapi:"attr,created_at"`
+	ViewCount       int       `jsonapi:"attr,view_count"`
+	BookmarkedPages []int     `jsonapi:"attr,bookmarked_pages"`
 }
 
 func (b *Blog) JSONAPILinks() *Links {
