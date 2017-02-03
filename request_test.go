@@ -186,8 +186,7 @@ func TestUnmarshalInvalidJSON_BadType(t *testing.T) {
 		{Field: "time_field", BadValue: "A string.", Error: ErrInvalidTime},     // Expected int64.
 		{Field: "time_ptr_field", BadValue: "A string.", Error: ErrInvalidTime}, // Expected *time / int64.
 	}
-	for idx, test := range badTypeTests {
-		println("index:", idx)
+	for _, test := range badTypeTests {
 		out := new(ModelBadTypes)
 		in := map[string]interface{}{}
 		in[test.Field] = test.BadValue
