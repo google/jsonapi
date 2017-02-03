@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -28,6 +29,39 @@ type ModelBadTypes struct {
 	FloatField   float64    `jsonapi:"attr,float_field"`
 	TimeField    time.Time  `jsonapi:"attr,time_field"`
 	TimePtrField *time.Time `jsonapi:"attr,time_ptr_field"`
+}
+
+func TestUnmarshall_attrStringSlice(t *testing.T) {
+	out := &Book{}
+	tags := []string{"fiction", "sale"}
+	data := map[string]interface{}{
+		"data": map[string]interface{}{
+			"type":       "books",
+			"id":         "1",
+			"attributes": map[string]interface{}{"tags": tags},
+		},
+	}
+	b, err := json.Marshal(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := UnmarshalPayload(bytes.NewReader(b), out); err != nil {
+		t.Fatal(err)
+	}
+
+	if e, a := len(tags), len(out.Tags); e != a {
+		t.Fatalf("Was expecting %d tags, got %d", e, a)
+	}
+
+	sort.Strings(tags)
+	sort.Strings(out.Tags)
+
+	for i, tag := range tags {
+		if e, a := tag, out.Tags[i]; e != a {
+			t.Fatalf("At index %d, was expecting %s got %s", i, e, a)
+		}
+	}
 }
 
 func TestUnmarshalToStructWithPointerAttr(t *testing.T) {
