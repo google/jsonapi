@@ -306,7 +306,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				continue
 			}
 
-			if fieldValue.Type() == reflect.TypeOf([]string(nil)) {
+			if fieldValue.Type() == reflect.TypeOf([]string{}) {
 				values := make([]string, v.Len())
 				for i := 0; i < v.Len(); i++ {
 					values[i] = v.Index(i).Interface().(string)
