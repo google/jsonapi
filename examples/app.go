@@ -345,3 +345,24 @@ func (blog Blog) JSONAPIRelationshipLinks(relation string) *map[string]interface
 	}
 	return nil
 }
+
+// Blog Meta
+func (blog Blog) JSONAPIMeta() map[string]interface{} {
+	return map[string]interface{}{
+		"detail": "extra details regarding the blog",
+	}
+}
+
+func (blog Blog) JSONAPIRelationshipMeta(relation string) map[string]interface{} {
+	if relation == "posts" {
+		return map[string]interface{}{
+			"detail": "posts meta information",
+		}
+	}
+	if relation == "current_post" {
+		return map[string]interface{}{
+			"detail": "current post meta information",
+		}
+	}
+	return nil
+}
