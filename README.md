@@ -342,22 +342,44 @@ func CreateBlogs(w http.ResponseWriter, r *http.Request) {
 If you need to include [link objects](http://jsonapi.org/format/#document-links) along with response data, implement the `Linkable` interface for document-links, and `RelationshipLinkable` for relationship links:
 
 ```go
-func (post Post) JSONAPILinks() *map[string]interface{} {
-	return &map[string]interface{}{
+func (post Post) JSONAPILinks() *Links {
+	return &Links{
 		"self": "href": fmt.Sprintf("https://example.com/posts/%d", post.ID),
 	}
 }
 
 // Invoked for each relationship defined on the Post struct when marshaled
-func (post Post) JSONAPIRelationshipLinks(relation string) *map[string]interface{} {
+func (post Post) JSONAPIRelationshipLinks(relation string) *Links {
 	if relation == "comments" {
-		return &map[string]interface{}{
+		return &Links{
 			"related": fmt.Sprintf("https://example.com/posts/%d/comments", post.ID),				
 		}
 	}
 	return nil
 }
 ```
+
+### Meta
+ 
+ If you need to include [meta objects](http://jsonapi.org/format/#document-meta) along with response data, implement the `Metable` interface for document-meta, and `RelationshipMetable` for relationship meta:
+ 
+ ```go
+ func (post Post) JSONAPIMeta() *Meta {
+ 	return &Meta{
+ 		"details": "sample details here",
+ 	}
+ }
+ 
+ // Invoked for each relationship defined on the Post struct when marshaled
+ func (post Post) JSONAPIRelationshipMeta(relation string) *Meta {
+ 	if relation == "comments" {
+ 		return &Meta{
+ 			"details": "comment meta details here",				    
+ 		}
+ 	}
+ 	return nil
+ }
+ ```
 
 ### Errors
 This package also implements support for JSON API compatible `errors` payloads using the following types.
