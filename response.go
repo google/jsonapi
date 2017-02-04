@@ -202,6 +202,20 @@ func MarshalOnePayloadEmbedded(w io.Writer, model interface{}) error {
 	return nil
 }
 
+func isEmbeddedStruct(sField reflect.StructField) bool {
+	if sField.Anonymous && sField.Type.Kind() == reflect.Struct {
+		return true
+	}
+	return false
+}
+
+func shouldIgnoreField(japiTag string) bool {
+	if strings.HasPrefix(japiTag, annotationIgnore) {
+		return true
+	}
+	return false
+}
+
 func visitModelNode(model interface{}, included *map[string]*Node,
 	sideload bool) (*Node, error) {
 	node := new(Node)
@@ -214,6 +228,21 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 	for i := 0; i < modelValue.NumField(); i++ {
 		structField := modelValue.Type().Field(i)
 		tag := structField.Tag.Get(annotationJSONAPI)
+
+		// handles embedded structs
+		if isEmbeddedStruct(structField) {
+			if shouldIgnoreField(tag) {
+				continue
+			}
+			model := modelValue.Field(i).Addr().Interface()
+			embNode, err := visitModelNode(model, included, sideload)
+			if err != nil {
+				er = err
+				break
+			}
+			node.merge(embNode)
+		}
+
 		if tag == "" {
 			continue
 		}

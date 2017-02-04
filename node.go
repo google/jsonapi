@@ -44,6 +44,38 @@ type Node struct {
 	Meta          *Meta                  `json:"meta,omitempty"`
 }
 
+func (n *Node) merge(node *Node) {
+	if node.Type != "" {
+		n.Type = node.Type
+	}
+
+	if node.ID != "" {
+		n.ID = node.ID
+	}
+
+	if node.ClientID != "" {
+		n.ClientID = node.ClientID
+	}
+
+	if n.Attributes == nil && node.Attributes != nil {
+		n.Attributes = make(map[string]interface{})
+	}
+	for k, v := range node.Attributes {
+		n.Attributes[k] = v
+	}
+
+	if n.Relationships == nil && n.Relationships != nil {
+		n.Relationships = make(map[string]interface{})
+	}
+	for k, v := range node.Relationships {
+		n.Relationships[k] = v
+	}
+
+	if node.Links != nil {
+		n.Links = node.Links
+	}
+}
+
 // RelationshipOneNode is used to represent a generic has one JSON API relation
 type RelationshipOneNode struct {
 	Data  *Node  `json:"data"`
