@@ -58,7 +58,7 @@ func (b *Blog) JSONAPIRelationshipLinks(relation string) *Links {
 }
 
 type Post struct {
-	Blog
+	Blog          `jsonapi:"-"`
 	ID            uint64     `jsonapi:"primary,posts"`
 	BlogID        int        `jsonapi:"attr,blog_id"`
 	ClientID      string     `jsonapi:"client-id"`
