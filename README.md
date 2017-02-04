@@ -342,17 +342,25 @@ func CreateBlogs(w http.ResponseWriter, r *http.Request) {
 If you need to include [link objects](http://jsonapi.org/format/#document-links) along with response data, implement the `Linkable` interface for document-links, and `RelationshipLinkable` for relationship links:
 
 ```go
-func (post Post) JSONAPILinks() *map[string]interface{} {
-	return &map[string]interface{}{
+func (post Post) JSONAPILinks() *Links {
+	return &Links{
 		"self": "href": fmt.Sprintf("https://example.com/posts/%d", post.ID),
+		"comments": Link{
+			Href: fmt.Sprintf("https://example.com/api/blogs/%d/comments", post.ID),
+			Meta: map[string]interface{}{
+				"counts": map[string]uint{
+					"likes":    4,
+				},
+			},
+		},
 	}
 }
 
 // Invoked for each relationship defined on the Post struct when marshaled
-func (post Post) JSONAPIRelationshipLinks(relation string) *map[string]interface{} {
+func (post Post) JSONAPIRelationshipLinks(relation string) *Links {
 	if relation == "comments" {
-		return &map[string]interface{}{
-			"related": fmt.Sprintf("https://example.com/posts/%d/comments", post.ID),				
+		return &Links{
+			"related": fmt.Sprintf("https://example.com/posts/%d/comments", post.ID),
 		}
 	}
 	return nil
