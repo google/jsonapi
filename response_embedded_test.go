@@ -3,6 +3,7 @@ package jsonapi
 import (
 	"bytes"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -186,12 +187,13 @@ func TestMarshalUnmarshalCompositeStruct(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// TODO: redo this
 	// assert encoding from model to jsonapi output
-	// expected := `{"data":{"type":"things","id":"1","attributes":{"bar":"barry","bat":"batty","buzz":99,"fizz":"fizzy","foo":"fooey"}}}`
-	// if expected != string(buf.Bytes()) {
-	// 	t.Errorf("Got %+v Expected %+v", string(buf.Bytes()), expected)
-	// }
+	expected := `{"data":{"type":"things","id":"1","attributes":{"bar":"barry","bat":"batty","buzz":99,"fizz":"fizzy","foo":"fooey"}}}`
+	actual := strings.TrimSpace(string(buf.Bytes()))
+
+	if expected != actual {
+		t.Errorf("Got %+v Expected %+v", actual, expected)
+	}
 
 	dst := &Model{}
 	if err := UnmarshalPayload(buf, dst); err != nil {
