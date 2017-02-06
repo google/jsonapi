@@ -199,20 +199,6 @@ func MarshalOnePayloadEmbedded(w io.Writer, model interface{}) error {
 	return nil
 }
 
-func isEmbeddedStruct(sField reflect.StructField) bool {
-	if sField.Anonymous && sField.Type.Kind() == reflect.Struct {
-		return true
-	}
-	return false
-}
-
-func shouldIgnoreField(japiTag string) bool {
-	if strings.HasPrefix(japiTag, annotationIgnore) {
-		return true
-	}
-	return false
-}
-
 func visitModelNode(model interface{}, included *map[string]*Node,
 	sideload bool) (*Node, error) {
 	node := new(Node)
@@ -545,4 +531,18 @@ func convertToSliceInterface(i *interface{}) ([]interface{}, error) {
 		response = append(response, vals.Index(x).Interface())
 	}
 	return response, nil
+}
+
+func isEmbeddedStruct(sField reflect.StructField) bool {
+	if sField.Anonymous && sField.Type.Kind() == reflect.Struct {
+		return true
+	}
+	return false
+}
+
+func shouldIgnoreField(japiTag string) bool {
+	if strings.HasPrefix(japiTag, annotationIgnore) {
+		return true
+	}
+	return false
 }
