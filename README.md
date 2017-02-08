@@ -87,12 +87,11 @@ To run,
 
 * Make sure you have go installed
 * Create the following directories or similar: `~/go`
-* `cd` there
 * Set `GOPATH` to `PWD` in your shell session, `export GOPATH=$PWD`
 * `go get github.com/google/jsonapi`.  (Append `-u` after `get` if you
   are updating.)
-* `go run src/github.com/google/jsonapi/examples/app.go` or `cd
-  src/github.com/google/jsonapi/examples && go run app.go`
+* `go run $GOPATH/src/github.com/google/jsonapi/examples/app.go` or `cd
+  $GOPATH/src/github.com/google/jsonapi/examples && go run app.go`
 
 ## `jsonapi` Tag Reference
 
