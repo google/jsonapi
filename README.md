@@ -1,11 +1,9 @@
 # jsonapi
 
-[![Build Status](https://travis-ci.org/google/jsonapi.svg?branch=master)](https://travis-ci.org/google/jsonapi)
+[![Build Status](https://travis-ci.org/google/jsonapi.svg?branch=master)](https://travis-ci.org/google/jsonapi) [![GoDoc](https://godoc.org/github.com/google/jsonapi?status.svg)](http://godoc.org/github.com/google/jsonapi)
 
-A serailizer/deserializer for json payloads that comply to the
+A serializer/deserializer for json payloads that comply to the
 [JSON API - jsonapi.org](http://jsonapi.org) spec in go.
-
-Also visit, [Godoc](http://godoc.org/github.com/google/jsonapi).
 
 ## Installation
 
@@ -87,12 +85,11 @@ To run,
 
 * Make sure you have go installed
 * Create the following directories or similar: `~/go`
-* `cd` there
 * Set `GOPATH` to `PWD` in your shell session, `export GOPATH=$PWD`
 * `go get github.com/google/jsonapi`.  (Append `-u` after `get` if you
   are updating.)
-* `go run src/github.com/google/jsonapi/examples/app.go` or `cd
-  src/github.com/google/jsonapi/examples && go run app.go`
+* `go run $GOPATH/src/github.com/google/jsonapi/examples/app.go` or `cd
+  $GOPATH/src/github.com/google/jsonapi/examples && go run app.go`
 
 ## `jsonapi` Tag Reference
 
@@ -342,17 +339,25 @@ func CreateBlogs(w http.ResponseWriter, r *http.Request) {
 If you need to include [link objects](http://jsonapi.org/format/#document-links) along with response data, implement the `Linkable` interface for document-links, and `RelationshipLinkable` for relationship links:
 
 ```go
-func (post Post) JSONAPILinks() *map[string]interface{} {
-	return &map[string]interface{}{
+func (post Post) JSONAPILinks() *Links {
+	return &Links{
 		"self": "href": fmt.Sprintf("https://example.com/posts/%d", post.ID),
+		"comments": Link{
+			Href: fmt.Sprintf("https://example.com/api/blogs/%d/comments", post.ID),
+			Meta: map[string]interface{}{
+				"counts": map[string]uint{
+					"likes":    4,
+				},
+			},
+		},
 	}
 }
 
 // Invoked for each relationship defined on the Post struct when marshaled
-func (post Post) JSONAPIRelationshipLinks(relation string) *map[string]interface{} {
+func (post Post) JSONAPIRelationshipLinks(relation string) *Links {
 	if relation == "comments" {
-		return &map[string]interface{}{
-			"related": fmt.Sprintf("https://example.com/posts/%d/comments", post.ID),				
+		return &Links{
+			"related": fmt.Sprintf("https://example.com/posts/%d/comments", post.ID),
 		}
 	}
 	return nil
