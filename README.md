@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/google/jsonapi.svg?branch=master)](https://travis-ci.org/google/jsonapi) [![GoDoc](https://godoc.org/github.com/google/jsonapi?status.svg)](http://godoc.org/github.com/google/jsonapi)
 
-A serializer/deserializer for json payloads that comply to the
+A serializer/deserializer for JSON payloads that comply to the
 [JSON API - jsonapi.org](http://jsonapi.org) spec in go.
 
 ## Installation
@@ -358,6 +358,38 @@ func (post Post) JSONAPIRelationshipLinks(relation string) *Links {
 	if relation == "comments" {
 		return &Links{
 			"related": fmt.Sprintf("https://example.com/posts/%d/comments", post.ID),
+		}
+	}
+	return nil
+}
+```
+
+### Meta
+
+ If you need to include [meta objects](http://jsonapi.org/format/#document-meta) along with response data, implement the `Metable` interface for document-meta, and `RelationshipMetable` for relationship meta:
+
+ ```go
+func (post Post) JSONAPIMeta() *Meta {
+	return &Meta{
+		"details": "sample details here",
+	}
+}
+
+// Invoked for each relationship defined on the Post struct when marshaled
+func (post Post) JSONAPIRelationshipMeta(relation string) *Meta {
+	if relation == "comments" {
+		return &Meta{
+			"this": map[string]interface{}{
+				"can": map[string]interface{}{
+					"go": []interface{}{
+						"as",
+						"deep",
+						map[string]interface{}{
+							"as": "required",
+						},
+					},
+				},
+			},
 		}
 	}
 	return nil

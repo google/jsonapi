@@ -11,26 +11,6 @@ import (
 	"time"
 )
 
-type BadModel struct {
-	ID int `jsonapi:"primary"`
-}
-
-type WithPointer struct {
-	ID       *uint64  `jsonapi:"primary,with-pointers"`
-	Name     *string  `jsonapi:"attr,name"`
-	IsActive *bool    `jsonapi:"attr,is-active"`
-	IntVal   *int     `jsonapi:"attr,int-val"`
-	FloatVal *float32 `jsonapi:"attr,float-val"`
-}
-
-type ModelBadTypes struct {
-	ID           string     `jsonapi:"primary,badtypes"`
-	StringField  string     `jsonapi:"attr,string_field"`
-	FloatField   float64    `jsonapi:"attr,float_field"`
-	TimeField    time.Time  `jsonapi:"attr,time_field"`
-	TimePtrField *time.Time `jsonapi:"attr,time_ptr_field"`
-}
-
 func TestUnmarshall_attrStringSlice(t *testing.T) {
 	out := &Book{}
 	tags := []string{"fiction", "sale"}
