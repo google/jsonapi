@@ -43,7 +43,7 @@ func exerciseHandler() {
 	// list
 	req, _ := http.NewRequest(http.MethodGet, "/blogs", nil)
 
-	req.Header.Set("Accept", jsonapi.MediaType)
+	req.Header.Set(headerAccept, jsonapi.MediaType)
 
 	w := httptest.NewRecorder()
 
@@ -60,7 +60,7 @@ func exerciseHandler() {
 	// show
 	req, _ = http.NewRequest(http.MethodGet, "/blogs?id=1", nil)
 
-	req.Header.Set("Accept", jsonapi.MediaType)
+	req.Header.Set(headerAccept, jsonapi.MediaType)
 
 	w = httptest.NewRecorder()
 
@@ -81,7 +81,7 @@ func exerciseHandler() {
 
 	req, _ = http.NewRequest(http.MethodPost, "/blogs", in)
 
-	req.Header.Set("Accept", jsonapi.MediaType)
+	req.Header.Set(headerAccept, jsonapi.MediaType)
 
 	w = httptest.NewRecorder()
 
@@ -107,7 +107,7 @@ func exerciseHandler() {
 
 	req, _ = http.NewRequest(http.MethodPut, "/blogs", in)
 
-	req.Header.Set("Accept", jsonapi.MediaType)
+	req.Header.Set(headerAccept, jsonapi.MediaType)
 
 	w = httptest.NewRecorder()
 

@@ -50,10 +50,6 @@ type RelationshipManyNode struct {
 // http://jsonapi.org/format/#document-links
 type Links map[string]interface{}
 
-// Meta is used to represent a `meta` object.
-// http://jsonapi.org/format/#document-meta
-type Meta map[string]interface{}
-
 func (l *Links) validate() (err error) {
 	// Each member of a links object is a “link”. A link MUST be represented as
 	// either:
@@ -78,8 +74,8 @@ func (l *Links) validate() (err error) {
 
 // Link is used to represent a member of the `links` object.
 type Link struct {
-	Href string                 `json:"href"`
-	Meta map[string]interface{} `json:"meta,omitempty"`
+	Href string `json:"href"`
+	Meta Meta   `json:"meta,omitempty"`
 }
 
 // Linkable is used to include document links in response data
@@ -95,6 +91,12 @@ type RelationshipLinkable interface {
 	JSONAPIRelationshipLinks(relation string) *Links
 }
 
+// Meta is used to represent a `meta` object.
+// http://jsonapi.org/format/#document-meta
+type Meta map[string]interface{}
+
+// Metable is used to include document meta in response data
+// e.g. {"foo": "bar"}
 type Metable interface {
 	JSONAPIMeta() *Meta
 }
