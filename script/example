@@ -1,0 +1,4 @@
+#!/bin/bash
+
+set -e
+go run examples/app.go examples/handler.go examples/fixtures.go examples/models.go
