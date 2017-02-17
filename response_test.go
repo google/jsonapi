@@ -166,30 +166,6 @@ func TestWithOmitsEmptyAnnotationOnRelation_MixedData(t *testing.T) {
 	}
 }
 
-type Timestamp struct {
-	ID   int        `jsonapi:"primary,timestamps"`
-	Time time.Time  `jsonapi:"attr,timestamp,iso8601"`
-	Next *time.Time `jsonapi:"attr,next,iso8601"`
-}
-
-type Car struct {
-	ID    *string `jsonapi:"primary,cars"`
-	Make  *string `jsonapi:"attr,make,omitempty"`
-	Model *string `jsonapi:"attr,model,omitempty"`
-	Year  *uint   `jsonapi:"attr,year,omitempty"`
-}
-
-type BadComment struct {
-	ID   uint64 `jsonapi:"primary,bad-comment"`
-	Body string `jsonapi:"attr,body"`
-}
-
-func (bc *BadComment) JSONAPILinks() *Links {
-	return &Links{
-		"self": []string{"invalid", "should error"},
-	}
-}
-
 func TestMarshalIDPtr(t *testing.T) {
 	id, make, model := "123e4567-e89b-12d3-a456-426655440000", "Ford", "Mustang"
 	car := &Car{
@@ -431,7 +407,7 @@ func TestSupportsLinkable(t *testing.T) {
 	data := resp.Data
 
 	if data.Links == nil {
-		t.Fatal("Expected links")
+		t.Fatal("Expected data.links")
 	}
 	links := *data.Links
 
@@ -481,6 +457,18 @@ func TestSupportsLinkable(t *testing.T) {
 	}
 }
 
+func TestInvalidLinkable(t *testing.T) {
+	testModel := &BadComment{
+		ID:   5,
+		Body: "Hello World",
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalOnePayload(out, testModel); err == nil {
+		t.Fatal("Was expecting an error")
+	}
+}
+
 func TestSupportsMetable(t *testing.T) {
 	testModel := &Blog{
 		ID:        5,
@@ -499,21 +487,13 @@ func TestSupportsMetable(t *testing.T) {
 	}
 
 	data := resp.Data
-
 	if data.Meta == nil {
-		t.Fatalf("Expected 'details' meta")
-	}
-}
-
-func TestInvalidLinkable(t *testing.T) {
-	testModel := &BadComment{
-		ID:   5,
-		Body: "Hello World",
+		t.Fatalf("Expected data.meta")
 	}
 
-	out := bytes.NewBuffer(nil)
-	if err := MarshalOnePayload(out, testModel); err == nil {
-		t.Fatal("Was expecting an error")
+	meta := Meta(*data.Meta)
+	if e, a := "extra details regarding the blog", meta["detail"]; e != a {
+		t.Fatalf("Was expecting meta.detail to be %q, got %q", e, a)
 	}
 }
 

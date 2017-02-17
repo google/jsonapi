@@ -9,6 +9,14 @@ type BadModel struct {
 	ID int `jsonapi:"primary"`
 }
 
+type ModelBadTypes struct {
+	ID           string     `jsonapi:"primary,badtypes"`
+	StringField  string     `jsonapi:"attr,string_field"`
+	FloatField   float64    `jsonapi:"attr,float_field"`
+	TimeField    time.Time  `jsonapi:"attr,time_field"`
+	TimePtrField *time.Time `jsonapi:"attr,time_ptr_field"`
+}
+
 type WithPointer struct {
 	ID       *uint64  `jsonapi:"primary,with-pointers"`
 	Name     *string  `jsonapi:"attr,name"`
@@ -17,12 +25,17 @@ type WithPointer struct {
 	FloatVal *float32 `jsonapi:"attr,float-val"`
 }
 
-type ModelBadTypes struct {
-	ID           string     `jsonapi:"primary,badtypes"`
-	StringField  string     `jsonapi:"attr,string_field"`
-	FloatField   float64    `jsonapi:"attr,float_field"`
-	TimeField    time.Time  `jsonapi:"attr,time_field"`
-	TimePtrField *time.Time `jsonapi:"attr,time_ptr_field"`
+type Timestamp struct {
+	ID   int        `jsonapi:"primary,timestamps"`
+	Time time.Time  `jsonapi:"attr,timestamp,iso8601"`
+	Next *time.Time `jsonapi:"attr,next,iso8601"`
+}
+
+type Car struct {
+	ID    *string `jsonapi:"primary,cars"`
+	Make  *string `jsonapi:"attr,make,omitempty"`
+	Model *string `jsonapi:"attr,model,omitempty"`
+	Year  *uint   `jsonapi:"attr,year,omitempty"`
 }
 
 type Post struct {
@@ -130,4 +143,15 @@ func (b *Blog) JSONAPIRelationshipMeta(relation string) *Meta {
 		}
 	}
 	return nil
+}
+
+type BadComment struct {
+	ID   uint64 `jsonapi:"primary,bad-comment"`
+	Body string `jsonapi:"attr,body"`
+}
+
+func (bc *BadComment) JSONAPILinks() *Links {
+	return &Links{
+		"self": []string{"invalid", "should error"},
+	}
 }
