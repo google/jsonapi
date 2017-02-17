@@ -281,6 +281,21 @@ func TestUnmarshalSetsAttrs(t *testing.T) {
 	}
 }
 
+func TestUnmarshalParsesIntArrayAttr(t *testing.T) {
+	out, err := unmarshalSamplePayloadJSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if out.BookmarkedPages == nil {
+		t.Fatalf("Did not parse bookmarked pages")
+	}
+
+	if len(out.BookmarkedPages) != 3 {
+		t.Fatalf("Bookmarked pages not properly serialized")
+	}
+}
+
 func TestUnmarshalParsesISO8601(t *testing.T) {
 	payload := &OnePayload{
 		Data: &Node{
@@ -592,6 +607,17 @@ func unmarshalSamplePayload() (*Blog, error) {
 	return out, nil
 }
 
+func unmarshalSamplePayloadJSON() (*Blog, error) {
+	in := sampleJSONPayload()
+	out := new(Blog)
+
+	if err := UnmarshalPayload(in, out); err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}
+
 func TestUnmarshalManyPayload(t *testing.T) {
 	sample := map[string]interface{}{
 		"data": []interface{}{
@@ -756,6 +782,22 @@ func samplePayloadWithoutIncluded() map[string]interface{} {
 func payload(data map[string]interface{}) (result []byte, err error) {
 	result, err = json.Marshal(data)
 	return
+}
+
+func sampleJSONPayload() io.Reader {
+	response := `{
+		"data": {
+			"type": "blogs",
+			"attributes": {
+				"title": "New blog",
+				"created_at": 1436216820,
+				"view_count": 1000,
+				"bookmarked_pages": [ 100, 200, 30 ]
+			}
+		}
+	}`
+
+	return bytes.NewReader([]byte(response))
 }
 
 func samplePayload() io.Reader {

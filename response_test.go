@@ -11,14 +11,15 @@ import (
 )
 
 type Blog struct {
-	ID            int       `jsonapi:"primary,blogs"`
-	ClientID      string    `jsonapi:"client-id"`
-	Title         string    `jsonapi:"attr,title"`
-	Posts         []*Post   `jsonapi:"relation,posts"`
-	CurrentPost   *Post     `jsonapi:"relation,current_post"`
-	CurrentPostID int       `jsonapi:"attr,current_post_id"`
-	CreatedAt     time.Time `jsonapi:"attr,created_at"`
-	ViewCount     int       `jsonapi:"attr,view_count"`
+	ID              int       `jsonapi:"primary,blogs"`
+	ClientID        string    `jsonapi:"client-id"`
+	Title           string    `jsonapi:"attr,title"`
+	Posts           []*Post   `jsonapi:"relation,posts"`
+	CurrentPost     *Post     `jsonapi:"relation,current_post"`
+	CurrentPostID   int       `jsonapi:"attr,current_post_id"`
+	CreatedAt       time.Time `jsonapi:"attr,created_at"`
+	ViewCount       int       `jsonapi:"attr,view_count"`
+	BookmarkedPages []int     `jsonapi:"attr,bookmarked_pages"`
 }
 
 func (b *Blog) JSONAPILinks() *Links {
@@ -380,9 +381,10 @@ func TestHasPrimaryAnnotation(t *testing.T) {
 
 func TestSupportsAttributes(t *testing.T) {
 	testModel := &Blog{
-		ID:        5,
-		Title:     "Title 1",
-		CreatedAt: time.Now(),
+		ID:              5,
+		Title:           "Title 1",
+		CreatedAt:       time.Now(),
+		BookmarkedPages: []int{20, 30},
 	}
 
 	out := bytes.NewBuffer(nil)
@@ -403,6 +405,10 @@ func TestSupportsAttributes(t *testing.T) {
 
 	if data.Attributes["title"] != "Title 1" {
 		t.Fatalf("Attributes hash not populated using tags correctly")
+	}
+
+	if data.Attributes["bookmarked_pages"] == nil {
+		t.Fatalf("[]int attribute not serialized correctly")
 	}
 }
 
