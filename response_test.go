@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"sort"
 	"testing"
 	"time"
 )
@@ -103,6 +104,43 @@ type Book struct {
 	Description *string `jsonapi:"attr,description"`
 	Pages       *uint   `jsonapi:"attr,pages,omitempty"`
 	PublishedAt time.Time
+	Tags        []string `jsonapi:"attr,tags"`
+}
+
+func TestMarshall_attrStringSlice(t *testing.T) {
+	tags := []string{"fiction", "sale"}
+	b := &Book{ID: 1, Tags: tags}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalOnePayload(out, b); err != nil {
+		t.Fatal(err)
+	}
+
+	var jsonData map[string]interface{}
+	if err := json.Unmarshal(out.Bytes(), &jsonData); err != nil {
+		t.Fatal(err)
+	}
+
+	jsonTags := jsonData["data"].(map[string]interface{})["attributes"].(map[string]interface{})["tags"].([]interface{})
+	if e, a := len(tags), len(jsonTags); e != a {
+		t.Fatalf("Was expecting tags of length %d got %d", e, a)
+	}
+
+	// Convert from []interface{} to []string
+	jsonTagsStrings := []string{}
+	for _, tag := range jsonTags {
+		jsonTagsStrings = append(jsonTagsStrings, tag.(string))
+	}
+
+	// Sort both
+	sort.Strings(jsonTagsStrings)
+	sort.Strings(tags)
+
+	for i, tag := range tags {
+		if e, a := tag, jsonTagsStrings[i]; e != a {
+			t.Fatalf("At index %d, was expecting %s got %s", i, e, a)
+		}
+	}
 }
 
 func TestWithoutOmitsEmptyAnnotationOnRelation(t *testing.T) {
