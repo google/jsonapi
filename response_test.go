@@ -26,7 +26,7 @@ func (b *Blog) JSONAPILinks() *Links {
 		"self": fmt.Sprintf("https://example.com/api/blogs/%d", b.ID),
 		"comments": Link{
 			Href: fmt.Sprintf("https://example.com/api/blogs/%d/comments", b.ID),
-			Meta: map[string]interface{}{
+			Meta: Meta{
 				"counts": map[string]uint{
 					"likes":    4,
 					"comments": 20,
@@ -41,7 +41,7 @@ func (b *Blog) JSONAPIRelationshipLinks(relation string) *Links {
 		return &Links{
 			"related": Link{
 				Href: fmt.Sprintf("https://example.com/api/blogs/%d/posts", b.ID),
-				Meta: map[string]interface{}{
+				Meta: Meta{
 					"count": len(b.Posts),
 				},
 			},
@@ -58,7 +58,7 @@ func (b *Blog) JSONAPIRelationshipLinks(relation string) *Links {
 	return nil
 }
 
-func (blog Blog) JSONAPIMeta() *Meta {
+func (b *Blog) JSONAPIMeta() *Meta {
 	return &Meta{
 		"detail": "extra details regarding the blog",
 	}
