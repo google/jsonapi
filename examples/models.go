@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"time"
+
+	"github.com/google/jsonapi"
 )
 
 type Blog struct {
@@ -30,20 +32,20 @@ type Comment struct {
 }
 
 // Blog Links
-func (blog Blog) JSONAPILinks() *map[string]interface{} {
-	return &map[string]interface{}{
+func (blog Blog) JSONAPILinks() *jsonapi.Links {
+	return &jsonapi.Links{
 		"self": fmt.Sprintf("https://example.com/blogs/%d", blog.ID),
 	}
 }
 
-func (blog Blog) JSONAPIRelationshipLinks(relation string) *map[string]interface{} {
+func (blog Blog) JSONAPIRelationshipLinks(relation string) *jsonapi.Links {
 	if relation == "posts" {
-		return &map[string]interface{}{
+		return &jsonapi.Links{
 			"related": fmt.Sprintf("https://example.com/blogs/%d/posts", blog.ID),
 		}
 	}
 	if relation == "current_post" {
-		return &map[string]interface{}{
+		return &jsonapi.Links{
 			"related": fmt.Sprintf("https://example.com/blogs/%d/current_post", blog.ID),
 		}
 	}
@@ -51,20 +53,20 @@ func (blog Blog) JSONAPIRelationshipLinks(relation string) *map[string]interface
 }
 
 // Blog Meta
-func (blog Blog) JSONAPIMeta() map[string]interface{} {
-	return map[string]interface{}{
+func (blog Blog) JSONAPIMeta() *jsonapi.Meta {
+	return &jsonapi.Meta{
 		"detail": "extra details regarding the blog",
 	}
 }
 
-func (blog Blog) JSONAPIRelationshipMeta(relation string) map[string]interface{} {
+func (blog Blog) JSONAPIRelationshipMeta(relation string) *jsonapi.Meta {
 	if relation == "posts" {
-		return map[string]interface{}{
+		return &jsonapi.Meta{
 			"detail": "posts meta information",
 		}
 	}
 	if relation == "current_post" {
-		return map[string]interface{}{
+		return &jsonapi.Meta{
 			"detail": "current post meta information",
 		}
 	}
