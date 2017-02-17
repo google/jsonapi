@@ -566,7 +566,9 @@ func TestSupportsLinkable(t *testing.T) {
 	if !isMap {
 		t.Fatal("Expected 'comments' to contain a map")
 	}
-	countsMap, isMap := commentsMetaMap["counts"].(map[string]interface{})
+
+	commentsMetaObject := Meta(commentsMetaMap)
+	countsMap, isMap := commentsMetaObject["counts"].(map[string]interface{})
 	if !isMap {
 		t.Fatal("Expected 'counts' to contain a map")
 	}
