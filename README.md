@@ -364,6 +364,28 @@ func (post Post) JSONAPIRelationshipLinks(relation string) *Links {
 }
 ```
 
+### Meta
+ 
+ If you need to include [meta objects](http://jsonapi.org/format/#document-meta) along with response data, implement the `Metable` interface for document-meta, and `RelationshipMetable` for relationship meta:
+ 
+ ```go
+ func (post Post) JSONAPIMeta() *Meta {
+ 	return &Meta{
+ 		"details": "sample details here",
+ 	}
+ }
+ 
+ // Invoked for each relationship defined on the Post struct when marshaled
+ func (post Post) JSONAPIRelationshipMeta(relation string) *Meta {
+ 	if relation == "comments" {
+ 		return &Meta{
+ 			"details": "comment meta details here",				    
+ 		}
+ 	}
+ 	return nil
+ }
+ ```
+
 ### Errors
 This package also implements support for JSON API compatible `errors` payloads using the following types.
 

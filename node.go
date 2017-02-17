@@ -8,6 +8,7 @@ type OnePayload struct {
 	Data     *Node   `json:"data"`
 	Included []*Node `json:"included,omitempty"`
 	Links    *Links  `json:"links,omitempty"`
+	Meta     *Meta   `json:"meta,omitempty"`
 }
 
 // ManyPayload is used to represent a generic JSON API payload where many
@@ -16,6 +17,7 @@ type ManyPayload struct {
 	Data     []*Node `json:"data"`
 	Included []*Node `json:"included,omitempty"`
 	Links    *Links  `json:"links,omitempty"`
+	Meta     *Meta   `json:"meta,omitempty"`
 }
 
 // Node is used to represent a generic JSON API Resource
@@ -26,12 +28,14 @@ type Node struct {
 	Attributes    map[string]interface{} `json:"attributes,omitempty"`
 	Relationships map[string]interface{} `json:"relationships,omitempty"`
 	Links         *Links                 `json:"links,omitempty"`
+	Meta          *Meta                  `json:"meta,omitempty"`
 }
 
 // RelationshipOneNode is used to represent a generic has one JSON API relation
 type RelationshipOneNode struct {
 	Data  *Node  `json:"data"`
 	Links *Links `json:"links,omitempty"`
+	Meta  *Meta  `json:"meta,omitempty"`
 }
 
 // RelationshipManyNode is used to represent a generic has many JSON API
@@ -39,11 +43,16 @@ type RelationshipOneNode struct {
 type RelationshipManyNode struct {
 	Data  []*Node `json:"data"`
 	Links *Links  `json:"links,omitempty"`
+	Meta  *Meta   `json:"meta,omitempty"`
 }
 
 // Links is used to represent a `links` object.
 // http://jsonapi.org/format/#document-links
 type Links map[string]interface{}
+
+// Meta is used to represent a `meta` object.
+// http://jsonapi.org/format/#document-meta
+type Meta map[string]interface{}
 
 func (l *Links) validate() (err error) {
 	// Each member of a links object is a “link”. A link MUST be represented as
@@ -84,4 +93,14 @@ type Linkable interface {
 type RelationshipLinkable interface {
 	// JSONAPIRelationshipLinks will be invoked for each relationship with the corresponding relation name (e.g. `comments`)
 	JSONAPIRelationshipLinks(relation string) *Links
+}
+
+type Metable interface {
+	JSONAPIMeta() *Meta
+}
+
+// RelationshipMetable is used to include relationship meta in response data
+type RelationshipMetable interface {
+	// JSONRelationshipMeta will be invoked for each relationship with the corresponding relation name (e.g. `comments`)
+	JSONAPIRelationshipMeta(relation string) *Meta
 }

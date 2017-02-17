@@ -58,6 +58,26 @@ func (b *Blog) JSONAPIRelationshipLinks(relation string) *Links {
 	return nil
 }
 
+func (blog Blog) JSONAPIMeta() *Meta {
+	return &Meta{
+		"detail": "extra details regarding the blog",
+	}
+}
+
+func (b *Blog) JSONAPIRelationshipMeta(relation string) *Meta {
+	if relation == "posts" {
+		return &Meta{
+			"detail": "extra posts detail",
+		}
+	}
+	if relation == "current_post" {
+		return &Meta{
+			"detail": "extra current_post detail",
+		}
+	}
+	return nil
+}
+
 type Post struct {
 	Blog
 	ID            uint64     `jsonapi:"primary,posts"`
@@ -557,6 +577,30 @@ func TestSupportsLinkable(t *testing.T) {
 	}
 }
 
+func TestSupportsMetable(t *testing.T) {
+	testModel := &Blog{
+		ID:        5,
+		Title:     "Title 1",
+		CreatedAt: time.Now(),
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalOnePayload(out, testModel); err != nil {
+		t.Fatal(err)
+	}
+
+	resp := new(OnePayload)
+	if err := json.NewDecoder(out).Decode(resp); err != nil {
+		t.Fatal(err)
+	}
+
+	data := resp.Data
+
+	if data.Meta == nil {
+		t.Fatalf("Expected 'details' meta")
+	}
+}
+
 func TestInvalidLinkable(t *testing.T) {
 	testModel := &BadComment{
 		ID:   5,
@@ -594,6 +638,9 @@ func TestRelations(t *testing.T) {
 		if relations["posts"].(map[string]interface{})["links"] == nil {
 			t.Fatalf("Posts relationship links were not materialized")
 		}
+		if relations["posts"].(map[string]interface{})["meta"] == nil {
+			t.Fatalf("Posts relationship meta were not materialized")
+		}
 	}
 
 	if relations["current_post"] == nil {
@@ -601,6 +648,9 @@ func TestRelations(t *testing.T) {
 	} else {
 		if relations["current_post"].(map[string]interface{})["links"] == nil {
 			t.Fatalf("Current post relationship links were not materialized")
+		}
+		if relations["current_post"].(map[string]interface{})["meta"] == nil {
+			t.Fatalf("Current post relationship meta were not materialized")
 		}
 	}
 
