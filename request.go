@@ -460,7 +460,8 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			}
 
 			// As a final catch-all, ensure types line up to avoid a runtime panic.
-			if fieldValue.Kind() != v.Kind() {
+			// Ignore interfaces since interfaces are poly
+			if fieldValue.Kind() != reflect.Interface && fieldValue.Kind() != v.Kind() {
 				return ErrInvalidType
 			}
 			fieldValue.Set(reflect.ValueOf(val))
