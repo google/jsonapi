@@ -468,10 +468,16 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 }
 
 func toShallowNode(node *Node) *Node {
-	return &Node{
+	n := &Node{
 		ID:   node.ID,
 		Type: node.Type,
 	}
+
+	if node.Meta != nil {
+		n.Meta = node.Meta
+	}
+
+	return n
 }
 
 func visitModelNodeRelationships(models reflect.Value, included *map[string]*Node,
