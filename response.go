@@ -351,10 +351,20 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 			}
 		} else if annotation == annotationRelation {
 			var omitEmpty bool
+			var include = true
 
 			//add support for 'omitempty' struct tag for marshaling as absent
 			if len(args) > 2 {
 				omitEmpty = args[2] == annotationOmitEmpty
+				if args[2] == annotationExclude {
+					include = false
+				}
+			}
+
+			if len(args) > 3 {
+				if args[3] == annotationExclude {
+					include = false
+				}
 			}
 
 			isSlice := fieldValue.Type().Kind() == reflect.Slice
@@ -395,7 +405,9 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 				if sideload {
 					shallowNodes := []*Node{}
 					for _, n := range relationship.Data {
-						appendIncluded(included, n)
+						if include {
+							appendIncluded(included, n)
+						}
 						shallowNodes = append(shallowNodes, toShallowNode(n))
 					}
 
@@ -427,7 +439,9 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 				}
 
 				if sideload {
-					appendIncluded(included, relationship)
+					if include {
+						appendIncluded(included, relationship)
+					}
 					node.Relationships[args[1]] = &RelationshipOneNode{
 						Data:  toShallowNode(relationship),
 						Links: relLinks,
