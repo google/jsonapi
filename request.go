@@ -549,8 +549,12 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 
 		} else if annotation == "meta" {
 
-			meta := data.Meta
-			if meta == nil || len(data.Meta) == 0 {
+			if data.Meta == nil {
+				continue
+			}
+
+			meta := *data.Meta
+			if meta == nil || len(*data.Meta) == 0 {
 				continue
 			}
 
