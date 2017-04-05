@@ -122,8 +122,9 @@ func MarshalManyPayloadWithoutIncluded(w io.Writer, models interface{}) error {
 //
 //		 blogs := testBlogsForList()
 //
-//		 w.WriteHeader(http.StatusOK)
 //		 w.Header().Set("Content-Type", jsonapi.MediaType)
+//		 w.WriteHeader(http.StatusOK)
+//
 //		 if err := jsonapi.MarshalManyPayload(w, blogs); err != nil {
 //			 http.Error(w, err.Error(), http.StatusInternalServerError)
 //		 }

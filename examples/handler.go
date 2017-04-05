@@ -105,8 +105,9 @@ func (h *ExampleHandler) listBlogs(w http.ResponseWriter, r *http.Request) {
 	// but, for now
 	blogs := fixtureBlogsList()
 
-	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", jsonapi.MediaType)
+	w.WriteHeader(http.StatusOK)
+
 	if err := jsonapiRuntime.MarshalManyPayload(w, blogs); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
