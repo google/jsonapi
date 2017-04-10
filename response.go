@@ -404,11 +404,11 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 
 				if sideload {
 					shallowNodes := []*Node{}
-					for _, n := range relationship.Data {
+					for i, n := range relationship.Data {
 						if include {
 							appendIncluded(included, n)
 						}
-						shallowNodes = append(shallowNodes, toShallowNode(n))
+						shallowNodes = append(shallowNodes, toShallowNode(fieldValue.Index(i).Interface(), n))
 					}
 
 					node.Relationships[args[1]] = &RelationshipManyNode{
@@ -443,7 +443,7 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 						appendIncluded(included, relationship)
 					}
 					node.Relationships[args[1]] = &RelationshipOneNode{
-						Data:  toShallowNode(relationship),
+						Data:  toShallowNode(fieldValue.Interface(), relationship),
 						Links: relLinks,
 						Meta:  relMeta,
 					}
@@ -481,14 +481,14 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 	return node, nil
 }
 
-func toShallowNode(node *Node) *Node {
+func toShallowNode(model interface{}, node *Node) *Node {
 	n := &Node{
 		ID:   node.ID,
 		Type: node.Type,
 	}
 
-	if node.Meta != nil {
-		n.Meta = node.Meta
+	if resourceIDMetable, ok := model.(ResourceIDMetable); ok {
+		n.Meta = resourceIDMetable.JSONAPIResourceIDMeta()
 	}
 
 	return n
