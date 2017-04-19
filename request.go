@@ -565,21 +565,49 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				continue
 			}
 
-			n := new(Node)
+			// Field was a Pointer type
+			if fieldValue.Kind() == reflect.Ptr {
+				var concreteVal reflect.Value
 
-			var ok bool
-			n.Attributes, ok = val.(map[string]interface{})
-			if !ok {
-				er = ErrUnsupportedPtrType
-				break
+				switch cVal := val.(type) {
+				case string:
+					concreteVal = reflect.ValueOf(&cVal)
+				case float64:
+					concreteVal = reflect.ValueOf(&cVal)
+				case bool:
+					concreteVal = reflect.ValueOf(&cVal)
+				case complex64:
+					concreteVal = reflect.ValueOf(&cVal)
+				case complex128:
+					concreteVal = reflect.ValueOf(&cVal)
+				case uintptr:
+					concreteVal = reflect.ValueOf(&cVal)
+				case interface{}:
+					n := new(Node)
+
+					var ok bool
+					n.Attributes, ok = val.(map[string]interface{})
+					if !ok {
+						er = ErrUnsupportedPtrType
+						break
+					}
+
+					if err := unmarshalNode(n, fieldValue, included); err != nil {
+						er = ErrUnsupportedPtrType
+						break
+					}
+					concreteVal = fieldValue
+				default:
+					return ErrUnsupportedPtrType
+				}
+
+				if fieldValue.Type() != concreteVal.Type() {
+					return ErrUnsupportedPtrType
+				}
+
+				fieldValue.Set(concreteVal)
+				continue
 			}
-
-			if err := unmarshalNode(n, fieldValue, included); err != nil {
-				er = ErrUnsupportedPtrType
-				break
-			}
-
-			fieldValue.Set(fieldValue)
 
 		} else {
 			er = fmt.Errorf(unsuportedStructTagMsg, annotation)
