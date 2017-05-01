@@ -25,6 +25,24 @@ type WithPointer struct {
 	FloatVal *float32 `jsonapi:"attr,float-val"`
 }
 
+type base struct {
+	CommonField string `jsonapi:"attr,common_field"`
+}
+
+type WithExtendedAnonymousField struct {
+	base `jsonapi:"extend"`
+	ID   int `jsonapi:"primary,with-extended-anonymous-fields"`
+}
+
+type badBase struct {
+	CommonField string `jsonapi:"attr"`
+}
+
+type WithBadExtendedAnonymousField struct {
+	badBase `jsonapi:"extend"`
+	ID      int `jsonapi:"primary,with-bad-extended-anonymous-fields"`
+}
+
 type Timestamp struct {
 	ID   int        `jsonapi:"primary,timestamps"`
 	Time time.Time  `jsonapi:"attr,timestamp,iso8601"`

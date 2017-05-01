@@ -7,7 +7,6 @@ import (
 	"io"
 	"reflect"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -206,44 +205,15 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 
 	var er error
 
-	modelValue := reflect.ValueOf(model).Elem()
-	modelType := reflect.ValueOf(model).Type().Elem()
+	fields, er := extractFields(reflect.ValueOf(model))
 
-	for i := 0; i < modelValue.NumField(); i++ {
-		structField := modelValue.Type().Field(i)
-		tag := structField.Tag.Get(annotationJSONAPI)
-		if tag == "" {
-			continue
-		}
-
-		fieldValue := modelValue.Field(i)
-		fieldType := modelType.Field(i)
-
-		args := strings.Split(tag, annotationSeperator)
-
-		if len(args) < 1 {
-			er = ErrBadJSONAPIStructTag
-			break
-		}
-
-		annotation := args[0]
-
-		if (annotation == annotationClientID && len(args) != 1) ||
-			(annotation != annotationClientID && len(args) < 2) {
-			er = ErrBadJSONAPIStructTag
-			break
-		}
+	for _, field := range fields {
+		fieldValue, annotation, kind, args := field.Value, field.Annotation, field.Kind, field.Args
 
 		if annotation == annotationPrimary {
 			v := fieldValue
-
-			// Deal with PTRS
-			var kind reflect.Kind
-			if fieldValue.Kind() == reflect.Ptr {
-				kind = fieldType.Type.Elem().Kind()
-				v = reflect.Indirect(fieldValue)
-			} else {
-				kind = fieldType.Type.Kind()
+			if field.IsPtr {
+				v = reflect.Indirect(v)
 			}
 
 			// Handle allowed types
@@ -277,7 +247,7 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 				break
 			}
 
-			node.Type = args[1]
+			node.Type = args[0]
 		} else if annotation == annotationClientID {
 			clientID := fieldValue.String()
 			if clientID != "" {
@@ -286,8 +256,8 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 		} else if annotation == annotationAttribute {
 			var omitEmpty, iso8601 bool
 
-			if len(args) > 2 {
-				for _, arg := range args[2:] {
+			if len(args) > 1 {
+				for _, arg := range args[1:] {
 					switch arg {
 					case annotationOmitEmpty:
 						omitEmpty = true
@@ -309,9 +279,9 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 				}
 
 				if iso8601 {
-					node.Attributes[args[1]] = t.UTC().Format(iso8601TimeFormat)
+					node.Attributes[args[0]] = t.UTC().Format(iso8601TimeFormat)
 				} else {
-					node.Attributes[args[1]] = t.Unix()
+					node.Attributes[args[0]] = t.Unix()
 				}
 			} else if fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
 				// A time pointer may be nil
@@ -320,7 +290,7 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 						continue
 					}
 
-					node.Attributes[args[1]] = nil
+					node.Attributes[args[0]] = nil
 				} else {
 					tm := fieldValue.Interface().(*time.Time)
 
@@ -329,9 +299,9 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 					}
 
 					if iso8601 {
-						node.Attributes[args[1]] = tm.UTC().Format(iso8601TimeFormat)
+						node.Attributes[args[0]] = tm.UTC().Format(iso8601TimeFormat)
 					} else {
-						node.Attributes[args[1]] = tm.Unix()
+						node.Attributes[args[0]] = tm.Unix()
 					}
 				}
 			} else {
@@ -345,17 +315,17 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 
 				strAttr, ok := fieldValue.Interface().(string)
 				if ok {
-					node.Attributes[args[1]] = strAttr
+					node.Attributes[args[0]] = strAttr
 				} else {
-					node.Attributes[args[1]] = fieldValue.Interface()
+					node.Attributes[args[0]] = fieldValue.Interface()
 				}
 			}
 		} else if annotation == annotationRelation {
 			var omitEmpty bool
 
 			//add support for 'omitempty' struct tag for marshaling as absent
-			if len(args) > 2 {
-				omitEmpty = args[2] == annotationOmitEmpty
+			if len(args) > 1 {
+				omitEmpty = args[1] == annotationOmitEmpty
 			}
 
 			isSlice := fieldValue.Type().Kind() == reflect.Slice
@@ -371,12 +341,12 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 
 			var relLinks *Links
 			if linkableModel, ok := model.(RelationshipLinkable); ok {
-				relLinks = linkableModel.JSONAPIRelationshipLinks(args[1])
+				relLinks = linkableModel.JSONAPIRelationshipLinks(args[0])
 			}
 
 			var relMeta *Meta
 			if metableModel, ok := model.(RelationshipMetable); ok {
-				relMeta = metableModel.JSONAPIRelationshipMeta(args[1])
+				relMeta = metableModel.JSONAPIRelationshipMeta(args[0])
 			}
 
 			if isSlice {
@@ -400,20 +370,20 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 						shallowNodes = append(shallowNodes, toShallowNode(n))
 					}
 
-					node.Relationships[args[1]] = &RelationshipManyNode{
+					node.Relationships[args[0]] = &RelationshipManyNode{
 						Data:  shallowNodes,
 						Links: relationship.Links,
 						Meta:  relationship.Meta,
 					}
 				} else {
-					node.Relationships[args[1]] = relationship
+					node.Relationships[args[0]] = relationship
 				}
 			} else {
 				// to-one relationships
 
 				// Handle null relationship case
 				if fieldValue.IsNil() {
-					node.Relationships[args[1]] = &RelationshipOneNode{Data: nil}
+					node.Relationships[args[0]] = &RelationshipOneNode{Data: nil}
 					continue
 				}
 
@@ -429,13 +399,13 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 
 				if sideload {
 					appendIncluded(included, relationship)
-					node.Relationships[args[1]] = &RelationshipOneNode{
+					node.Relationships[args[0]] = &RelationshipOneNode{
 						Data:  toShallowNode(relationship),
 						Links: relLinks,
 						Meta:  relMeta,
 					}
 				} else {
-					node.Relationships[args[1]] = &RelationshipOneNode{
+					node.Relationships[args[0]] = &RelationshipOneNode{
 						Data:  relationship,
 						Links: relLinks,
 						Meta:  relMeta,
