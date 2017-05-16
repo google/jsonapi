@@ -126,7 +126,7 @@ func TestUnmarshalToStructWithPointerAttr_BadType(t *testing.T) {
 	in := map[string]interface{}{
 		"name": true, // This is the wrong type.
 	}
-	expectedErrorMessage := ErrUnsupportedPtrType.Error()
+	expectedErrorMessage := ErrUnsupportedPtrType("*string").Error()
 
 	err := UnmarshalPayload(sampleWithPointerPayload(in), out)
 
