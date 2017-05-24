@@ -291,7 +291,7 @@ func ListBlogs(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", jsonapi.MediaType)
 	w.WriteHeader(http.StatusOK)
 
-	if err := jsonapi.MarshalManyPayload(w, blogs); err != nil {
+	if err := jsonapi.MarshalPayload(w, blogs); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -329,7 +329,7 @@ func CreateBlogs(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", jsonapi.MediaType)
 	w.WriteHeader(http.StatusCreated)
 
-	if err := jsonapi.MarshalManyPayload(w, blogs); err != nil {
+	if err := jsonapi.MarshalPayload(w, blogs); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

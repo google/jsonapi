@@ -224,7 +224,33 @@ func TestMarshalIDPtr(t *testing.T) {
 	}
 }
 
-func TestMarshal_invalidIDType(t *testing.T) {
+func TestMarshalOnePayload_omitIDString(t *testing.T) {
+	type Foo struct {
+		ID    string `jsonapi:"primary,foo"`
+		Title string `jsonapi:"attr,title"`
+	}
+
+	foo := &Foo{Title: "Foo"}
+	out := bytes.NewBuffer(nil)
+	if err := MarshalPayload(out, foo); err != nil {
+		t.Fatal(err)
+	}
+
+	var jsonData map[string]interface{}
+	if err := json.Unmarshal(out.Bytes(), &jsonData); err != nil {
+		t.Fatal(err)
+	}
+	payload := jsonData["data"].(map[string]interface{})
+
+	// Verify that empty ID of type string gets omitted. See:
+	// https://github.com/google/jsonapi/issues/83#issuecomment-285611425
+	_, ok := payload["id"]
+	if ok {
+		t.Fatal("Was expecting the data.id member to be omitted")
+	}
+}
+
+func TestMarshall_invalidIDType(t *testing.T) {
 	type badIDStruct struct {
 		ID *bool `jsonapi:"primary,cars"`
 	}

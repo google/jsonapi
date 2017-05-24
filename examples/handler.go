@@ -70,7 +70,7 @@ func (h *ExampleHandler) echoBlogs(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set(headerContentType, jsonapi.MediaType)
-	if err := jsonapiRuntime.MarshalManyPayload(w, blogs); err != nil {
+	if err := jsonapiRuntime.MarshalPayload(w, blogs); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
