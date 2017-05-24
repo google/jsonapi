@@ -931,7 +931,7 @@ func samplePayloadWithSideloaded() io.Reader {
 	testModel := testModel()
 
 	out := bytes.NewBuffer(nil)
-	MarshalOnePayload(out, testModel)
+	MarshalPayload(out, testModel)
 
 	return out
 }

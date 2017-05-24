@@ -60,21 +60,9 @@ func (r *Runtime) UnmarshalManyPayload(reader io.Reader, kind reflect.Type) (ele
 	return
 }
 
-func (r *Runtime) MarshalOnePayload(w io.Writer, model interface{}) error {
+func (r *Runtime) MarshalPayload(w io.Writer, model interface{}) error {
 	return r.instrumentCall(MarshalStart, MarshalStop, func() error {
-		return MarshalOnePayload(w, model)
-	})
-}
-
-func (r *Runtime) MarshalManyPayload(w io.Writer, models interface{}) error {
-	return r.instrumentCall(MarshalStart, MarshalStop, func() error {
-		return MarshalManyPayload(w, models)
-	})
-}
-
-func (r *Runtime) MarshalOnePayloadEmbedded(w io.Writer, model interface{}) error {
-	return r.instrumentCall(MarshalStart, MarshalStop, func() error {
-		return MarshalOnePayloadEmbedded(w, model)
+		return MarshalPayload(w, model)
 	})
 }
 

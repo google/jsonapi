@@ -9,12 +9,40 @@ import (
 	"time"
 )
 
-func TestMarshall_attrStringSlice(t *testing.T) {
+func TestMarshalPayload(t *testing.T) {
+	book := &Book{ID: 1}
+	books := []*Book{book, &Book{ID: 2}}
+	var jsonData map[string]interface{}
+
+	// One
+	out1 := bytes.NewBuffer(nil)
+	MarshalPayload(out1, book)
+
+	if err := json.Unmarshal(out1.Bytes(), &jsonData); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := jsonData["data"].(map[string]interface{}); !ok {
+		t.Fatalf("data key did not contain an Hash/Dict/Map")
+	}
+
+	// Many
+	out2 := bytes.NewBuffer(nil)
+	MarshalPayload(out2, books)
+
+	if err := json.Unmarshal(out2.Bytes(), &jsonData); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := jsonData["data"].([]interface{}); !ok {
+		t.Fatalf("data key did not contain an Array")
+	}
+}
+
+func TestMarshal_attrStringSlice(t *testing.T) {
 	tags := []string{"fiction", "sale"}
 	b := &Book{ID: 1, Tags: tags}
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalOnePayload(out, b); err != nil {
+	if err := MarshalPayload(out, b); err != nil {
 		t.Fatal(err)
 	}
 
@@ -49,7 +77,7 @@ func TestWithoutOmitsEmptyAnnotationOnRelation(t *testing.T) {
 	blog := &Blog{}
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalOnePayload(out, blog); err != nil {
+	if err := MarshalPayload(out, blog); err != nil {
 		t.Fatal(err)
 	}
 
@@ -109,7 +137,7 @@ func TestWithOmitsEmptyAnnotationOnRelation(t *testing.T) {
 	blog := &BlogOptionalPosts{ID: 999}
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalOnePayload(out, blog); err != nil {
+	if err := MarshalPayload(out, blog); err != nil {
 		t.Fatal(err)
 	}
 
@@ -141,7 +169,7 @@ func TestWithOmitsEmptyAnnotationOnRelation_MixedData(t *testing.T) {
 	}
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalOnePayload(out, blog); err != nil {
+	if err := MarshalPayload(out, blog); err != nil {
 		t.Fatal(err)
 	}
 
@@ -175,7 +203,7 @@ func TestMarshalIDPtr(t *testing.T) {
 	}
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalOnePayload(out, car); err != nil {
+	if err := MarshalPayload(out, car); err != nil {
 		t.Fatal(err)
 	}
 
@@ -196,7 +224,7 @@ func TestMarshalIDPtr(t *testing.T) {
 	}
 }
 
-func TestMarshall_invalidIDType(t *testing.T) {
+func TestMarshal_invalidIDType(t *testing.T) {
 	type badIDStruct struct {
 		ID *bool `jsonapi:"primary,cars"`
 	}
@@ -204,7 +232,7 @@ func TestMarshall_invalidIDType(t *testing.T) {
 	o := &badIDStruct{ID: &id}
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalOnePayload(out, o); err != ErrBadJSONAPIID {
+	if err := MarshalPayload(out, o); err != ErrBadJSONAPIID {
 		t.Fatalf(
 			"Was expecting a `%s` error, got `%s`", ErrBadJSONAPIID, err,
 		)
@@ -218,7 +246,7 @@ func TestOmitsEmptyAnnotation(t *testing.T) {
 	}
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalOnePayload(out, book); err != nil {
+	if err := MarshalPayload(out, book); err != nil {
 		t.Fatal(err)
 	}
 
@@ -255,7 +283,7 @@ func TestHasPrimaryAnnotation(t *testing.T) {
 	}
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalOnePayload(out, testModel); err != nil {
+	if err := MarshalPayload(out, testModel); err != nil {
 		t.Fatal(err)
 	}
 
@@ -284,7 +312,7 @@ func TestSupportsAttributes(t *testing.T) {
 	}
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalOnePayload(out, testModel); err != nil {
+	if err := MarshalPayload(out, testModel); err != nil {
 		t.Fatal(err)
 	}
 
@@ -312,7 +340,7 @@ func TestOmitsZeroTimes(t *testing.T) {
 	}
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalOnePayload(out, testModel); err != nil {
+	if err := MarshalPayload(out, testModel); err != nil {
 		t.Fatal(err)
 	}
 
@@ -339,7 +367,7 @@ func TestMarshalISO8601Time(t *testing.T) {
 	}
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalOnePayload(out, testModel); err != nil {
+	if err := MarshalPayload(out, testModel); err != nil {
 		t.Fatal(err)
 	}
 
@@ -367,7 +395,7 @@ func TestMarshalISO8601TimePointer(t *testing.T) {
 	}
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalOnePayload(out, testModel); err != nil {
+	if err := MarshalPayload(out, testModel); err != nil {
 		t.Fatal(err)
 	}
 
@@ -395,7 +423,7 @@ func TestSupportsLinkable(t *testing.T) {
 	}
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalOnePayload(out, testModel); err != nil {
+	if err := MarshalPayload(out, testModel); err != nil {
 		t.Fatal(err)
 	}
 
@@ -464,7 +492,7 @@ func TestInvalidLinkable(t *testing.T) {
 	}
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalOnePayload(out, testModel); err == nil {
+	if err := MarshalPayload(out, testModel); err == nil {
 		t.Fatal("Was expecting an error")
 	}
 }
@@ -477,7 +505,7 @@ func TestSupportsMetable(t *testing.T) {
 	}
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalOnePayload(out, testModel); err != nil {
+	if err := MarshalPayload(out, testModel); err != nil {
 		t.Fatal(err)
 	}
 
@@ -501,7 +529,7 @@ func TestRelations(t *testing.T) {
 	testModel := testBlog()
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalOnePayload(out, testModel); err != nil {
+	if err := MarshalPayload(out, testModel); err != nil {
 		t.Fatal(err)
 	}
 
@@ -547,7 +575,7 @@ func TestNoRelations(t *testing.T) {
 	testModel := &Blog{ID: 1, Title: "Title 1", CreatedAt: time.Now()}
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalOnePayload(out, testModel); err != nil {
+	if err := MarshalPayload(out, testModel); err != nil {
 		t.Fatal(err)
 	}
 
@@ -561,7 +589,7 @@ func TestNoRelations(t *testing.T) {
 	}
 }
 
-func TestMarshalOnePayloadWithoutIncluded(t *testing.T) {
+func TestMarshalPayloadWithoutIncluded(t *testing.T) {
 	data := &Post{
 		ID:       1,
 		BlogID:   2,
@@ -585,7 +613,7 @@ func TestMarshalOnePayloadWithoutIncluded(t *testing.T) {
 	}
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalOnePayloadWithoutIncluded(out, data); err != nil {
+	if err := MarshalPayloadWithoutIncluded(out, data); err != nil {
 		t.Fatal(err)
 	}
 
@@ -648,7 +676,7 @@ func TestMarshalMany(t *testing.T) {
 	}
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalManyPayload(out, data); err != nil {
+	if err := MarshalPayload(out, data); err != nil {
 		t.Fatal(err)
 	}
 
@@ -671,7 +699,7 @@ func TestMarshalMany_WithSliceOfStructPointers(t *testing.T) {
 	}
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalManyPayload(out, data); err != nil {
+	if err := MarshalPayload(out, data); err != nil {
 		t.Fatal(err)
 	}
 
@@ -694,7 +722,7 @@ func TestMarshalManyWithoutIncluded(t *testing.T) {
 	}
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalManyPayloadWithoutIncluded(out, data); err != nil {
+	if err := MarshalPayloadWithoutIncluded(out, data); err != nil {
 		t.Fatal(err)
 	}
 
@@ -726,11 +754,11 @@ func TestMarshalMany_SliceOfInterfaceAndSliceOfStructsSameJSON(t *testing.T) {
 
 	// Perform Marshals
 	structsOut := new(bytes.Buffer)
-	if err := MarshalManyPayload(structsOut, structs); err != nil {
+	if err := MarshalPayload(structsOut, structs); err != nil {
 		t.Fatal(err)
 	}
 	interfacesOut := new(bytes.Buffer)
-	if err := MarshalManyPayload(interfacesOut, interfaces); err != nil {
+	if err := MarshalPayload(interfacesOut, interfaces); err != nil {
 		t.Fatal(err)
 	}
 
@@ -750,15 +778,15 @@ func TestMarshalMany_SliceOfInterfaceAndSliceOfStructsSameJSON(t *testing.T) {
 	}
 }
 
-func TestMarshalMany_InvalidIntefaceArgument(t *testing.T) {
+func TestMarshal_InvalidIntefaceArgument(t *testing.T) {
 	out := new(bytes.Buffer)
-	if err := MarshalManyPayload(out, true); err != ErrExpectedSlice {
+	if err := MarshalPayload(out, true); err != ErrUnexpectedType {
 		t.Fatal("Was expecting an error")
 	}
-	if err := MarshalManyPayload(out, 25); err != ErrExpectedSlice {
+	if err := MarshalPayload(out, 25); err != ErrUnexpectedType {
 		t.Fatal("Was expecting an error")
 	}
-	if err := MarshalManyPayload(out, Book{}); err != ErrExpectedSlice {
+	if err := MarshalPayload(out, Book{}); err != ErrUnexpectedType {
 		t.Fatal("Was expecting an error")
 	}
 }
