@@ -653,7 +653,7 @@ func TestMarshalPayloadWithoutIncluded(t *testing.T) {
 	}
 }
 
-func TestMarshalMany(t *testing.T) {
+func TestMarshalPayload_many(t *testing.T) {
 	data := []interface{}{
 		&Blog{
 			ID:        5,
