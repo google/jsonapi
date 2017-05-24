@@ -23,7 +23,7 @@ type ManyPayload struct {
 // Node is used to represent a generic JSON API Resource
 type Node struct {
 	Type          string                 `json:"type"`
-	ID            string                 `json:"id"`
+	ID            string                 `json:"id,omitempty"`
 	ClientID      string                 `json:"client-id,omitempty"`
 	Attributes    map[string]interface{} `json:"attributes,omitempty"`
 	Relationships map[string]interface{} `json:"relationships,omitempty"`
