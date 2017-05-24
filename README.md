@@ -215,9 +215,8 @@ MarshalPayload(w io.Writer, models interface{}) error
 Visit [godoc](http://godoc.org/github.com/google/jsonapi#MarshalPayload)
 
 Writes a JSON API response, with related records sideloaded, into an
-`included` array.  This method encodes a response for a single record
-only. If you want to serialize many records, see,
-[MarshalManyPayload](#marshalmanypayload).
+`included` array.  This method encodes a response for either a single record or
+many records.
 
 ##### Handler Example Code
 
