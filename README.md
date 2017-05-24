@@ -206,13 +206,13 @@ UnmarshalPayload(in io.Reader, model interface{})
 
 Visit [godoc](http://godoc.org/github.com/google/jsonapi#UnmarshalPayload)
 
-#### `MarshalOnePayload`
+#### `MarshalPayload`
 
 ```go
-MarshalOnePayload(w io.Writer, model interface{}) error
+MarshalPayload(w io.Writer, models interface{}) error
 ```
 
-Visit [godoc](http://godoc.org/github.com/google/jsonapi#MarshalOnePayload)
+Visit [godoc](http://godoc.org/github.com/google/jsonapi#MarshalPayload)
 
 Writes a JSON API response, with related records sideloaded, into an
 `included` array.  This method encodes a response for a single record
@@ -235,63 +235,7 @@ func CreateBlog(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", jsonapi.MediaType)
 	w.WriteHeader(http.StatusCreated)
 
-	if err := jsonapi.MarshalOnePayload(w, blog); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
-```
-
-### List Records Example
-
-#### `MarshalManyPayload`
-
-```go
-MarshalManyPayload(w io.Writer, models []interface{}) error
-```
-
-Visit [godoc](http://godoc.org/github.com/google/jsonapi#MarshalManyPayload)
-
-Takes an `io.Writer` and an slice of `interface{}`.  Note, if you have a
-type safe array of your structs, like,
-
-```go
-var blogs []*Blog
-```
-
-you will need to iterate over the slice of `Blog` pointers and append
-them to an interface array, like,
-
-```go
-blogInterface := make([]interface{}, len(blogs))
-
-for i, blog := range blogs {
-  blogInterface[i] = blog
-}
-```
-
-Alternatively, you can insert your `Blog`s into a slice of `interface{}`
-the first time.  For example when you fetch the `Blog`s from the db
-`append` them to an `[]interface{}` rather than a `[]*Blog`.  So your
-method signature to reach into your data store may look something like
-this,
-
-```go
-func FetchBlogs() ([]interface{}, error)
-```
-
-##### Handler Example Code
-
-```go
-func ListBlogs(w http.ResponseWriter, r *http.Request) {
-	// ...fetch your blogs, filter, offset, limit, etc...
-
-  // but, for now
-	blogs := testBlogsForList()
-
-	w.Header().Set("Content-Type", jsonapi.MediaType)
-	w.WriteHeader(http.StatusOK)
-
-	if err := jsonapi.MarshalPayload(w, blogs); err != nil {
+	if err := jsonapi.MarshalPayload(w, blog); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
