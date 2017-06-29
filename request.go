@@ -58,7 +58,7 @@ var (
 //   	w.Header().Set("Content-Type", jsonapi.MediaType)
 //   	w.WriteHeader(201)
 //
-//   	if err := jsonapi.MarshalOnePayload(w, blog); err != nil {
+//   	if err := jsonapi.MarshalPayload(w, blog); err != nil {
 //   		http.Error(w, err.Error(), 500)
 //   	}
 //   }

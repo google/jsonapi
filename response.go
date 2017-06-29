@@ -23,18 +23,47 @@ var (
 	// be a slice of *Structs; MarshalMany will return this error when its
 	// interface{} argument is invalid.
 	ErrExpectedSlice = errors.New("models should be a slice of struct pointers")
+	// ErrUnexpectedType is returned when marshalling an interface; the interface
+	// had to be a pointer or a slice; otherwise this error is returned.
+	ErrUnexpectedType = errors.New("models should be a struct pointer or slice of struct pointers")
 )
 
-// MarshalOnePayload writes a jsonapi response with one, with related records
-// sideloaded, into "included" array. This method encodes a response for a
-// single record only. Hence, data will be a single record rather than an array
-// of records.  If you want to serialize many records, see, MarshalManyPayload.
+// MarshalPayload writes a jsonapi response for one or many records. The
+// related records are sideloaded into the "included" array. If this method is
+// given a struct pointer as an argument it will serialize in the form
+// "data": {...}. If this method is given a slice of pointers, this method will
+// serialize in the form "data": [...]
 //
-// See UnmarshalPayload for usage example.
+// One Example: you could pass it, w, your http.ResponseWriter, and, models, a
+// ptr to a Blog to be written to the response body:
 //
-// model interface{} should be a pointer to a struct.
-func MarshalOnePayload(w io.Writer, model interface{}) error {
-	payload, err := MarshalOne(model)
+//	 func ShowBlog(w http.ResponseWriter, r *http.Request) {
+//		 blog := &Blog{}
+//
+//		 w.Header().Set("Content-Type", jsonapi.MediaType)
+//		 w.WriteHeader(http.StatusOK)
+//
+//		 if err := jsonapi.MarshalPayload(w, blog); err != nil {
+//			 http.Error(w, err.Error(), http.StatusInternalServerError)
+//		 }
+//	 }
+//
+// Many Example: you could pass it, w, your http.ResponseWriter, and, models, a
+// slice of Blog struct instance pointers to be written to the response body:
+//
+//	 func ListBlogs(w http.ResponseWriter, r *http.Request) {
+//     blogs := []*Blog{}
+//
+//		 w.Header().Set("Content-Type", jsonapi.MediaType)
+//		 w.WriteHeader(http.StatusOK)
+//
+//		 if err := jsonapi.MarshalPayload(w, blogs); err != nil {
+//			 http.Error(w, err.Error(), http.StatusInternalServerError)
+//		 }
+//	 }
+//
+func MarshalPayload(w io.Writer, models interface{}) error {
+	payload, err := Marshal(models)
 	if err != nil {
 		return err
 	}
@@ -42,34 +71,55 @@ func MarshalOnePayload(w io.Writer, model interface{}) error {
 	if err := json.NewEncoder(w).Encode(payload); err != nil {
 		return err
 	}
-
 	return nil
 }
 
-// MarshalOnePayloadWithoutIncluded writes a jsonapi response with one object,
-// without the related records sideloaded into "included" array. If you want to
-// serialize the relations into the "included" array see MarshalOnePayload.
-//
-// model interface{} should be a pointer to a struct.
-func MarshalOnePayloadWithoutIncluded(w io.Writer, model interface{}) error {
-	included := make(map[string]*Node)
+// Marshal does the same as MarshalPayload except it just returns the payload
+// and doesn't write out results. Useful if you use your own JSON rendering
+// library.
+func Marshal(models interface{}) (Payloader, error) {
+	switch vals := reflect.ValueOf(models); vals.Kind() {
+	case reflect.Slice:
+		m, err := convertToSliceInterface(&models)
+		if err != nil {
+			return nil, err
+		}
+		return marshalMany(m)
+	case reflect.Ptr:
+		// Check that the pointer was to a struct
+		if reflect.Indirect(vals).Kind() != reflect.Struct {
+			return nil, ErrUnexpectedType
+		}
+		return marshalOne(models)
+	default:
+		return nil, ErrUnexpectedType
+	}
+}
 
-	rootNode, err := visitModelNode(model, &included, true)
+// MarshalPayloadWithoutIncluded writes a jsonapi response with one or many
+// records, without the related records sideloaded into "included" array.
+// If you want to serialize the relations into the "included" array see
+// MarshalPayload.
+//
+// models interface{} should be either a struct pointer or a slice of struct
+// pointers.
+func MarshalPayloadWithoutIncluded(w io.Writer, model interface{}) error {
+	payload, err := Marshal(model)
 	if err != nil {
 		return err
 	}
+	payload.clearIncluded()
 
-	if err := json.NewEncoder(w).Encode(&OnePayload{Data: rootNode}); err != nil {
+	if err := json.NewEncoder(w).Encode(payload); err != nil {
 		return err
 	}
-
 	return nil
 }
 
-// MarshalOne does the same as MarshalOnePayload except it just returns the
+// marshalOne does the same as MarshalOnePayload except it just returns the
 // payload and doesn't write out results. Useful is you use your JSON rendering
 // library.
-func MarshalOne(model interface{}) (*OnePayload, error) {
+func marshalOne(model interface{}) (*OnePayload, error) {
 	included := make(map[string]*Node)
 
 	rootNode, err := visitModelNode(model, &included, true)
@@ -83,78 +133,10 @@ func MarshalOne(model interface{}) (*OnePayload, error) {
 	return payload, nil
 }
 
-// MarshalManyPayloadWithoutIncluded writes a jsonapi response with many records,
-// without the related records sideloaded into "included" array. If you want to
-// serialize the relations into the "included" array see MarshalManyPayload.
-//
-// models interface{} should be a slice of struct pointers.
-func MarshalManyPayloadWithoutIncluded(w io.Writer, models interface{}) error {
-	m, err := convertToSliceInterface(&models)
-	if err != nil {
-		return err
-	}
-	payload, err := MarshalMany(m)
-	if err != nil {
-		return err
-	}
-
-	// Empty the included
-	payload.Included = []*Node{}
-
-	if err := json.NewEncoder(w).Encode(payload); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// MarshalManyPayload writes a jsonapi response with many records, with related
-// records sideloaded, into "included" array. This method encodes a response for
-// a slice of records, hence data will be an array of records rather than a
-// single record.  To serialize a single record, see MarshalOnePayload
-//
-// For example you could pass it, w, your http.ResponseWriter, and, models, a
-// slice of Blog struct instance pointers as interface{}'s to write to the
-// response,
-//
-//	 func ListBlogs(w http.ResponseWriter, r *http.Request) {
-//		 // ... fetch your blogs and filter, offset, limit, etc ...
-//
-//		 blogs := testBlogsForList()
-//
-//		 w.Header().Set("Content-Type", jsonapi.MediaType)
-//		 w.WriteHeader(http.StatusOK)
-//
-//		 if err := jsonapi.MarshalManyPayload(w, blogs); err != nil {
-//			 http.Error(w, err.Error(), http.StatusInternalServerError)
-//		 }
-//	 }
-//
-//
-// Visit https://github.com/google/jsonapi#list for more info.
-//
-// models interface{} should be a slice of struct pointers.
-func MarshalManyPayload(w io.Writer, models interface{}) error {
-	m, err := convertToSliceInterface(&models)
-	if err != nil {
-		return err
-	}
-	payload, err := MarshalMany(m)
-	if err != nil {
-		return err
-	}
-
-	if err := json.NewEncoder(w).Encode(payload); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// MarshalMany does the same as MarshalManyPayload except it just returns the
+// marshalMany does the same as MarshalManyPayload except it just returns the
 // payload and doesn't write out results. Useful is you use your JSON rendering
 // library.
-func MarshalMany(models []interface{}) (*ManyPayload, error) {
+func marshalMany(models []interface{}) (*ManyPayload, error) {
 	payload := &ManyPayload{
 		Data: []*Node{},
 	}
@@ -173,16 +155,18 @@ func MarshalMany(models []interface{}) (*ManyPayload, error) {
 }
 
 // MarshalOnePayloadEmbedded - This method not meant to for use in
-// implementation code, although feel free.  The purpose of this method is for
-// use in tests.  In most cases, your request payloads for create will be
-// embedded rather than sideloaded for related records. This method will
-// serialize a single struct pointer into an embedded json response.  In other
-// words, there will be no, "included", array in the json all relationships will
+// implementation code, although feel free.  The purpose of this
+// method is for use in tests.  In most cases, your request
+// payloads for create will be embedded rather than sideloaded for
+// related records. This method will serialize a single struct
+// pointer into an embedded json response. In other words, there
+// will be no, "included", array in the json all relationships will
 // be serailized inline in the data.
 //
-// However, in tests, you may want to construct payloads to post to create
-// methods that are embedded to most closely resemble the payloads that will be
-// produced by the client.  This is what this method is intended for.
+// However, in tests, you may want to construct payloads to post
+// to create methods that are embedded to most closely resemble
+// the payloads that will be produced by the client. This is what
+// this method is intended for.
 //
 // model interface{} should be a pointer to a struct.
 func MarshalOnePayloadEmbedded(w io.Writer, model interface{}) error {

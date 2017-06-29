@@ -103,7 +103,7 @@ func exerciseHandler() {
 		fixtureBlogCreate(3),
 	}
 	in = bytes.NewBuffer(nil)
-	jsonapi.MarshalManyPayload(in, blogs)
+	jsonapi.MarshalPayload(in, blogs)
 
 	req, _ = http.NewRequest(http.MethodPut, "/blogs", in)
 

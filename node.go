@@ -2,6 +2,11 @@ package jsonapi
 
 import "fmt"
 
+// Payloader is used to encapsulate the One and Many payload types
+type Payloader interface {
+	clearIncluded()
+}
+
 // OnePayload is used to represent a generic JSON API payload where a single
 // resource (Node) was included as an {} in the "data" key
 type OnePayload struct {
@@ -11,6 +16,10 @@ type OnePayload struct {
 	Meta     *Meta   `json:"meta,omitempty"`
 }
 
+func (p *OnePayload) clearIncluded() {
+	p.Included = []*Node{}
+}
+
 // ManyPayload is used to represent a generic JSON API payload where many
 // resources (Nodes) were included in an [] in the "data" key
 type ManyPayload struct {
@@ -18,6 +27,10 @@ type ManyPayload struct {
 	Included []*Node `json:"included,omitempty"`
 	Links    *Links  `json:"links,omitempty"`
 	Meta     *Meta   `json:"meta,omitempty"`
+}
+
+func (p *ManyPayload) clearIncluded() {
+	p.Included = []*Node{}
 }
 
 // Node is used to represent a generic JSON API Resource
