@@ -84,7 +84,25 @@ func Marshal(models interface{}) (Payloader, error) {
 		if err != nil {
 			return nil, err
 		}
-		return marshalMany(m)
+
+		payload, err := marshalMany(m)
+		if err != nil {
+			return nil, err
+		}
+
+		if linkableModels, isLinkable := models.(Linkable); isLinkable {
+			jl := linkableModels.JSONAPILinks()
+			if er := jl.validate(); er != nil {
+				return nil, er
+			}
+			payload.Links = linkableModels.JSONAPILinks()
+		}
+
+		if metableModels, ok := models.(Metable); ok {
+			payload.Meta = metableModels.JSONAPIMeta()
+		}
+
+		return payload, nil
 	case reflect.Ptr:
 		// Check that the pointer was to a struct
 		if reflect.Indirect(vals).Kind() != reflect.Struct {
