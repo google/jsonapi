@@ -117,6 +117,13 @@ func UnmarshalManyPayload(in io.Reader, t reflect.Type) ([]interface{}, error) {
 	return models, nil
 }
 
+type unmarshal struct {
+	attribute  interface{}
+	args       []string
+	fieldType  reflect.StructField
+	fieldValue reflect.Value
+}
+
 func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) (err error) {
 
 	defer func() {
@@ -245,18 +252,9 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			fieldValue.Set(reflect.ValueOf(data.ClientID))
 		} else if annotation == annotationAttribute {
 			attributes := data.Attributes
+
 			if attributes == nil || len(data.Attributes) == 0 {
 				continue
-			}
-
-			var isIso8601 bool
-
-			if len(args) > 2 {
-				for _, arg := range args[2:] {
-					if arg == annotationISO8601 {
-						isIso8601 = true
-					}
-				}
 			}
 
 			attribute := attributes[args[1]]
@@ -266,50 +264,44 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				continue
 			}
 
+			data := unmarshal{
+				attribute,
+				args,
+				fieldType,
+				fieldValue,
+			}
+
+			_ = data
+
 			value := reflect.ValueOf(attribute)
 
 			// Handle field of type []string
 			if fieldValue.Type() == reflect.TypeOf([]string{}) {
-				values := handleStringSlice(value)
-				assign(fieldValue, reflect.ValueOf(values))
+				values, err := handleStringSlice(data)
+				if err != nil {
+					er = err
+					break
+				}
+				assign(fieldValue, values)
 				continue
 			}
 
 			// Handle field of type time.Time
-			if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
-				var time time.Time
-				if time, err = handleTime(value, isIso8601); err != nil {
+			if fieldValue.Type() == reflect.TypeOf(time.Time{}) || fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
+				var time reflect.Value
+				if time, err = handleTime(data); err != nil {
 					er = err
 					break
 				}
 
-				assign(fieldValue, reflect.ValueOf(time))
-				continue
-			}
-
-			// Handle field of type *time.Time
-			if fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
-				var time time.Time
-				if time, err = handleTime(value, isIso8601); err != nil {
-					er = err
-					break
-				}
-
-				assign(fieldValue, reflect.ValueOf(&time))
+				assign(fieldValue, time)
 				continue
 			}
 
 			// JSON value was a float (numeric)
 			if value.Kind() == reflect.Float64 {
 
-				var kind reflect.Kind
-				if fieldValue.Kind() == reflect.Ptr {
-					kind = fieldType.Type.Elem().Kind()
-				} else {
-					kind = fieldType.Type.Kind()
-				}
-
-				numericValue, err := handleNumeric(value, kind)
+				numericValue, err := handleNumeric(data)
 
 				if err != nil {
 					er = err
@@ -438,30 +430,47 @@ func assign(field, value reflect.Value) {
 	}
 }
 
-func handleStringSlice(v reflect.Value) []string {
+func handleStringSlice(m unmarshal) (reflect.Value, error) {
+	v := reflect.ValueOf(m.attribute)
 	values := make([]string, v.Len())
 	for i := 0; i < v.Len(); i++ {
 		values[i] = v.Index(i).Interface().(string)
 	}
 
-	return values
+	return reflect.ValueOf(values), nil
 }
 
-func handleTime(v reflect.Value, isIso8601 bool) (time.Time, error) {
+func handleTime(m unmarshal) (reflect.Value, error) {
+
+	var isIso8601 bool
+	v := reflect.ValueOf(m.attribute)
+
+	if len(m.args) > 2 {
+		for _, arg := range m.args[2:] {
+			if arg == annotationISO8601 {
+				isIso8601 = true
+			}
+		}
+	}
+
 	if isIso8601 {
 		var tm string
 		if v.Kind() == reflect.String {
 			tm = v.Interface().(string)
 		} else {
-			return time.Now(), ErrInvalidISO8601
+			return reflect.ValueOf(time.Now()), ErrInvalidISO8601
 		}
 
 		t, err := time.Parse(iso8601TimeFormat, tm)
 		if err != nil {
-			return time.Now(), ErrInvalidISO8601
+			return reflect.ValueOf(time.Now()), ErrInvalidISO8601
 		}
 
-		return t, nil
+		if m.fieldValue.Kind() == reflect.Ptr {
+			return reflect.ValueOf(&t), nil
+		}
+
+		return reflect.ValueOf(t), nil
 	}
 
 	var at int64
@@ -471,17 +480,24 @@ func handleTime(v reflect.Value, isIso8601 bool) (time.Time, error) {
 	} else if v.Kind() == reflect.Int {
 		at = v.Int()
 	} else {
-		return time.Now(), ErrInvalidTime
+		return reflect.ValueOf(time.Now()), ErrInvalidTime
 	}
 
 	t := time.Unix(at, 0)
 
-	return t, nil
+	return reflect.ValueOf(t), nil
 }
 
-func handleNumeric(v reflect.Value, kind reflect.Kind) (reflect.Value, error) {
-
+func handleNumeric(m unmarshal) (reflect.Value, error) {
+	v := reflect.ValueOf(m.attribute)
 	floatValue := v.Interface().(float64)
+
+	var kind reflect.Kind
+	if m.fieldValue.Kind() == reflect.Ptr {
+		kind = m.fieldType.Type.Elem().Kind()
+	} else {
+		kind = m.fieldType.Type.Kind()
+	}
 
 	var numericValue reflect.Value
 
