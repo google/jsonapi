@@ -56,7 +56,7 @@ func (h *ExampleHandler) createBlog(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Set(headerContentType, jsonapi.MediaType)
 
-	if err := jsonapiRuntime.MarshalOnePayload(w, blog); err != nil {
+	if err := jsonapiRuntime.MarshalPayload(w, blog); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -70,7 +70,7 @@ func (h *ExampleHandler) echoBlogs(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set(headerContentType, jsonapi.MediaType)
-	if err := jsonapiRuntime.MarshalManyPayload(w, blogs); err != nil {
+	if err := jsonapiRuntime.MarshalPayload(w, blogs); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -93,7 +93,7 @@ func (h *ExampleHandler) showBlog(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	w.Header().Set(headerContentType, jsonapi.MediaType)
-	if err := jsonapiRuntime.MarshalOnePayload(w, blog); err != nil {
+	if err := jsonapiRuntime.MarshalPayload(w, blog); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -108,7 +108,7 @@ func (h *ExampleHandler) listBlogs(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", jsonapi.MediaType)
 	w.WriteHeader(http.StatusOK)
 
-	if err := jsonapiRuntime.MarshalManyPayload(w, blogs); err != nil {
+	if err := jsonapiRuntime.MarshalPayload(w, blogs); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

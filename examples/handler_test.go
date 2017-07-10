@@ -36,7 +36,7 @@ func TestExampleHandler_put(t *testing.T) {
 		fixtureBlogCreate(3),
 	}
 	requestBody := bytes.NewBuffer(nil)
-	jsonapi.MarshalManyPayload(requestBody, blogs)
+	jsonapi.MarshalPayload(requestBody, blogs)
 
 	r, err := http.NewRequest(http.MethodPut, "/blogs", requestBody)
 	if err != nil {
