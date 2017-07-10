@@ -155,3 +155,24 @@ func (bc *BadComment) JSONAPILinks() *Links {
 		"self": []string{"invalid", "should error"},
 	}
 }
+
+type Company struct {
+	ID        string    `jsonapi:"primary,companies"`
+	Name      string    `jsonapi:"attr,name"`
+	Boss      Employee  `jsonapi:"attr,boss"`
+	Teams     []Team    `jsonapi:"attr,teams"`
+	FoundedAt time.Time `jsonapi:"attr,founded-at,iso8601"`
+}
+
+type Team struct {
+	Name    string     `jsonapi:"attr,name"`
+	Leader  *Employee  `jsonapi:"attr,leader"`
+	Members []Employee `jsonapi:"attr,members"`
+}
+
+type Employee struct {
+	Firstname string     `jsonapi:"attr,firstname"`
+	Surname   string     `jsonapi:"attr,surname"`
+	Age       int        `jsonapi:"attr,age"`
+	HiredAt   *time.Time `jsonapi:"attr,hired-at,iso8601"`
+}
