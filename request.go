@@ -271,66 +271,14 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				fieldValue,
 			}
 
-			_ = data
-
-			value := reflect.ValueOf(attribute)
-
-			// Handle field of type []string
-			if fieldValue.Type() == reflect.TypeOf([]string{}) {
-				values, err := handleStringSlice(data)
-				if err != nil {
-					er = err
-					break
-				}
-				assign(fieldValue, values)
-				continue
+			value, err := unmarshalAttribute(data)
+			if err != nil {
+				er = err
+				break
 			}
 
-			// Handle field of type time.Time
-			if fieldValue.Type() == reflect.TypeOf(time.Time{}) || fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
-				var time reflect.Value
-				if time, err = handleTime(data); err != nil {
-					er = err
-					break
-				}
-
-				assign(fieldValue, time)
-				continue
-			}
-
-			// JSON value was a float (numeric)
-			if value.Kind() == reflect.Float64 {
-
-				numericValue, err := handleNumeric(data)
-
-				if err != nil {
-					er = err
-					break
-				}
-
-				assign(fieldValue, numericValue)
-				continue
-			}
-
-			// Field was a Pointer type
-			if fieldValue.Kind() == reflect.Ptr {
-
-				concreteVal, err := handlePointer(attribute, fieldValue.Type())
-
-				if err != nil {
-					er = err
-					break
-				}
-
-				assign(fieldValue, concreteVal)
-				continue
-			}
-
-			// As a final catch-all, ensure types line up to avoid a runtime panic.
-			if fieldValue.Kind() != value.Kind() {
-				return ErrInvalidType
-			}
-			assign(fieldValue, reflect.ValueOf(attribute))
+			assign(fieldValue, value)
+			continue
 
 		} else if annotation == annotationRelation {
 			isSlice := fieldValue.Type().Kind() == reflect.Slice
@@ -430,8 +378,45 @@ func assign(field, value reflect.Value) {
 	}
 }
 
-func handleStringSlice(m unmarshal) (reflect.Value, error) {
-	v := reflect.ValueOf(m.attribute)
+func unmarshalAttribute(data unmarshal) (value reflect.Value, err error) {
+
+	value = reflect.ValueOf(data.attribute)
+
+	// Handle field of type []string
+	if data.fieldValue.Type() == reflect.TypeOf([]string{}) {
+		value, err = handleStringSlice(data)
+		return
+	}
+
+	// Handle field of type time.Time
+	if data.fieldValue.Type() == reflect.TypeOf(time.Time{}) || data.fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
+		value, err = handleTime(data)
+		return
+	}
+
+	// JSON value was a float (numeric)
+	if value.Kind() == reflect.Float64 {
+		value, err = handleNumeric(data)
+		return
+	}
+
+	// Field was a Pointer type
+	if data.fieldValue.Kind() == reflect.Ptr {
+		value, err = handlePointer(data)
+		return
+	}
+
+	// As a final catch-all, ensure types line up to avoid a runtime panic.
+	if data.fieldValue.Kind() != value.Kind() {
+		err = ErrInvalidType
+		return
+	}
+
+	return
+}
+
+func handleStringSlice(data unmarshal) (reflect.Value, error) {
+	v := reflect.ValueOf(data.attribute)
 	values := make([]string, v.Len())
 	for i := 0; i < v.Len(); i++ {
 		values[i] = v.Index(i).Interface().(string)
@@ -440,13 +425,13 @@ func handleStringSlice(m unmarshal) (reflect.Value, error) {
 	return reflect.ValueOf(values), nil
 }
 
-func handleTime(m unmarshal) (reflect.Value, error) {
+func handleTime(data unmarshal) (reflect.Value, error) {
 
 	var isIso8601 bool
-	v := reflect.ValueOf(m.attribute)
+	v := reflect.ValueOf(data.attribute)
 
-	if len(m.args) > 2 {
-		for _, arg := range m.args[2:] {
+	if len(data.args) > 2 {
+		for _, arg := range data.args[2:] {
 			if arg == annotationISO8601 {
 				isIso8601 = true
 			}
@@ -466,7 +451,7 @@ func handleTime(m unmarshal) (reflect.Value, error) {
 			return reflect.ValueOf(time.Now()), ErrInvalidISO8601
 		}
 
-		if m.fieldValue.Kind() == reflect.Ptr {
+		if data.fieldValue.Kind() == reflect.Ptr {
 			return reflect.ValueOf(&t), nil
 		}
 
@@ -488,15 +473,15 @@ func handleTime(m unmarshal) (reflect.Value, error) {
 	return reflect.ValueOf(t), nil
 }
 
-func handleNumeric(m unmarshal) (reflect.Value, error) {
-	v := reflect.ValueOf(m.attribute)
+func handleNumeric(data unmarshal) (reflect.Value, error) {
+	v := reflect.ValueOf(data.attribute)
 	floatValue := v.Interface().(float64)
 
 	var kind reflect.Kind
-	if m.fieldValue.Kind() == reflect.Ptr {
-		kind = m.fieldType.Type.Elem().Kind()
+	if data.fieldValue.Kind() == reflect.Ptr {
+		kind = data.fieldType.Type.Elem().Kind()
 	} else {
-		kind = m.fieldType.Type.Kind()
+		kind = data.fieldType.Type.Kind()
 	}
 
 	var numericValue reflect.Value
@@ -545,10 +530,11 @@ func handleNumeric(m unmarshal) (reflect.Value, error) {
 	return numericValue, nil
 }
 
-func handlePointer(val interface{}, t reflect.Type) (reflect.Value, error) {
+func handlePointer(data unmarshal) (reflect.Value, error) {
+	t := data.fieldValue.Type()
 	var concreteVal reflect.Value
 
-	switch cVal := val.(type) {
+	switch cVal := data.attribute.(type) {
 	case string:
 		concreteVal = reflect.ValueOf(&cVal)
 	case bool:
