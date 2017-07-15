@@ -945,3 +945,109 @@ func sampleSerializedEmbeddedTestModel() *Blog {
 
 	return blog
 }
+
+func TestUnmarshalNestedStruct(t *testing.T) {
+
+	boss := map[string]interface{}{
+		"firstname": "Hubert",
+		"surname":   "Farnsworth",
+		"age":       176,
+		"hired-at":  "2016-08-17T08:27:12Z",
+	}
+
+	sample := map[string]interface{}{
+		"data": map[string]interface{}{
+			"type": "companies",
+			"id":   "123",
+			"attributes": map[string]interface{}{
+				"name":       "Planet Express",
+				"boss":       boss,
+				"founded-at": "2016-08-17T08:27:12Z",
+			},
+		},
+	}
+
+	data, err := json.Marshal(sample)
+	if err != nil {
+		t.Fatal(err)
+	}
+	in := bytes.NewReader(data)
+	out := new(Company)
+
+	if err := UnmarshalPayload(in, out); err != nil {
+		t.Fatal(err)
+	}
+
+	if out.Boss.Firstname != "Hubert" {
+		t.Fatalf("Nested struct was not unmarshalled")
+	}
+
+	if out.Boss.Age != 176 {
+		t.Fatalf("Nested struct was not unmarshalled")
+	}
+
+	if out.Boss.HiredAt.IsZero() {
+		t.Fatalf("Nested struct was not unmarshalled")
+	}
+}
+
+func TestUnmarshalNestedStructSlice(t *testing.T) {
+
+	fry := map[string]interface{}{
+		"firstname": "Philip J.",
+		"surname":   "Fry",
+		"age":       25,
+		"hired-at":  "2016-08-17T08:27:12Z",
+	}
+
+	bender := map[string]interface{}{
+		"firstname": "Bender Bending",
+		"surname":   "Rodriguez",
+		"age":       19,
+		"hired-at":  "2016-08-17T08:27:12Z",
+	}
+
+	deliveryCrew := map[string]interface{}{
+		"name": "Delivery Crew",
+		"members": []interface{}{
+			fry,
+			bender,
+		},
+	}
+
+	sample := map[string]interface{}{
+		"data": map[string]interface{}{
+			"type": "companies",
+			"id":   "123",
+			"attributes": map[string]interface{}{
+				"name": "Planet Express",
+				"teams": []interface{}{
+					deliveryCrew,
+				},
+			},
+		},
+	}
+
+	data, err := json.Marshal(sample)
+	if err != nil {
+		t.Fatal(err)
+	}
+	in := bytes.NewReader(data)
+	out := new(Company)
+
+	if err := UnmarshalPayload(in, out); err != nil {
+		t.Fatal(err)
+	}
+
+	if out.Teams[0].Name != "Delivery Crew" {
+		t.Fatalf("Nested struct Team was not unmarshalled")
+	}
+
+	if len(out.Teams[0].Members) != 2 {
+		t.Fatalf("Nested struct Members were not unmarshalled")
+	}
+
+	if out.Teams[0].Members[0].Firstname != "Philip J." {
+		t.Fatalf("Nested struct member was not unmarshalled")
+	}
+}
