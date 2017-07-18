@@ -64,7 +64,7 @@ func (n *Node) merge(node *Node) {
 		n.Attributes[k] = v
 	}
 
-	if n.Relationships == nil && n.Relationships != nil {
+	if n.Relationships == nil && node.Relationships != nil {
 		n.Relationships = make(map[string]interface{})
 	}
 	for k, v := range node.Relationships {

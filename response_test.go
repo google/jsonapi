@@ -994,7 +994,7 @@ func TestMarshalUnmarshalCompositeStruct(t *testing.T) {
 	model.Bat = "batty"
 
 	buf := bytes.NewBuffer(nil)
-	if err := MarshalOnePayload(buf, model); err != nil {
+	if err := MarshalPayload(buf, model); err != nil {
 		t.Fatal(err)
 	}
 
