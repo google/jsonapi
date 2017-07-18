@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"reflect"
 	"sort"
-	"strings"
 	"testing"
 	"time"
 )
@@ -985,35 +984,151 @@ func TestMarshalUnmarshalCompositeStruct(t *testing.T) {
 		Bat string `jsonapi:"attr,bat"`
 	}
 
-	model := &Model{}
-	model.ID = 1
-	model.Fizz = "fizzy"
-	model.Buzz = 99
-	model.Foo = "fooey"
-	model.Bar = "barry"
-	model.Bat = "batty"
-
-	buf := bytes.NewBuffer(nil)
-	if err := MarshalPayload(buf, model); err != nil {
-		t.Fatal(err)
+	type test struct {
+		name          string
+		payload       *OnePayload
+		dst, expected interface{}
 	}
 
-	// assert encoding from model to jsonapi output
-	expected := `{"data":{"type":"things","id":"1","attributes":{"bar":"barry","bat":"batty","buzz":99,"fizz":"fizzy","foo":"fooey"}}}`
-	actual := strings.TrimSpace(string(buf.Bytes()))
+	scenarios := []test{}
 
-	if expected != actual {
-		t.Errorf("Got %+v Expected %+v", actual, expected)
+	scenarios = append(scenarios, test{
+		name: "Model embeds Thing, models have no annotation overlaps",
+		dst:  &Model{},
+		payload: &OnePayload{
+			Data: &Node{
+				Type: "things",
+				ID:   "1",
+				Attributes: map[string]interface{}{
+					"bar":  "barry",
+					"bat":  "batty",
+					"buzz": 99,
+					"fizz": "fizzy",
+					"foo":  "fooey",
+				},
+			},
+		},
+		expected: &Model{
+			Foo: "fooey",
+			Bar: "barry",
+			Bat: "batty",
+			Thing: Thing{
+				ID:   1,
+				Fizz: "fizzy",
+				Buzz: 99,
+			},
+		},
+	})
+
+	{
+		type Model struct {
+			Thing
+			Foo  string `jsonapi:"attr,foo"`
+			Bar  string `jsonapi:"attr,bar"`
+			Bat  string `jsonapi:"attr,bat"`
+			Buzz int    `jsonapi:"attr,buzz"` // overrides Thing.Buzz
+		}
+
+		scenarios = append(scenarios, test{
+			name: "Model embeds Thing, overlap Buzz attribute",
+			dst:  &Model{},
+			payload: &OnePayload{
+				Data: &Node{
+					Type: "things",
+					ID:   "1",
+					Attributes: map[string]interface{}{
+						"bar":  "barry",
+						"bat":  "batty",
+						"buzz": 99,
+						"fizz": "fizzy",
+						"foo":  "fooey",
+					},
+				},
+			},
+			expected: &Model{
+				Foo:  "fooey",
+				Bar:  "barry",
+				Bat:  "batty",
+				Buzz: 99,
+				Thing: Thing{
+					ID:   1,
+					Fizz: "fizzy",
+				},
+			},
+		})
 	}
 
-	dst := &Model{}
-	if err := UnmarshalPayload(buf, dst); err != nil {
-		t.Fatal(err)
-	}
+	{
+		type Model struct {
+			Thing
+			ModelID int    `jsonapi:"primary,models"` //overrides Thing.ID due to primary annotation
+			Foo     string `jsonapi:"attr,foo"`
+			Bar     string `jsonapi:"attr,bar"`
+			Bat     string `jsonapi:"attr,bat"`
+			Buzz    int    `jsonapi:"attr,buzz"` // overrides Thing.Buzz
+		}
 
-	// assert decoding from jsonapi output to model
-	if !reflect.DeepEqual(model, dst) {
-		t.Errorf("Got %#v Expected %#v", dst, model)
+		scenarios = append(scenarios, test{
+			name: "Model embeds Thing, attribute, and primary annotation overlap",
+			dst:  &Model{},
+			payload: &OnePayload{
+				Data: &Node{
+					Type: "models",
+					ID:   "1",
+					Attributes: map[string]interface{}{
+						"bar":  "barry",
+						"bat":  "batty",
+						"buzz": 99,
+						"fizz": "fizzy",
+						"foo":  "fooey",
+					},
+				},
+			},
+			expected: &Model{
+				ModelID: 1,
+				Foo:     "fooey",
+				Bar:     "barry",
+				Bat:     "batty",
+				Buzz:    99,
+				Thing: Thing{
+					Fizz: "fizzy",
+				},
+			},
+		})
+	}
+	for _, scenario := range scenarios {
+		t.Logf("running scenario: %s\n", scenario.name)
+
+		// get the expected model and marshal to jsonapi
+		buf := bytes.NewBuffer(nil)
+		if err := MarshalPayload(buf, scenario.expected); err != nil {
+			t.Fatal(err)
+		}
+
+		// get the node model representation and marshal to jsonapi
+		payload, err := json.Marshal(scenario.payload)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// assert that we're starting w/ the same payload
+		isJSONEqual, err := isJSONEqual(payload, buf.Bytes())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !isJSONEqual {
+			t.Errorf("Got\n%s\nExpected\n%s\n", payload, buf.Bytes())
+		}
+
+		// run jsonapi unmarshal
+		if err := UnmarshalPayload(bytes.NewReader(payload), scenario.dst); err != nil {
+			t.Fatal(err)
+		}
+
+		// assert decoded and expected models are equal
+		if !reflect.DeepEqual(scenario.expected, scenario.dst) {
+			t.Errorf("Got\n%#v\nExpected\n%#v\n", scenario.dst, scenario.expected)
+		}
 	}
 }
 
@@ -1082,4 +1197,18 @@ func testBlog() *Blog {
 			},
 		},
 	}
+}
+
+func isJSONEqual(b1, b2 []byte) (bool, error) {
+	var i1, i2 interface{}
+	var result bool
+	var err error
+	if err = json.Unmarshal(b1, &i1); err != nil {
+		return result, err
+	}
+	if err = json.Unmarshal(b2, &i2); err != nil {
+		return result, err
+	}
+	result = reflect.DeepEqual(i1, i2)
+	return result, err
 }

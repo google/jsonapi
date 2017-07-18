@@ -117,6 +117,7 @@ func UnmarshalManyPayload(in io.Reader, t reflect.Type) ([]interface{}, error) {
 	return models, nil
 }
 
+// TODO: refactor so that it unmarshals from top to bottom
 func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -127,421 +128,476 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 	modelValue := model.Elem()
 	modelType := model.Type().Elem()
 
-	var er error
+	embeddedModels := []reflect.Value{}
 
 	for i := 0; i < modelValue.NumField(); i++ {
 		fieldType := modelType.Field(i)
 		fieldValue := modelValue.Field(i)
-
 		tag := fieldType.Tag.Get(annotationJSONAPI)
+
+		// handle explicit ignore annotation
+		if shouldIgnoreField(tag) {
+			continue
+		}
 
 		// handles embedded structs
 		if isEmbeddedStruct(fieldType) {
-			if shouldIgnoreField(tag) {
-				continue
-			}
-			model := reflect.ValueOf(fieldValue.Addr().Interface())
-			err := unmarshalNode(data, model, included)
-			if err != nil {
-				er = err
-				break
-			}
+			embeddedModels = append(embeddedModels, reflect.ValueOf(fieldValue.Addr().Interface()))
 		}
 
+		// handle tagless; after handling embedded structs (which could be tagless)
 		if tag == "" {
 			continue
 		}
 
 		args := strings.Split(tag, annotationSeperator)
-
+		// require atleast 1
 		if len(args) < 1 {
-			er = ErrBadJSONAPIStructTag
-			break
+			return ErrBadJSONAPIStructTag
 		}
 
-		annotation := args[0]
-
-		if (annotation == annotationClientID && len(args) != 1) ||
-			(annotation != annotationClientID && len(args) < 2) {
-			er = ErrBadJSONAPIStructTag
-			break
+		// annotation == args[0]
+		switch args[0] {
+		case annotationClientID:
+			//fmt.Printf("\nannotationClientID %v\n", args)
+			if err := handleClientIDUnmarshal(data, args, fieldValue); err != nil {
+				return err
+			}
+		case annotationPrimary:
+			//fmt.Printf("\nannotationPrimary %v\n", args)
+			if err := handlePrimaryUnmarshal(data, args, fieldType, fieldValue); err != nil {
+				return err
+			}
+		case annotationAttribute:
+			//fmt.Printf("\nannotationAttribute %v\n", args)
+			//			fmt.Println("before", data.Attributes)
+			if err := handleAttributeUnmarshal(data, args, fieldType, fieldValue); err != nil {
+				return err
+			}
+			//			fmt.Println("after ", data.Attributes)
+		case annotationRelation:
+			//fmt.Printf("\nannotationRelation %v\n", args)
+			if err := handleRelationUnmarshal(data, args, fieldValue, included); err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf(unsuportedStructTagMsg, args[0])
 		}
-
-		if annotation == annotationPrimary {
-			if data.ID == "" {
-				continue
-			}
-
-			// Check the JSON API Type
-			if data.Type != args[1] {
-				er = fmt.Errorf(
-					"Trying to Unmarshal an object of type %#v, but %#v does not match",
-					data.Type,
-					args[1],
-				)
-				break
-			}
-
-			// ID will have to be transmitted as astring per the JSON API spec
-			v := reflect.ValueOf(data.ID)
-
-			// Deal with PTRS
-			var kind reflect.Kind
-			if fieldValue.Kind() == reflect.Ptr {
-				kind = fieldType.Type.Elem().Kind()
-			} else {
-				kind = fieldType.Type.Kind()
-			}
-
-			// Handle String case
-			if kind == reflect.String {
-				assign(fieldValue, v)
-				continue
-			}
-
-			// Value was not a string... only other supported type was a numeric,
-			// which would have been sent as a float value.
-			floatValue, err := strconv.ParseFloat(data.ID, 64)
-			if err != nil {
-				// Could not convert the value in the "id" attr to a float
-				er = ErrBadJSONAPIID
-				break
-			}
-
-			// Convert the numeric float to one of the supported ID numeric types
-			// (int[8,16,32,64] or uint[8,16,32,64])
-			var idValue reflect.Value
-			switch kind {
-			case reflect.Int:
-				n := int(floatValue)
-				idValue = reflect.ValueOf(&n)
-			case reflect.Int8:
-				n := int8(floatValue)
-				idValue = reflect.ValueOf(&n)
-			case reflect.Int16:
-				n := int16(floatValue)
-				idValue = reflect.ValueOf(&n)
-			case reflect.Int32:
-				n := int32(floatValue)
-				idValue = reflect.ValueOf(&n)
-			case reflect.Int64:
-				n := int64(floatValue)
-				idValue = reflect.ValueOf(&n)
-			case reflect.Uint:
-				n := uint(floatValue)
-				idValue = reflect.ValueOf(&n)
-			case reflect.Uint8:
-				n := uint8(floatValue)
-				idValue = reflect.ValueOf(&n)
-			case reflect.Uint16:
-				n := uint16(floatValue)
-				idValue = reflect.ValueOf(&n)
-			case reflect.Uint32:
-				n := uint32(floatValue)
-				idValue = reflect.ValueOf(&n)
-			case reflect.Uint64:
-				n := uint64(floatValue)
-				idValue = reflect.ValueOf(&n)
-			default:
-				// We had a JSON float (numeric), but our field was not one of the
-				// allowed numeric types
-				er = ErrBadJSONAPIID
-				break
-			}
-
-			assign(fieldValue, idValue)
-		} else if annotation == annotationClientID {
-			if data.ClientID == "" {
-				continue
-			}
-
-			fieldValue.Set(reflect.ValueOf(data.ClientID))
-		} else if annotation == annotationAttribute {
-			attributes := data.Attributes
-			if attributes == nil || len(data.Attributes) == 0 {
-				continue
-			}
-
-			var iso8601 bool
-
-			if len(args) > 2 {
-				for _, arg := range args[2:] {
-					if arg == annotationISO8601 {
-						iso8601 = true
-					}
-				}
-			}
-
-			val := attributes[args[1]]
-
-			// continue if the attribute was not included in the request
-			if val == nil {
-				continue
-			}
-
-			v := reflect.ValueOf(val)
-
-			// Handle field of type time.Time
-			if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
-				if iso8601 {
-					var tm string
-					if v.Kind() == reflect.String {
-						tm = v.Interface().(string)
-					} else {
-						er = ErrInvalidISO8601
-						break
-					}
-
-					t, err := time.Parse(iso8601TimeFormat, tm)
-					if err != nil {
-						er = ErrInvalidISO8601
-						break
-					}
-
-					fieldValue.Set(reflect.ValueOf(t))
-
-					continue
-				}
-
-				var at int64
-
-				if v.Kind() == reflect.Float64 {
-					at = int64(v.Interface().(float64))
-				} else if v.Kind() == reflect.Int {
-					at = v.Int()
-				} else {
-					return ErrInvalidTime
-				}
-
-				t := time.Unix(at, 0)
-
-				fieldValue.Set(reflect.ValueOf(t))
-
-				continue
-			}
-
-			if fieldValue.Type() == reflect.TypeOf([]string{}) {
-				values := make([]string, v.Len())
-				for i := 0; i < v.Len(); i++ {
-					values[i] = v.Index(i).Interface().(string)
-				}
-
-				fieldValue.Set(reflect.ValueOf(values))
-
-				continue
-			}
-
-			if fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
-				if iso8601 {
-					var tm string
-					if v.Kind() == reflect.String {
-						tm = v.Interface().(string)
-					} else {
-						er = ErrInvalidISO8601
-						break
-					}
-
-					v, err := time.Parse(iso8601TimeFormat, tm)
-					if err != nil {
-						er = ErrInvalidISO8601
-						break
-					}
-
-					t := &v
-
-					fieldValue.Set(reflect.ValueOf(t))
-
-					continue
-				}
-
-				var at int64
-
-				if v.Kind() == reflect.Float64 {
-					at = int64(v.Interface().(float64))
-				} else if v.Kind() == reflect.Int {
-					at = v.Int()
-				} else {
-					return ErrInvalidTime
-				}
-
-				v := time.Unix(at, 0)
-				t := &v
-
-				fieldValue.Set(reflect.ValueOf(t))
-
-				continue
-			}
-
-			// JSON value was a float (numeric)
-			if v.Kind() == reflect.Float64 {
-				floatValue := v.Interface().(float64)
-
-				// The field may or may not be a pointer to a numeric; the kind var
-				// will not contain a pointer type
-				var kind reflect.Kind
-				if fieldValue.Kind() == reflect.Ptr {
-					kind = fieldType.Type.Elem().Kind()
-				} else {
-					kind = fieldType.Type.Kind()
-				}
-
-				var numericValue reflect.Value
-
-				switch kind {
-				case reflect.Int:
-					n := int(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Int8:
-					n := int8(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Int16:
-					n := int16(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Int32:
-					n := int32(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Int64:
-					n := int64(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Uint:
-					n := uint(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Uint8:
-					n := uint8(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Uint16:
-					n := uint16(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Uint32:
-					n := uint32(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Uint64:
-					n := uint64(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Float32:
-					n := float32(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Float64:
-					n := floatValue
-					numericValue = reflect.ValueOf(&n)
-				default:
-					return ErrUnknownFieldNumberType
-				}
-
-				assign(fieldValue, numericValue)
-				continue
-			}
-
-			// Field was a Pointer type
-			if fieldValue.Kind() == reflect.Ptr {
-				var concreteVal reflect.Value
-
-				switch cVal := val.(type) {
-				case string:
-					concreteVal = reflect.ValueOf(&cVal)
-				case bool:
-					concreteVal = reflect.ValueOf(&cVal)
-				case complex64:
-					concreteVal = reflect.ValueOf(&cVal)
-				case complex128:
-					concreteVal = reflect.ValueOf(&cVal)
-				case uintptr:
-					concreteVal = reflect.ValueOf(&cVal)
-				default:
-					return ErrUnsupportedPtrType
-				}
-
-				if fieldValue.Type() != concreteVal.Type() {
-					return ErrUnsupportedPtrType
-				}
-
-				fieldValue.Set(concreteVal)
-				continue
-			}
-
-			// As a final catch-all, ensure types line up to avoid a runtime panic.
-			// Ignore interfaces since interfaces are poly
-			if fieldValue.Kind() != reflect.Interface && fieldValue.Kind() != v.Kind() {
-				return ErrInvalidType
-			}
-			fieldValue.Set(reflect.ValueOf(val))
-
-		} else if annotation == annotationRelation {
-			isSlice := fieldValue.Type().Kind() == reflect.Slice
-
-			if data.Relationships == nil || data.Relationships[args[1]] == nil {
-				continue
-			}
-
-			if isSlice {
-				// to-many relationship
-				relationship := new(RelationshipManyNode)
-
-				buf := bytes.NewBuffer(nil)
-
-				json.NewEncoder(buf).Encode(data.Relationships[args[1]])
-				json.NewDecoder(buf).Decode(relationship)
-
-				data := relationship.Data
-				models := reflect.New(fieldValue.Type()).Elem()
-
-				for _, n := range data {
-					m := reflect.New(fieldValue.Type().Elem().Elem())
-
-					if err := unmarshalNode(
-						fullNode(n, included),
-						m,
-						included,
-					); err != nil {
-						er = err
-						break
-					}
-
-					models = reflect.Append(models, m)
-				}
-
-				fieldValue.Set(models)
-			} else {
-				// to-one relationships
-				relationship := new(RelationshipOneNode)
-
-				buf := bytes.NewBuffer(nil)
-
-				json.NewEncoder(buf).Encode(
-					data.Relationships[args[1]],
-				)
-				json.NewDecoder(buf).Decode(relationship)
-
-				/*
-					http://jsonapi.org/format/#document-resource-object-relationships
-					http://jsonapi.org/format/#document-resource-object-linkage
-					relationship can have a data node set to null (e.g. to disassociate the relationship)
-					so unmarshal and set fieldValue only if data obj is not null
-				*/
-				if relationship.Data == nil {
-					continue
-				}
-
-				m := reflect.New(fieldValue.Type().Elem())
-				if err := unmarshalNode(
-					fullNode(relationship.Data, included),
-					m,
-					included,
-				); err != nil {
-					er = err
-					break
-				}
-
-				fieldValue.Set(m)
-
-			}
-
-		} else {
-			er = fmt.Errorf(unsuportedStructTagMsg, annotation)
+	}
+	// handle embedded last
+	for _, em := range embeddedModels {
+		if err := unmarshalNode(data, em, included); err != nil {
+			return err
 		}
 	}
 
-	return er
+	return nil
+}
+
+func handleClientIDUnmarshal(data *Node, args []string, fieldValue reflect.Value) error {
+	if len(args) != 1 {
+		return ErrBadJSONAPIStructTag
+	}
+
+	if data.ClientID == "" {
+		return nil
+	}
+
+	fieldValue.Set(reflect.ValueOf(data.ClientID))
+
+	// clear clientID to denote it's already been processed
+	data.ClientID = ""
+
+	return nil
+}
+
+func handlePrimaryUnmarshal(data *Node, args []string, fieldType reflect.StructField, fieldValue reflect.Value) error {
+	if len(args) < 2 {
+		return ErrBadJSONAPIStructTag
+	}
+
+	if data.ID == "" {
+		return nil
+	}
+
+	// Check the JSON API Type
+	if data.Type != args[1] {
+		return fmt.Errorf(
+			"Trying to Unmarshal an object of type %#v, but %#v does not match",
+			data.Type,
+			args[1],
+		)
+	}
+
+	// ID will have to be transmitted as astring per the JSON API spec
+	v := reflect.ValueOf(data.ID)
+
+	// Deal with PTRS
+	var kind reflect.Kind
+	if fieldValue.Kind() == reflect.Ptr {
+		kind = fieldType.Type.Elem().Kind()
+	} else {
+		kind = fieldType.Type.Kind()
+	}
+
+	// Handle String case
+	if kind == reflect.String {
+		assign(fieldValue, v)
+		return nil
+	}
+
+	// Value was not a string... only other supported type was a numeric,
+	// which would have been sent as a float value.
+	floatValue, err := strconv.ParseFloat(data.ID, 64)
+	if err != nil {
+		// Could not convert the value in the "id" attr to a float
+		return ErrBadJSONAPIID
+	}
+
+	// Convert the numeric float to one of the supported ID numeric types
+	// (int[8,16,32,64] or uint[8,16,32,64])
+	var idValue reflect.Value
+	switch kind {
+	case reflect.Int:
+		n := int(floatValue)
+		idValue = reflect.ValueOf(&n)
+	case reflect.Int8:
+		n := int8(floatValue)
+		idValue = reflect.ValueOf(&n)
+	case reflect.Int16:
+		n := int16(floatValue)
+		idValue = reflect.ValueOf(&n)
+	case reflect.Int32:
+		n := int32(floatValue)
+		idValue = reflect.ValueOf(&n)
+	case reflect.Int64:
+		n := int64(floatValue)
+		idValue = reflect.ValueOf(&n)
+	case reflect.Uint:
+		n := uint(floatValue)
+		idValue = reflect.ValueOf(&n)
+	case reflect.Uint8:
+		n := uint8(floatValue)
+		idValue = reflect.ValueOf(&n)
+	case reflect.Uint16:
+		n := uint16(floatValue)
+		idValue = reflect.ValueOf(&n)
+	case reflect.Uint32:
+		n := uint32(floatValue)
+		idValue = reflect.ValueOf(&n)
+	case reflect.Uint64:
+		n := uint64(floatValue)
+		idValue = reflect.ValueOf(&n)
+	default:
+		// We had a JSON float (numeric), but our field was not one of the
+		// allowed numeric types
+		return ErrBadJSONAPIID
+	}
+
+	assign(fieldValue, idValue)
+
+	// clear ID to denote it's already been processed
+	data.ID = ""
+
+	return nil
+}
+
+func handleRelationUnmarshal(data *Node, args []string, fieldValue reflect.Value, included *map[string]*Node) error {
+	if len(args) < 2 {
+		return ErrBadJSONAPIStructTag
+	}
+
+	isSlice := fieldValue.Type().Kind() == reflect.Slice
+
+	if data.Relationships == nil || data.Relationships[args[1]] == nil {
+		return nil
+	}
+
+	if isSlice {
+		// to-many relationship
+		relationship := new(RelationshipManyNode)
+
+		buf := bytes.NewBuffer(nil)
+
+		json.NewEncoder(buf).Encode(data.Relationships[args[1]])
+		json.NewDecoder(buf).Decode(relationship)
+
+		rData := relationship.Data
+		models := reflect.New(fieldValue.Type()).Elem()
+
+		for _, n := range rData {
+			m := reflect.New(fieldValue.Type().Elem().Elem())
+
+			if err := unmarshalNode(
+				fullNode(n, included),
+				m,
+				included,
+			); err != nil {
+				return err
+			}
+
+			models = reflect.Append(models, m)
+		}
+
+		fieldValue.Set(models)
+		// TODO: debug why we can't clear this
+		// delete(data.Relationships, args[1])
+		return nil
+	}
+	// to-one relationships
+	relationship := new(RelationshipOneNode)
+
+	buf := bytes.NewBuffer(nil)
+
+	json.NewEncoder(buf).Encode(
+		data.Relationships[args[1]],
+	)
+	json.NewDecoder(buf).Decode(relationship)
+
+	/*
+		http://jsonapi.org/format/#document-resource-object-relationships
+		http://jsonapi.org/format/#document-resource-object-linkage
+		relationship can have a data node set to null (e.g. to disassociate the relationship)
+		so unmarshal and set fieldValue only if data obj is not null
+	*/
+	if relationship.Data == nil {
+		return nil
+	}
+
+	m := reflect.New(fieldValue.Type().Elem())
+	if err := unmarshalNode(
+		fullNode(relationship.Data, included),
+		m,
+		included,
+	); err != nil {
+		return err
+	}
+
+	fieldValue.Set(m)
+
+	// clear relation
+	delete(data.Relationships, args[1])
+
+	return nil
+}
+
+func handleAttributeUnmarshal(data *Node, args []string, fieldType reflect.StructField, fieldValue reflect.Value) error {
+	if len(args) < 2 {
+		return ErrBadJSONAPIStructTag
+	}
+	attributes := data.Attributes
+	if attributes == nil || len(data.Attributes) == 0 {
+		return nil
+	}
+
+	var iso8601 bool
+
+	if len(args) > 2 {
+		for _, arg := range args[2:] {
+			if arg == annotationISO8601 {
+				iso8601 = true
+			}
+		}
+	}
+
+	val := attributes[args[1]]
+
+	// continue if the attribute was not included in the request
+	if val == nil {
+		return nil
+	}
+
+	v := reflect.ValueOf(val)
+
+	// Handle field of type time.Time
+	if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
+		if iso8601 {
+			var tm string
+			if v.Kind() == reflect.String {
+				tm = v.Interface().(string)
+			} else {
+				return ErrInvalidISO8601
+			}
+
+			t, err := time.Parse(iso8601TimeFormat, tm)
+			if err != nil {
+				return ErrInvalidISO8601
+			}
+
+			fieldValue.Set(reflect.ValueOf(t))
+
+			return nil
+		}
+
+		var at int64
+
+		if v.Kind() == reflect.Float64 {
+			at = int64(v.Interface().(float64))
+		} else if v.Kind() == reflect.Int {
+			at = v.Int()
+		} else {
+			return ErrInvalidTime
+		}
+
+		t := time.Unix(at, 0)
+
+		fieldValue.Set(reflect.ValueOf(t))
+		delete(data.Attributes, args[1])
+
+		return nil
+	}
+
+	if fieldValue.Type() == reflect.TypeOf([]string{}) {
+		values := make([]string, v.Len())
+		for i := 0; i < v.Len(); i++ {
+			values[i] = v.Index(i).Interface().(string)
+		}
+
+		fieldValue.Set(reflect.ValueOf(values))
+		delete(data.Attributes, args[1])
+		return nil
+	}
+
+	if fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
+		if iso8601 {
+			var tm string
+			if v.Kind() == reflect.String {
+				tm = v.Interface().(string)
+			} else {
+				return ErrInvalidISO8601
+
+			}
+
+			v, err := time.Parse(iso8601TimeFormat, tm)
+			if err != nil {
+				return ErrInvalidISO8601
+			}
+
+			t := &v
+
+			fieldValue.Set(reflect.ValueOf(t))
+			delete(data.Attributes, args[1])
+			return nil
+		}
+
+		var at int64
+
+		if v.Kind() == reflect.Float64 {
+			at = int64(v.Interface().(float64))
+		} else if v.Kind() == reflect.Int {
+			at = v.Int()
+		} else {
+			return ErrInvalidTime
+		}
+
+		v := time.Unix(at, 0)
+		t := &v
+
+		fieldValue.Set(reflect.ValueOf(t))
+		delete(data.Attributes, args[1])
+		return nil
+	}
+
+	// JSON value was a float (numeric)
+	if v.Kind() == reflect.Float64 {
+		floatValue := v.Interface().(float64)
+
+		// The field may or may not be a pointer to a numeric; the kind var
+		// will not contain a pointer type
+		var kind reflect.Kind
+		if fieldValue.Kind() == reflect.Ptr {
+			kind = fieldType.Type.Elem().Kind()
+		} else {
+			kind = fieldType.Type.Kind()
+		}
+
+		var numericValue reflect.Value
+
+		switch kind {
+		case reflect.Int:
+			n := int(floatValue)
+			numericValue = reflect.ValueOf(&n)
+		case reflect.Int8:
+			n := int8(floatValue)
+			numericValue = reflect.ValueOf(&n)
+		case reflect.Int16:
+			n := int16(floatValue)
+			numericValue = reflect.ValueOf(&n)
+		case reflect.Int32:
+			n := int32(floatValue)
+			numericValue = reflect.ValueOf(&n)
+		case reflect.Int64:
+			n := int64(floatValue)
+			numericValue = reflect.ValueOf(&n)
+		case reflect.Uint:
+			n := uint(floatValue)
+			numericValue = reflect.ValueOf(&n)
+		case reflect.Uint8:
+			n := uint8(floatValue)
+			numericValue = reflect.ValueOf(&n)
+		case reflect.Uint16:
+			n := uint16(floatValue)
+			numericValue = reflect.ValueOf(&n)
+		case reflect.Uint32:
+			n := uint32(floatValue)
+			numericValue = reflect.ValueOf(&n)
+		case reflect.Uint64:
+			n := uint64(floatValue)
+			numericValue = reflect.ValueOf(&n)
+		case reflect.Float32:
+			n := float32(floatValue)
+			numericValue = reflect.ValueOf(&n)
+		case reflect.Float64:
+			n := floatValue
+			numericValue = reflect.ValueOf(&n)
+		default:
+			return ErrUnknownFieldNumberType
+		}
+
+		assign(fieldValue, numericValue)
+		delete(data.Attributes, args[1])
+		return nil
+	}
+
+	// Field was a Pointer type
+	if fieldValue.Kind() == reflect.Ptr {
+		var concreteVal reflect.Value
+
+		switch cVal := val.(type) {
+		case string:
+			concreteVal = reflect.ValueOf(&cVal)
+		case bool:
+			concreteVal = reflect.ValueOf(&cVal)
+		case complex64:
+			concreteVal = reflect.ValueOf(&cVal)
+		case complex128:
+			concreteVal = reflect.ValueOf(&cVal)
+		case uintptr:
+			concreteVal = reflect.ValueOf(&cVal)
+		default:
+			return ErrUnsupportedPtrType
+		}
+
+		if fieldValue.Type() != concreteVal.Type() {
+			return ErrUnsupportedPtrType
+		}
+
+		fieldValue.Set(concreteVal)
+		delete(data.Attributes, args[1])
+		return nil
+	}
+
+	// As a final catch-all, ensure types line up to avoid a runtime panic.
+	// Ignore interfaces since interfaces are poly
+	if fieldValue.Kind() != reflect.Interface && fieldValue.Kind() != v.Kind() {
+		return ErrInvalidType
+	}
+	fieldValue.Set(reflect.ValueOf(val))
+	// clear attribute key so its not processed again
+	// TODO: debug why this cannot be cleared
+	// delete(data.Attributes, args[1])
+
+	return nil
 }
 
 func fullNode(n *Node, included *map[string]*Node) *Node {
