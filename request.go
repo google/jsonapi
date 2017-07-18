@@ -131,6 +131,8 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 
 	for i := 0; i < modelValue.NumField(); i++ {
 		fieldType := modelType.Field(i)
+		fieldValue := modelValue.Field(i)
+
 		tag := fieldType.Tag.Get(annotationJSONAPI)
 
 		// handles embedded structs
@@ -138,7 +140,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			if shouldIgnoreField(tag) {
 				continue
 			}
-			model := reflect.ValueOf(modelValue.Field(i).Addr().Interface())
+			model := reflect.ValueOf(fieldValue.Addr().Interface())
 			err := unmarshalNode(data, model, included)
 			if err != nil {
 				er = err
@@ -149,8 +151,6 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 		if tag == "" {
 			continue
 		}
-
-		fieldValue := modelValue.Field(i)
 
 		args := strings.Split(tag, annotationSeperator)
 

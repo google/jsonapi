@@ -550,15 +550,9 @@ func convertToSliceInterface(i *interface{}) ([]interface{}, error) {
 }
 
 func isEmbeddedStruct(sField reflect.StructField) bool {
-	if sField.Anonymous && sField.Type.Kind() == reflect.Struct {
-		return true
-	}
-	return false
+	return sField.Anonymous && sField.Type.Kind() == reflect.Struct
 }
 
 func shouldIgnoreField(japiTag string) bool {
-	if strings.HasPrefix(japiTag, annotationIgnore) {
-		return true
-	}
-	return false
+	return strings.HasPrefix(japiTag, annotationIgnore)
 }
