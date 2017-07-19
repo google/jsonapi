@@ -151,3 +151,35 @@ type RelationshipMetable interface {
 	// JSONRelationshipMeta will be invoked for each relationship with the corresponding relation name (e.g. `comments`)
 	JSONAPIRelationshipMeta(relation string) *Meta
 }
+
+// derefs the arg, and clones the map-type attributes
+// note: maps are reference types, so they need an explicit copy.
+func deepCopyNode(n *Node) *Node {
+	if n == nil {
+		return n
+	}
+
+	copyMap := func(m map[string]interface{}) map[string]interface{} {
+		if m == nil {
+			return m
+		}
+		cp := make(map[string]interface{})
+		for k, v := range m {
+			cp[k] = v
+		}
+		return cp
+	}
+
+	copy := *n
+	copy.Attributes = copyMap(copy.Attributes)
+	copy.Relationships = copyMap(copy.Relationships)
+	if copy.Links != nil {
+		tmp := Links(copyMap(map[string]interface{}(*copy.Links)))
+		copy.Links = &tmp
+	}
+	if copy.Meta != nil {
+		tmp := Meta(copyMap(map[string]interface{}(*copy.Meta)))
+		copy.Meta = &tmp
+	}
+	return &copy
+}

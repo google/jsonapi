@@ -156,27 +156,21 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			return ErrBadJSONAPIStructTag
 		}
 
-		// annotation == args[0]
+		// args[0] == annotation
 		switch args[0] {
 		case annotationClientID:
-			//fmt.Printf("\nannotationClientID %v\n", args)
 			if err := handleClientIDUnmarshal(data, args, fieldValue); err != nil {
 				return err
 			}
 		case annotationPrimary:
-			//fmt.Printf("\nannotationPrimary %v\n", args)
 			if err := handlePrimaryUnmarshal(data, args, fieldType, fieldValue); err != nil {
 				return err
 			}
 		case annotationAttribute:
-			//fmt.Printf("\nannotationAttribute %v\n", args)
-			//			fmt.Println("before", data.Attributes)
 			if err := handleAttributeUnmarshal(data, args, fieldType, fieldValue); err != nil {
 				return err
 			}
-			//			fmt.Println("after ", data.Attributes)
 		case annotationRelation:
-			//fmt.Printf("\nannotationRelation %v\n", args)
 			if err := handleRelationUnmarshal(data, args, fieldValue, included); err != nil {
 				return err
 			}
@@ -340,8 +334,7 @@ func handleRelationUnmarshal(data *Node, args []string, fieldValue reflect.Value
 		}
 
 		fieldValue.Set(models)
-		// TODO: debug why we can't clear this
-		// delete(data.Relationships, args[1])
+		delete(data.Relationships, args[1])
 		return nil
 	}
 	// to-one relationships
@@ -594,8 +587,7 @@ func handleAttributeUnmarshal(data *Node, args []string, fieldType reflect.Struc
 	}
 	fieldValue.Set(reflect.ValueOf(val))
 	// clear attribute key so its not processed again
-	// TODO: debug why this cannot be cleared
-	// delete(data.Attributes, args[1])
+	delete(data.Attributes, args[1])
 
 	return nil
 }
@@ -604,10 +596,10 @@ func fullNode(n *Node, included *map[string]*Node) *Node {
 	includedKey := fmt.Sprintf("%s,%s", n.Type, n.ID)
 
 	if included != nil && (*included)[includedKey] != nil {
-		return (*included)[includedKey]
+		return deepCopyNode((*included)[includedKey])
 	}
 
-	return n
+	return deepCopyNode(n)
 }
 
 // assign will take the value specified and assign it to the field; if
