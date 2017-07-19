@@ -1096,6 +1096,41 @@ func TestMarshalUnmarshalCompositeStruct(t *testing.T) {
 			},
 		})
 	}
+
+	{
+		type Model struct {
+			Thing   `jsonapi:"-"`
+			ModelID int    `jsonapi:"primary,models"`
+			Foo     string `jsonapi:"attr,foo"`
+			Bar     string `jsonapi:"attr,bar"`
+			Bat     string `jsonapi:"attr,bat"`
+			Buzz    int    `jsonapi:"attr,buzz"`
+		}
+
+		scenarios = append(scenarios, test{
+			name: "Model embeds Thing, but is annotated w/ ignore",
+			dst:  &Model{},
+			payload: &OnePayload{
+				Data: &Node{
+					Type: "models",
+					ID:   "1",
+					Attributes: map[string]interface{}{
+						"bar":  "barry",
+						"bat":  "batty",
+						"buzz": 99,
+						"foo":  "fooey",
+					},
+				},
+			},
+			expected: &Model{
+				ModelID: 1,
+				Foo:     "fooey",
+				Bar:     "barry",
+				Bat:     "batty",
+				Buzz:    99,
+			},
+		})
+	}
 	for _, scenario := range scenarios {
 		t.Logf("running scenario: %s\n", scenario.name)
 
