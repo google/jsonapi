@@ -215,11 +215,12 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 		structField := modelValue.Type().Field(i)
 		tag := structField.Tag.Get(annotationJSONAPI)
 
+		if shouldIgnoreField(tag) {
+			continue
+		}
+
 		// handles embedded structs
 		if isEmbeddedStruct(structField) {
-			if shouldIgnoreField(tag) {
-				continue
-			}
 			model := modelValue.Field(i).Addr().Interface()
 			embNode, err := visitModelNode(model, included, sideload)
 			if err != nil {
@@ -357,6 +358,11 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 
 				// See if we need to omit this field
 				if omitEmpty && fieldValue.Interface() == emptyValue.Interface() {
+					continue
+				}
+
+				if jsonMarshaler, ok := isJSONMarshaler(fieldValue); ok {
+					node.Attributes[args[1]] = jsonMarshaler
 					continue
 				}
 

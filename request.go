@@ -589,6 +589,11 @@ func handleAttributeUnmarshal(data *Node, args []string, fieldType reflect.Struc
 		return nil
 	}
 
+	// TODO: refactor the time type handlers to implement json.Unmarshaler and move this higher
+	if isJSONUnmarshaler, err := handleJSONUnmarshalerAttributes(data, args, fieldValue); isJSONUnmarshaler {
+		return err
+	}
+
 	// As a final catch-all, ensure types line up to avoid a runtime panic.
 	// Ignore interfaces since interfaces are poly
 	if fieldValue.Kind() != reflect.Interface && fieldValue.Kind() != v.Kind() {
@@ -599,6 +604,35 @@ func handleAttributeUnmarshal(data *Node, args []string, fieldType reflect.Struc
 	fieldValue.Set(reflect.ValueOf(val))
 	delete(data.Attributes, args[1])
 	return nil
+}
+
+func handleJSONUnmarshalerAttributes(data *Node, args []string, fieldValue reflect.Value) (bool, error) {
+	val := data.Attributes[args[1]]
+
+	// handle struct fields that implement json.Unmarshaler
+	if fieldValue.Type().NumMethod() > 0 {
+		jsonUnmarshaler, ok := isJSONUnmarshaler(fieldValue)
+		// if field doesn't implement the json.Unmarshaler, ignore and move on
+		if !ok {
+			return ok, nil
+		}
+
+		b, err := json.Marshal(val)
+		if err != nil {
+			return ok, err
+		}
+
+		if err := jsonUnmarshaler.UnmarshalJSON(b); err != nil {
+			return ok, err
+		}
+
+		// success; clear value
+		delete(data.Attributes, args[1])
+		return ok, nil
+	}
+
+	// field does not implement any methods, including json.Unmarshaler; continue
+	return false, nil
 }
 
 func fullNode(n *Node, included *map[string]*Node) *Node {
