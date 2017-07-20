@@ -970,6 +970,143 @@ func TestIsValidEmbeddedStruct(t *testing.T) {
 	}
 }
 
+// TestEmbeddedUnmarshalOrder tests the behavior of the marshaler/unmarshaler of embedded structs
+// when a struct has an embedded struct w/ competing attributes, the top-level attributes take precedence
+// it compares the behavior against the standard json package
+func TestEmbeddedUnmarshalOrder(t *testing.T) {
+	type Bar struct {
+		Name int `jsonapi:"attr,Name"`
+	}
+
+	type Foo struct {
+		Bar
+		ID   string `jsonapi:"primary,foos"`
+		Name string `jsonapi:"attr,Name"`
+	}
+
+	f := &Foo{
+		ID:   "1",
+		Name: "foo",
+		Bar: Bar{
+			Name: 5,
+		},
+	}
+
+	// marshal f (Foo) using jsonapi marshaler
+	jsonAPIData := bytes.NewBuffer(nil)
+	if err := MarshalPayload(jsonAPIData, f); err != nil {
+		t.Fatal(err)
+	}
+
+	// marshal f (Foo) using json marshaler
+	jsonData, err := json.Marshal(f)
+
+	// convert bytes to map[string]interface{} so that we can do a semantic JSON comparison
+	var jsonAPIVal, jsonVal map[string]interface{}
+	if err := json.Unmarshal(jsonAPIData.Bytes(), &jsonAPIVal); err != nil {
+		t.Fatal(err)
+	}
+	if err = json.Unmarshal(jsonData, &jsonVal); err != nil {
+		t.Fatal(err)
+	}
+
+	// get to the jsonapi attribute map
+	jAttrMap := jsonAPIVal["data"].(map[string]interface{})["attributes"].(map[string]interface{})
+
+	// compare
+	if !reflect.DeepEqual(jAttrMap["Name"], jsonVal["Name"]) {
+		t.Errorf("Got\n%s\nExpected\n%s\n", jAttrMap["Name"], jsonVal["Name"])
+	}
+}
+
+// TestEmbeddedMarshalOrder tests the behavior of the marshaler/unmarshaler of embedded structs
+// when a struct has an embedded struct w/ competing attributes, the top-level attributes take precedence
+// it compares the behavior against the standard json package
+func TestEmbeddedMarshalOrder(t *testing.T) {
+	type Bar struct {
+		Name int `jsonapi:"attr,Name"`
+	}
+
+	type Foo struct {
+		Bar
+		ID   string `jsonapi:"primary,foos"`
+		Name string `jsonapi:"attr,Name"`
+	}
+
+	// get a jsonapi payload w/ Name attribute of an int type
+	payloadWithInt, err := json.Marshal(&OnePayload{
+		Data: &Node{
+			Type: "foos",
+			ID:   "1",
+			Attributes: map[string]interface{}{
+				"Name": 5,
+			},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// get a jsonapi payload w/ Name attribute of an string type
+	payloadWithString, err := json.Marshal(&OnePayload{
+		Data: &Node{
+			Type: "foos",
+			ID:   "1",
+			Attributes: map[string]interface{}{
+				"Name": "foo",
+			},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// unmarshal payloadWithInt to f (Foo) using jsonapi unmarshaler; expecting an error
+	f := &Foo{}
+	if err := UnmarshalPayload(bytes.NewReader(payloadWithInt), f); err == nil {
+		t.Errorf("expected an error: int value of 5 should attempt to map to Foo.Name (string) and error")
+	}
+
+	// unmarshal payloadWithString to f (Foo) using jsonapi unmarshaler; expecting no error
+	f = &Foo{}
+	if err := UnmarshalPayload(bytes.NewReader(payloadWithString), f); err != nil {
+		t.Error(err)
+	}
+	if f.Name != "foo" {
+		t.Errorf("Got\n%s\nExpected\n%s\n", "foo", f.Name)
+	}
+
+	// get a json payload w/ Name attribute of an int type
+	bWithInt, err := json.Marshal(map[string]interface{}{
+		"Name": 5,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// get a json payload w/ Name attribute of an string type
+	bWithString, err := json.Marshal(map[string]interface{}{
+		"Name": "foo",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// unmarshal bWithInt to f (Foo) using json unmarshaler; expecting an error
+	f = &Foo{}
+	if err := json.Unmarshal(bWithInt, f); err == nil {
+		t.Errorf("expected an error: int value of 5 should attempt to map to Foo.Name (string) and error")
+	}
+	// unmarshal bWithString to f (Foo) using json unmarshaler; expecting no error
+	f = &Foo{}
+	if err := json.Unmarshal(bWithString, f); err != nil {
+		t.Error(err)
+	}
+	if f.Name != "foo" {
+		t.Errorf("Got\n%s\nExpected\n%s\n", "foo", f.Name)
+	}
+}
+
 func TestMarshalUnmarshalCompositeStruct(t *testing.T) {
 	type Thing struct {
 		ID   int    `jsonapi:"primary,things"`
