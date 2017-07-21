@@ -132,7 +132,10 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 	modelValue := model.Elem()
 	modelType := model.Type().Elem()
 
-	embeddedModels := []reflect.Value{}
+	type embedded struct {
+		structField, model reflect.Value
+	}
+	embeddeds := []*embedded{}
 
 	for i := 0; i < modelValue.NumField(); i++ {
 		fieldType := modelType.Field(i)
@@ -146,7 +149,24 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 
 		// handles embedded structs
 		if isEmbeddedStruct(fieldType) {
-			embeddedModels = append(embeddedModels, reflect.ValueOf(fieldValue.Addr().Interface()))
+			embeddeds = append(embeddeds,
+				&embedded{
+					model:       reflect.ValueOf(fieldValue.Addr().Interface()),
+					structField: fieldValue,
+				},
+			)
+			continue
+		}
+
+		// handles pointers to embedded structs
+		if isEmbeddedStructPtr(fieldType) {
+			embeddeds = append(embeddeds,
+				&embedded{
+					model:       reflect.ValueOf(fieldValue.Interface()),
+					structField: fieldValue,
+				},
+			)
+			continue
 		}
 
 		// handle tagless; after handling embedded structs (which could be tagless)
@@ -182,11 +202,26 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			return fmt.Errorf(unsuportedStructTagMsg, args[0])
 		}
 	}
+
 	// handle embedded last
-	for _, em := range embeddedModels {
-		if err := unmarshalNode(data, em, included); err != nil {
-			return err
+	for _, em := range embeddeds {
+		// if nil, need to construct and rollback accordingly
+		if em.model.IsNil() {
+			copy := deepCopyNode(data)
+			tmp := reflect.New(em.model.Type().Elem())
+			if err := unmarshalNode(copy, tmp, included); err != nil {
+				return err
+			}
+
+			// had changes; assign value to struct field, replace orig node (data) w/ mutated copy
+			if !reflect.DeepEqual(copy, data) {
+				assign(em.structField, tmp)
+				data = copy
+			}
+			return nil
 		}
+		// handle non-nil scenarios
+		return unmarshalNode(data, em.model, included)
 	}
 
 	return nil

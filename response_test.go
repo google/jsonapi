@@ -1275,6 +1275,143 @@ func TestMarshalUnmarshalCompositeStruct(t *testing.T) {
 			},
 		})
 	}
+	{
+		type Model struct {
+			*Thing
+			ModelID int    `jsonapi:"primary,models"`
+			Foo     string `jsonapi:"attr,foo"`
+			Bar     string `jsonapi:"attr,bar"`
+			Bat     string `jsonapi:"attr,bat"`
+		}
+
+		scenarios = append(scenarios, test{
+			name: "Model embeds pointer of Thing; Thing is initialized in advance",
+			dst:  &Model{Thing: &Thing{}},
+			payload: &OnePayload{
+				Data: &Node{
+					Type: "models",
+					ID:   "1",
+					Attributes: map[string]interface{}{
+						"bar":  "barry",
+						"bat":  "batty",
+						"foo":  "fooey",
+						"buzz": 99,
+						"fizz": "fizzy",
+					},
+				},
+			},
+			expected: &Model{
+				Thing: &Thing{
+					Fizz: "fizzy",
+					Buzz: 99,
+				},
+				ModelID: 1,
+				Foo:     "fooey",
+				Bar:     "barry",
+				Bat:     "batty",
+			},
+		})
+	}
+	{
+		type Model struct {
+			*Thing
+			ModelID int    `jsonapi:"primary,models"`
+			Foo     string `jsonapi:"attr,foo"`
+			Bar     string `jsonapi:"attr,bar"`
+			Bat     string `jsonapi:"attr,bat"`
+		}
+
+		scenarios = append(scenarios, test{
+			name: "Model embeds pointer of Thing; Thing is initialized w/ Unmarshal",
+			dst:  &Model{},
+			payload: &OnePayload{
+				Data: &Node{
+					Type: "models",
+					ID:   "1",
+					Attributes: map[string]interface{}{
+						"bar":  "barry",
+						"bat":  "batty",
+						"foo":  "fooey",
+						"buzz": 99,
+						"fizz": "fizzy",
+					},
+				},
+			},
+			expected: &Model{
+				Thing: &Thing{
+					Fizz: "fizzy",
+					Buzz: 99,
+				},
+				ModelID: 1,
+				Foo:     "fooey",
+				Bar:     "barry",
+				Bat:     "batty",
+			},
+		})
+	}
+	{
+		type Model struct {
+			*Thing
+			ModelID int    `jsonapi:"primary,models"`
+			Foo     string `jsonapi:"attr,foo"`
+			Bar     string `jsonapi:"attr,bar"`
+			Bat     string `jsonapi:"attr,bat"`
+		}
+
+		scenarios = append(scenarios, test{
+			name: "Model embeds pointer of Thing; jsonapi model doesn't assign anything to Thing; *Thing is nil",
+			dst:  &Model{},
+			payload: &OnePayload{
+				Data: &Node{
+					Type: "models",
+					ID:   "1",
+					Attributes: map[string]interface{}{
+						"bar": "barry",
+						"bat": "batty",
+						"foo": "fooey",
+					},
+				},
+			},
+			expected: &Model{
+				ModelID: 1,
+				Foo:     "fooey",
+				Bar:     "barry",
+				Bat:     "batty",
+			},
+		})
+	}
+
+	{
+		type Model struct {
+			*Thing
+			ModelID int    `jsonapi:"primary,models"`
+			Foo     string `jsonapi:"attr,foo"`
+			Bar     string `jsonapi:"attr,bar"`
+			Bat     string `jsonapi:"attr,bat"`
+		}
+
+		scenarios = append(scenarios, test{
+			name: "Model embeds pointer of Thing; *Thing is nil",
+			dst:  &Model{},
+			payload: &OnePayload{
+				Data: &Node{
+					Type: "models",
+					ID:   "1",
+					Attributes: map[string]interface{}{
+						"bar": "barry",
+						"bat": "batty",
+						"foo": "fooey",
+					},
+				},
+			},
+			expected: &Model{
+				ModelID: 1,
+				Foo:     "fooey",
+				Bar:     "barry",
+				Bat:     "batty",
+			},
+		})
+	}
 	for _, scenario := range scenarios {
 		t.Logf("running scenario: %s\n", scenario.name)
 
@@ -1296,7 +1433,7 @@ func TestMarshalUnmarshalCompositeStruct(t *testing.T) {
 			t.Fatal(err)
 		}
 		if !isJSONEqual {
-			t.Errorf("Got\n%s\nExpected\n%s\n", payload, buf.Bytes())
+			t.Errorf("Got\n%s\nExpected\n%s\n", buf.Bytes(), payload)
 		}
 
 		// run jsonapi unmarshal
