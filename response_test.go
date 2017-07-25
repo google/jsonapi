@@ -1416,12 +1416,16 @@ func TestMarshalUnmarshalCompositeStruct(t *testing.T) {
 	{
 		type Model struct {
 			*Thing
-			ModelID    int         `jsonapi:"primary,models"`
-			Foo        string      `jsonapi:"attr,foo"`
-			Bar        string      `jsonapi:"attr,bar"`
-			Bat        string      `jsonapi:"attr,bat"`
-			FunTimes   []UnixMilli `jsonapi:"attr,fun-times"`
-			CreateDate *UnixMilli  `jsonapi:"attr,create-date"`
+			ModelID    int                   `jsonapi:"primary,models"`
+			Foo        string                `jsonapi:"attr,foo"`
+			Bar        string                `jsonapi:"attr,bar"`
+			Bat        string                `jsonapi:"attr,bat"`
+			FunTimes   []UnixMilli           `jsonapi:"attr,fun-times"`
+			SadTimes   []*UnixMilli          `jsonapi:"attr,sad-times"`
+			GoodTimes  map[string]UnixMilli  `jsonapi:"attr,good-times"`
+			BadTimes   map[string]*UnixMilli `jsonapi:"attr,bad-times"`
+			CreateDate *UnixMilli            `jsonapi:"attr,create-date"`
+			UpdateDate UnixMilli             `jsonapi:"attr,update-date"`
 		}
 
 		unixMs := UnixMilli{
@@ -1429,28 +1433,48 @@ func TestMarshalUnmarshalCompositeStruct(t *testing.T) {
 		}
 
 		scenarios = append(scenarios, test{
-			name: "UnixMilli",
+			name: "UnixMilli in all supported variations",
 			dst:  &Model{},
 			payload: &OnePayload{
 				Data: &Node{
 					Type: "models",
 					ID:   "1",
 					Attributes: map[string]interface{}{
-						"bar":         "barry",
-						"bat":         "batty",
-						"foo":         "fooey",
-						"fun-times":   []int64{1257894000000, 1257894000000},
+						"bar":       "barry",
+						"bat":       "batty",
+						"foo":       "fooey",
+						"fun-times": []int64{1257894000000, 1257894000000},
+						"sad-times": []int64{1257894000000, 1257894000000},
+						"bad-times": map[string]int64{
+							"abc": 1257894000000,
+							"xyz": 1257894000000,
+						},
+						"good-times": map[string]int64{
+							"abc": 1257894000000,
+							"xyz": 1257894000000,
+						},
 						"create-date": 1257894000000,
+						"update-date": 1257894000000,
 					},
 				},
 			},
 			expected: &Model{
-				ModelID:    1,
-				Foo:        "fooey",
-				Bar:        "barry",
-				Bat:        "batty",
-				FunTimes:   []UnixMilli{unixMs, unixMs},
+				ModelID:  1,
+				Foo:      "fooey",
+				Bar:      "barry",
+				Bat:      "batty",
+				FunTimes: []UnixMilli{unixMs, unixMs},
+				SadTimes: []*UnixMilli{&unixMs, &unixMs},
+				GoodTimes: map[string]UnixMilli{
+					"abc": unixMs,
+					"xyz": unixMs,
+				},
+				BadTimes: map[string]*UnixMilli{
+					"abc": &unixMs,
+					"xyz": &unixMs,
+				},
 				CreateDate: &unixMs,
+				UpdateDate: unixMs,
 			},
 		})
 	}
@@ -1476,7 +1500,7 @@ func TestMarshalUnmarshalCompositeStruct(t *testing.T) {
 			t.Fatal(err)
 		}
 		if !isJSONEqual {
-			t.Errorf("Got\n%s\nExpected\n%s\n", buf.Bytes(), payload)
+			t.Errorf("Marshaling Got\n%s\nExpected\n%s\n", buf.Bytes(), payload)
 		}
 
 		// run jsonapi unmarshal
@@ -1486,7 +1510,7 @@ func TestMarshalUnmarshalCompositeStruct(t *testing.T) {
 
 		// assert decoded and expected models are equal
 		if !reflect.DeepEqual(scenario.expected, scenario.dst) {
-			t.Errorf("Got\n%#v\nExpected\n%#v\n", scenario.dst, scenario.expected)
+			t.Errorf("Unmarshaling Got\n%#v\nExpected\n%#v\n", scenario.dst, scenario.expected)
 		}
 	}
 }

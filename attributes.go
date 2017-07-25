@@ -7,6 +7,10 @@ import (
 	"time"
 )
 
+// NOTE: reciever for MarshalJSON() should not be a pointer
+// https://play.golang.org/p/Cf9yYLIzJA (MarshalJSON() w/ pointer reciever)
+// https://play.golang.org/p/5EsItAtgXy (MarshalJSON() w/o pointer reciever)
+
 const iso8601Layout = "2006-01-02T15:04:05Z07:00"
 
 // ISO8601Datetime represents a ISO8601 formatted datetime
@@ -16,7 +20,7 @@ type ISO8601Datetime struct {
 }
 
 // MarshalJSON implements the json.Marshaler interface.
-func (t *ISO8601Datetime) MarshalJSON() ([]byte, error) {
+func (t ISO8601Datetime) MarshalJSON() ([]byte, error) {
 	s := t.Time.Format(iso8601Layout)
 	return json.Marshal(s)
 }
@@ -44,7 +48,7 @@ type UnixMilli struct {
 }
 
 // MarshalJSON implements the json.Marshaler interface.
-func (t *UnixMilli) MarshalJSON() ([]byte, error) {
+func (t UnixMilli) MarshalJSON() ([]byte, error) {
 	return json.Marshal(t.UnixNano() / int64(time.Millisecond))
 }
 
@@ -83,7 +87,7 @@ func isJSONMarshaler(fv reflect.Value) (json.Marshaler, bool) {
 
 func doesImplementJSONUnmarshaler(fv reflect.Value) bool {
 	_, ok := isJSONUnmarshaler(fv)
-	return (ok || isSliceOfJSONUnmarshaler(fv))
+	return (ok || isSliceOfJSONUnmarshaler(fv) || isMapOfJSONUnmarshaler(fv))
 }
 
 // func to help determine json.Unmarshaler implementation
@@ -107,6 +111,16 @@ func isSliceOfJSONUnmarshaler(fv reflect.Value) bool {
 	}
 
 	typ := reflect.TypeOf(fv.Interface()).Elem()
-	_, ok := isJSONUnmarshaler(reflect.New(typ))
+	_, ok := isJSONUnmarshaler(reflect.Indirect(reflect.New(typ)))
+	return ok
+}
+
+func isMapOfJSONUnmarshaler(fv reflect.Value) bool {
+	if fv.Kind() != reflect.Map {
+		return false
+	}
+
+	typ := reflect.TypeOf(fv.Interface()).Elem()
+	_, ok := isJSONUnmarshaler(reflect.Indirect(reflect.New(typ)))
 	return ok
 }
