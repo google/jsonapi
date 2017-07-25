@@ -58,6 +58,48 @@ func TestISO8601Datetime(t *testing.T) {
 	}
 }
 
+func TestUnixMilli(t *testing.T) {
+	type test struct {
+		stringVal string
+		dtVal     UnixMilli
+	}
+
+	tests := []*test{
+		&test{
+			stringVal: "1257894000000",
+			dtVal:     UnixMilli{Time: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)},
+		},
+		&test{
+			stringVal: "1257894000999",
+			dtVal:     UnixMilli{Time: time.Date(2009, time.November, 10, 23, 0, 0, 999000000, time.UTC)},
+		},
+	}
+
+	for _, test := range tests {
+		// unmarshal stringVal by calling UnmarshalJSON()
+		dt := &UnixMilli{}
+		if err := dt.UnmarshalJSON([]byte(test.stringVal)); err != nil {
+			t.Fatal(err)
+		}
+
+		// compare unmarshaled stringVal to dtVal
+		if !dt.Time.Equal(test.dtVal.Time) {
+			t.Errorf("\n\tE=%+v\n\tA=%+v", test.dtVal.UnixNano(), dt.UnixNano())
+		}
+
+		// marshal dtVal by calling MarshalJSON()
+		b, err := test.dtVal.MarshalJSON()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// compare marshaled dtVal to stringVal
+		if test.stringVal != string(b) {
+			t.Errorf("\n\tE=%+v\n\tA=%+v", test.stringVal, string(b))
+		}
+	}
+}
+
 func TestIsJSONMarshaler(t *testing.T) {
 	{ // positive
 		isoDateTime := ISO8601Datetime{}

@@ -38,6 +38,34 @@ func (t ISO8601Datetime) String() string {
 	return t.Format(iso8601Layout)
 }
 
+// UnixMilli (Unix Millisecond) marshals/unmarshals the number of milliseconds elapsed since January 1, 1970 UTC
+type UnixMilli struct {
+	time.Time
+}
+
+// MarshalJSON implements the json.Marshaler interface.
+func (t *UnixMilli) MarshalJSON() ([]byte, error) {
+	return json.Marshal(t.UnixNano() / int64(time.Millisecond))
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface.
+func (t *UnixMilli) UnmarshalJSON(data []byte) error {
+	// Ignore null, like in the main JSON package.
+	s := string(data)
+	if s == "null" {
+		return nil
+	}
+
+	v, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return err
+	}
+
+	t.Time = time.Unix(v/1000, (v % 1000 * int64(time.Millisecond))).In(time.UTC)
+
+	return nil
+}
+
 // func to help determine json.Marshaler implementation
 // checks both pointer and non-pointer implementations
 func isJSONMarshaler(fv reflect.Value) (json.Marshaler, bool) {
@@ -53,6 +81,11 @@ func isJSONMarshaler(fv reflect.Value) (json.Marshaler, bool) {
 	return u, ok
 }
 
+func doesImplementJSONUnmarshaler(fv reflect.Value) bool {
+	_, ok := isJSONUnmarshaler(fv)
+	return (ok || isSliceOfJSONUnmarshaler(fv))
+}
+
 // func to help determine json.Unmarshaler implementation
 // checks both pointer and non-pointer implementations
 func isJSONUnmarshaler(fv reflect.Value) (json.Unmarshaler, bool) {
@@ -66,4 +99,14 @@ func isJSONUnmarshaler(fv reflect.Value) (json.Unmarshaler, bool) {
 
 	u, ok := fv.Addr().Interface().(json.Unmarshaler)
 	return u, ok
+}
+
+func isSliceOfJSONUnmarshaler(fv reflect.Value) bool {
+	if fv.Kind() != reflect.Slice {
+		return false
+	}
+
+	typ := reflect.TypeOf(fv.Interface()).Elem()
+	_, ok := isJSONUnmarshaler(reflect.New(typ))
+	return ok
 }

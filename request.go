@@ -535,6 +535,11 @@ func handleAttributeUnmarshal(data *Node, args []string, fieldType reflect.Struc
 		return nil
 	}
 
+	// TODO: refactor the time type handlers to implement json.Unmarshaler and move this higher
+	if doesImplementJSONUnmarshaler(fieldValue) {
+		return handleJSONUnmarshalerAttributes(data, args, fieldValue)
+	}
+
 	// JSON value was a float (numeric)
 	if v.Kind() == reflect.Float64 {
 		floatValue := v.Interface().(float64)
@@ -624,11 +629,6 @@ func handleAttributeUnmarshal(data *Node, args []string, fieldType reflect.Struc
 		return nil
 	}
 
-	// TODO: refactor the time type handlers to implement json.Unmarshaler and move this higher
-	if isJSONUnmarshaler, err := handleJSONUnmarshalerAttributes(data, args, fieldValue); isJSONUnmarshaler {
-		return err
-	}
-
 	// As a final catch-all, ensure types line up to avoid a runtime panic.
 	// Ignore interfaces since interfaces are poly
 	if fieldValue.Kind() != reflect.Interface && fieldValue.Kind() != v.Kind() {
@@ -641,33 +641,21 @@ func handleAttributeUnmarshal(data *Node, args []string, fieldType reflect.Struc
 	return nil
 }
 
-func handleJSONUnmarshalerAttributes(data *Node, args []string, fieldValue reflect.Value) (bool, error) {
-	val := data.Attributes[args[1]]
+func handleJSONUnmarshalerAttributes(data *Node, args []string, fieldValue reflect.Value) error {
+	v := fieldValue.Addr().Interface()
 
-	// handle struct fields that implement json.Unmarshaler
-	if fieldValue.Type().NumMethod() > 0 {
-		jsonUnmarshaler, ok := isJSONUnmarshaler(fieldValue)
-		// if field doesn't implement the json.Unmarshaler, ignore and move on
-		if !ok {
-			return ok, nil
-		}
-
-		b, err := json.Marshal(val)
-		if err != nil {
-			return ok, err
-		}
-
-		if err := jsonUnmarshaler.UnmarshalJSON(b); err != nil {
-			return ok, err
-		}
-
-		// success; clear value
-		delete(data.Attributes, args[1])
-		return ok, nil
+	b, err := json.Marshal(data.Attributes[args[1]])
+	if err != nil {
+		return err
 	}
 
-	// field does not implement any methods, including json.Unmarshaler; continue
-	return false, nil
+	if err := json.Unmarshal(b, v); err != nil {
+		return err
+	}
+
+	// success; clear value
+	delete(data.Attributes, args[1])
+	return nil
 }
 
 func fullNode(n *Node, included *map[string]*Node) *Node {

@@ -1412,6 +1412,49 @@ func TestMarshalUnmarshalCompositeStruct(t *testing.T) {
 			},
 		})
 	}
+
+	{
+		type Model struct {
+			*Thing
+			ModelID    int         `jsonapi:"primary,models"`
+			Foo        string      `jsonapi:"attr,foo"`
+			Bar        string      `jsonapi:"attr,bar"`
+			Bat        string      `jsonapi:"attr,bat"`
+			FunTimes   []UnixMilli `jsonapi:"attr,fun-times"`
+			CreateDate *UnixMilli  `jsonapi:"attr,create-date"`
+		}
+
+		unixMs := UnixMilli{
+			Time: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+		}
+
+		scenarios = append(scenarios, test{
+			name: "UnixMilli",
+			dst:  &Model{},
+			payload: &OnePayload{
+				Data: &Node{
+					Type: "models",
+					ID:   "1",
+					Attributes: map[string]interface{}{
+						"bar":         "barry",
+						"bat":         "batty",
+						"foo":         "fooey",
+						"fun-times":   []int64{1257894000000, 1257894000000},
+						"create-date": 1257894000000,
+					},
+				},
+			},
+			expected: &Model{
+				ModelID:    1,
+				Foo:        "fooey",
+				Bar:        "barry",
+				Bat:        "batty",
+				FunTimes:   []UnixMilli{unixMs, unixMs},
+				CreateDate: &unixMs,
+			},
+		})
+	}
+
 	for _, scenario := range scenarios {
 		t.Logf("running scenario: %s\n", scenario.name)
 
