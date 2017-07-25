@@ -1,6 +1,7 @@
 package jsonapi
 
 import (
+	"encoding/json"
 	"reflect"
 	"strconv"
 	"testing"
@@ -58,6 +59,132 @@ func TestISO8601Datetime(t *testing.T) {
 	}
 }
 
+func TestUnixMilliVariations(t *testing.T) {
+	control := UnixMilli{
+		Time: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+	}
+
+	{
+		var val map[string]UnixMilli
+		t.Logf("\nval: %#v\n", val)
+
+		payload := []byte(`{"foo": 1257894000000, "bar":1257894000000}`)
+		json.Unmarshal(payload, &val)
+
+		if !val["foo"].Time.Equal(control.Time) {
+			t.Errorf("\n\tE=%+v\n\tA=%+v", control.Time, val["foo"].Time)
+		}
+
+		b, _ := json.Marshal(val)
+		is, err := isJSONEqual(b, payload)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !is {
+			t.Errorf("\n\tE=%s\n\tA=%s", payload, b)
+		}
+	}
+	{
+		var val map[string]*UnixMilli
+		t.Logf("\nval: %#v\n", val)
+
+		payload := []byte(`{"foo": 1257894000000, "bar":1257894000000}`)
+		json.Unmarshal(payload, &val)
+
+		if !val["foo"].Time.Equal(control.Time) {
+			t.Errorf("\n\tE=%+v\n\tA=%+v", control.Time, val["foo"].Time)
+		}
+
+		b, _ := json.Marshal(val)
+		is, err := isJSONEqual(b, payload)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !is {
+			t.Errorf("\n\tE=%s\n\tA=%s", payload, b)
+		}
+	}
+	{
+		var val []*UnixMilli
+		t.Logf("\nval: %#v\n", val)
+
+		payload := []byte(`[1257894000000,1257894000000]`)
+		json.Unmarshal(payload, &val)
+
+		if !val[0].Time.Equal(control.Time) {
+			t.Errorf("\n\tE=%+v\n\tA=%+v", control.Time, val[0].Time)
+		}
+
+		b, _ := json.Marshal(val)
+		is, err := isJSONEqual(b, payload)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !is {
+			t.Errorf("\n\tE=%s\n\tA=%s", payload, b)
+		}
+	}
+	{
+		var val []UnixMilli
+		t.Logf("\nval: %#v\n", val)
+
+		payload := []byte(`[1257894000000,1257894000000]`)
+		json.Unmarshal(payload, &val)
+
+		if !val[0].Time.Equal(control.Time) {
+			t.Errorf("\n\tE=%+v\n\tA=%+v", control.Time, val[0].Time)
+		}
+
+		b, _ := json.Marshal(val)
+		is, err := isJSONEqual(b, payload)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !is {
+			t.Errorf("\n\tE=%s\n\tA=%s", payload, b)
+		}
+	}
+	{
+		var val UnixMilli
+		t.Logf("\nval: %#v\n", val)
+
+		payload := []byte(`1257894000000`)
+		json.Unmarshal(payload, &val)
+
+		if !val.Time.Equal(control.Time) {
+			t.Errorf("\n\tE=%+v\n\tA=%+v", control.Time, val.Time)
+		}
+
+		b, _ := json.Marshal(val)
+		is, err := isJSONEqual(b, payload)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !is {
+			t.Errorf("\n\tE=%s\n\tA=%s", payload, b)
+		}
+	}
+	{
+		var val *UnixMilli
+		t.Logf("\nval: %#v\n", val)
+
+		payload := []byte(`1257894000000`)
+		json.Unmarshal(payload, &val)
+
+		if !val.Time.Equal(control.Time) {
+			t.Errorf("\n\tE=%+v\n\tA=%+v", control.Time, val.Time)
+		}
+
+		b, _ := json.Marshal(val)
+		is, err := isJSONEqual(b, payload)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !is {
+			t.Errorf("\n\tE=%s\n\tA=%s", payload, b)
+		}
+	}
+}
 func TestUnixMilli(t *testing.T) {
 	type test struct {
 		stringVal string
