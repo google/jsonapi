@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -60,9 +61,22 @@ func (t *UnixMilli) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
-	v, err := strconv.ParseInt(s, 10, 64)
-	if err != nil {
-		return err
+	// https://golang.org/doc/go1.8#encoding_json
+	// go1.8 prefers decimal notation
+	// go1.7 may use exponetial notation, so check if it came in as a float
+	var v int64
+	if strings.Contains(s, ".") {
+		fv, err := strconv.ParseFloat(s, 64)
+		if err != nil {
+			return err
+		}
+		v = int64(fv)
+	} else {
+		iv, err := strconv.ParseInt(s, 10, 64)
+		if err != nil {
+			return err
+		}
+		v = iv
 	}
 
 	t.Time = time.Unix(v/1000, (v % 1000 * int64(time.Millisecond))).In(time.UTC)
