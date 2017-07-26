@@ -1236,17 +1236,12 @@ func TestMarshalUnmarshalCompositeStruct(t *testing.T) {
 
 	{
 		type Model struct {
-			Thing      `jsonapi:"-"`
-			ModelID    int             `jsonapi:"primary,models"`
-			Foo        string          `jsonapi:"attr,foo"`
-			Bar        string          `jsonapi:"attr,bar"`
-			Bat        string          `jsonapi:"attr,bat"`
-			Buzz       int             `jsonapi:"attr,buzz"`
-			CreateDate ISO8601Datetime `jsonapi:"attr,create-date"`
-		}
-
-		isoDate := ISO8601Datetime{
-			Time: time.Date(2016, time.December, 8, 15, 18, 54, 0, time.UTC),
+			Thing   `jsonapi:"-"`
+			ModelID int    `jsonapi:"primary,models"`
+			Foo     string `jsonapi:"attr,foo"`
+			Bar     string `jsonapi:"attr,bar"`
+			Bat     string `jsonapi:"attr,bat"`
+			Buzz    int    `jsonapi:"attr,buzz"`
 		}
 
 		scenarios = append(scenarios, test{
@@ -1257,21 +1252,19 @@ func TestMarshalUnmarshalCompositeStruct(t *testing.T) {
 					Type: "models",
 					ID:   "1",
 					Attributes: map[string]interface{}{
-						"bar":         "barry",
-						"bat":         "batty",
-						"buzz":        99,
-						"foo":         "fooey",
-						"create-date": isoDate.String(),
+						"bar":  "barry",
+						"bat":  "batty",
+						"buzz": 99,
+						"foo":  "fooey",
 					},
 				},
 			},
 			expected: &Model{
-				ModelID:    1,
-				Foo:        "fooey",
-				Bar:        "barry",
-				Bat:        "batty",
-				Buzz:       99,
-				CreateDate: isoDate,
+				ModelID: 1,
+				Foo:     "fooey",
+				Bar:     "barry",
+				Bat:     "batty",
+				Buzz:    99,
 			},
 		})
 	}
