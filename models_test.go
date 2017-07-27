@@ -155,3 +155,22 @@ func (bc *BadComment) JSONAPILinks() *Links {
 		"self": []string{"invalid", "should error"},
 	}
 }
+
+// Embeded Struct Models
+type Engine struct {
+	NumberOfCylinders uint `jsonapi:"attr,cylinders"`
+	HorsePower        uint `jsonapi:"attr,hp"`
+}
+
+type BlockHeater struct {
+	Watts uint `jsonapi:"attr,watts"`
+}
+
+type Vehicle struct {
+	ID           uint   `json:"id" jsonapi:"primary,car"`
+	Make         string `jsonapi:"attr,make"`
+	Model        string `jsonapi:"attr,model"`
+	Year         uint   `jsonapi:"attr,year"`
+	Engine              // every car must have an engine
+	*BlockHeater        // not every car will have a block heater
+}
