@@ -212,14 +212,39 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 	modelType := reflect.ValueOf(model).Type().Elem()
 
 	for i := 0; i < modelValue.NumField(); i++ {
-		structField := modelValue.Type().Field(i)
-		tag := structField.Tag.Get(annotationJSONAPI)
-		if tag == "" {
+		fieldValue := modelValue.Field(i)
+		fieldType := modelType.Field(i)
+
+		tag := fieldType.Tag.Get(annotationJSONAPI)
+
+		if shouldIgnoreField(tag) {
 			continue
 		}
 
-		fieldValue := modelValue.Field(i)
-		fieldType := modelType.Field(i)
+		// handles embedded structs and pointers to embedded structs
+		if isEmbeddedStruct(fieldType) || isEmbeddedStructPtr(fieldType) {
+			var embModel interface{}
+			if fieldType.Type.Kind() == reflect.Ptr {
+				if fieldValue.IsNil() {
+					continue
+				}
+				embModel = fieldValue.Interface()
+			} else {
+				embModel = fieldValue.Addr().Interface()
+			}
+
+			embNode, err := visitModelNode(embModel, included, sideload)
+			if err != nil {
+				er = err
+				break
+			}
+			node.merge(embNode)
+			continue
+		}
+
+		if tag == "" {
+			continue
+		}
 
 		args := strings.Split(tag, annotationSeperator)
 
@@ -532,4 +557,16 @@ func convertToSliceInterface(i *interface{}) ([]interface{}, error) {
 		response = append(response, vals.Index(x).Interface())
 	}
 	return response, nil
+}
+
+func isEmbeddedStruct(sField reflect.StructField) bool {
+	return sField.Anonymous && sField.Type.Kind() == reflect.Struct
+}
+
+func isEmbeddedStructPtr(sField reflect.StructField) bool {
+	return sField.Anonymous && sField.Type.Kind() == reflect.Ptr && sField.Type.Elem().Kind() == reflect.Struct
+}
+
+func shouldIgnoreField(japiTag string) bool {
+	return strings.HasPrefix(japiTag, annotationIgnore)
 }
