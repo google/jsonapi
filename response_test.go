@@ -1441,6 +1441,47 @@ func TestMarshalUnmarshalCompositeStruct(t *testing.T) {
 	}
 }
 
+func TestMarshal_duplicatePrimaryAnnotationFromEmbededStructs(t *testing.T) {
+	type Outer struct {
+		ID string `jsonapi:"primary,outer"`
+		Comment
+		*Post
+	}
+
+	o := Outer{
+		ID:      "outer",
+		Comment: Comment{ID: 1},
+		Post:    &Post{ID: 5},
+	}
+	var payloadData map[string]interface{}
+
+	// Test the standard libraries JSON handling of dup (ID) fields
+	jsonData, err := json.Marshal(o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(jsonData, &payloadData); err != nil {
+		t.Fatal(err)
+	}
+	if e, a := o.ID, payloadData["ID"]; e != a {
+		t.Fatalf("Was expecting ID to be %v, got %v", e, a)
+	}
+
+	// Test the JSONAPI lib handling of dup (ID) fields
+	jsonAPIData := new(bytes.Buffer)
+	if err := MarshalPayload(jsonAPIData, &o); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(jsonAPIData.Bytes(), &payloadData); err != nil {
+		t.Fatal(err)
+	}
+	data := payloadData["data"].(map[string]interface{})
+	id := data["id"].(string)
+	if e, a := o.ID, id; e != a {
+		t.Fatalf("Was expecting ID to be %v, got %v", e, a)
+	}
+}
+
 func testBlog() *Blog {
 	return &Blog{
 		ID:        5,
