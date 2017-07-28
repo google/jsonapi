@@ -218,10 +218,12 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				assign(em.structField, tmp)
 				data = copy
 			}
-			return nil
+		} else {
+			// handle non-nil scenarios
+			if err := unmarshalNode(data, em.model, included); err != nil {
+				return err
+			}
 		}
-		// handle non-nil scenarios
-		return unmarshalNode(data, em.model, included)
 	}
 
 	return nil
