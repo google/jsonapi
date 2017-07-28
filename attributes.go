@@ -34,13 +34,45 @@ func (t *iso8601Datetime) UnmarshalJSON(data []byte) error {
 	}
 	// Fractional seconds are handled implicitly by Parse.
 	var err error
-	t.Time, err = time.Parse(strconv.Quote(iso8601Layout), string(data))
+	if t.Time, err = time.Parse(strconv.Quote(iso8601Layout), string(data)); err != nil {
+		return ErrInvalidISO8601
+	}
 	return err
 }
 
 // iso8601Datetime.String() - override default String() on time
 func (t iso8601Datetime) String() string {
 	return t.Format(iso8601Layout)
+}
+
+// unix(Unix Seconds) marshals/unmarshals the number of milliseconds elapsed since January 1, 1970 UTC
+type unix struct {
+	time.Time
+}
+
+// MarshalJSON implements the json.Marshaler interface.
+func (t unix) MarshalJSON() ([]byte, error) {
+	return json.Marshal(t.Unix())
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface.
+func (t *unix) UnmarshalJSON(data []byte) error {
+	// Ignore null, like in the main JSON package.
+	s := string(data)
+	if s == "null" {
+		return nil
+	}
+
+	v, err := stringToInt64(s)
+	if err != nil {
+		// return this specific error to maintain existing tests.
+		// TODO: consider refactoring tests to not assert against error string
+		return ErrInvalidTime
+	}
+
+	t.Time = time.Unix(v, 0).In(time.UTC)
+
+	return nil
 }
 
 // unixMilli (Unix Millisecond) marshals/unmarshals the number of milliseconds elapsed since January 1, 1970 UTC
@@ -61,22 +93,9 @@ func (t *unixMilli) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
-	// https://golang.org/doc/go1.8#encoding_json
-	// go1.8 prefers decimal notation
-	// go1.7 may use exponetial notation, so check if it came in as a float
-	var v int64
-	if strings.Contains(s, ".") {
-		fv, err := strconv.ParseFloat(s, 64)
-		if err != nil {
-			return err
-		}
-		v = int64(fv)
-	} else {
-		iv, err := strconv.ParseInt(s, 10, 64)
-		if err != nil {
-			return err
-		}
-		v = iv
+	v, err := stringToInt64(s)
+	if err != nil {
+		return err
 	}
 
 	t.Time = time.Unix(v/1000, (v % 1000 * int64(time.Millisecond))).In(time.UTC)
@@ -137,4 +156,26 @@ func isMapOfJSONUnmarshaler(fv reflect.Value) bool {
 	typ := reflect.TypeOf(fv.Interface()).Elem()
 	_, ok := isJSONUnmarshaler(reflect.Indirect(reflect.New(typ)))
 	return ok
+}
+
+// stringToInt64 convert time in either decimal or exponential notation to int64
+// https://golang.org/doc/go1.8#encoding_json
+// go1.8 prefers decimal notation
+// go1.7 may use exponetial notation, so check if it came in as a float
+func stringToInt64(s string) (int64, error) {
+	var v int64
+	if strings.Contains(s, ".") {
+		fv, err := strconv.ParseFloat(s, 64)
+		if err != nil {
+			return v, err
+		}
+		v = int64(fv)
+	} else {
+		iv, err := strconv.ParseInt(s, 10, 64)
+		if err != nil {
+			return v, err
+		}
+		v = iv
+	}
+	return v, nil
 }
