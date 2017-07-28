@@ -203,7 +203,7 @@ func MarshalOnePayloadEmbedded(w io.Writer, model interface{}) error {
 }
 
 // visitModelNode converts models to jsonapi payloads
-// it handles the deepest models first. (i.e.) embedded models
+// it handles the deepest models first. (i.e. embedded models)
 // this is so that upper-level attributes can overwrite lower-level attributes
 func visitModelNode(model interface{}, included *map[string]*Node, sideload bool) (*Node, error) {
 	node := new(Node)
