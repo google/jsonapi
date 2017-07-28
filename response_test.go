@@ -1242,10 +1242,10 @@ func TestMarshalUnmarshalCompositeStruct(t *testing.T) {
 			Bar        string          `jsonapi:"attr,bar"`
 			Bat        string          `jsonapi:"attr,bat"`
 			Buzz       int             `jsonapi:"attr,buzz"`
-			CreateDate ISO8601Datetime `jsonapi:"attr,create-date"`
+			CreateDate iso8601Datetime `jsonapi:"attr,create-date"`
 		}
 
-		isoDate := ISO8601Datetime{
+		isoDate := iso8601Datetime{
 			Time: time.Date(2016, time.December, 8, 15, 18, 54, 0, time.UTC),
 		}
 
@@ -1420,20 +1420,20 @@ func TestMarshalUnmarshalCompositeStruct(t *testing.T) {
 			Foo        string                `jsonapi:"attr,foo"`
 			Bar        string                `jsonapi:"attr,bar"`
 			Bat        string                `jsonapi:"attr,bat"`
-			FunTimes   []UnixMilli           `jsonapi:"attr,fun-times"`
-			SadTimes   []*UnixMilli          `jsonapi:"attr,sad-times"`
-			GoodTimes  map[string]UnixMilli  `jsonapi:"attr,good-times"`
-			BadTimes   map[string]*UnixMilli `jsonapi:"attr,bad-times"`
-			CreateDate *UnixMilli            `jsonapi:"attr,create-date"`
-			UpdateDate UnixMilli             `jsonapi:"attr,update-date"`
+			FunTimes   []unixMilli           `jsonapi:"attr,fun-times"`
+			SadTimes   []*unixMilli          `jsonapi:"attr,sad-times"`
+			GoodTimes  map[string]unixMilli  `jsonapi:"attr,good-times"`
+			BadTimes   map[string]*unixMilli `jsonapi:"attr,bad-times"`
+			CreateDate *unixMilli            `jsonapi:"attr,create-date"`
+			UpdateDate unixMilli             `jsonapi:"attr,update-date"`
 		}
 
-		unixMs := UnixMilli{
+		unixMs := unixMilli{
 			Time: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
 		}
 
 		scenarios = append(scenarios, test{
-			name: "UnixMilli in all supported variations",
+			name: "unixMilli in all supported variations",
 			dst:  &Model{},
 			payload: &OnePayload{
 				Data: &Node{
@@ -1463,13 +1463,13 @@ func TestMarshalUnmarshalCompositeStruct(t *testing.T) {
 				Foo:      "fooey",
 				Bar:      "barry",
 				Bat:      "batty",
-				FunTimes: []UnixMilli{unixMs, unixMs},
-				SadTimes: []*UnixMilli{&unixMs, &unixMs},
-				GoodTimes: map[string]UnixMilli{
+				FunTimes: []unixMilli{unixMs, unixMs},
+				SadTimes: []*unixMilli{&unixMs, &unixMs},
+				GoodTimes: map[string]unixMilli{
 					"abc": unixMs,
 					"xyz": unixMs,
 				},
-				BadTimes: map[string]*UnixMilli{
+				BadTimes: map[string]*unixMilli{
 					"abc": &unixMs,
 					"xyz": &unixMs,
 				},

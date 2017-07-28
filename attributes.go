@@ -14,20 +14,20 @@ import (
 
 const iso8601Layout = "2006-01-02T15:04:05Z07:00"
 
-// ISO8601Datetime represents a ISO8601 formatted datetime
+// iso8601Datetime represents a ISO8601 formatted datetime
 // It is a time.Time instance that marshals and unmarshals to the ISO8601 ref
-type ISO8601Datetime struct {
+type iso8601Datetime struct {
 	time.Time
 }
 
 // MarshalJSON implements the json.Marshaler interface.
-func (t ISO8601Datetime) MarshalJSON() ([]byte, error) {
+func (t iso8601Datetime) MarshalJSON() ([]byte, error) {
 	s := t.Time.Format(iso8601Layout)
 	return json.Marshal(s)
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
-func (t *ISO8601Datetime) UnmarshalJSON(data []byte) error {
+func (t *iso8601Datetime) UnmarshalJSON(data []byte) error {
 	// Ignore null, like in the main JSON package.
 	if string(data) == "null" {
 		return nil
@@ -38,23 +38,23 @@ func (t *ISO8601Datetime) UnmarshalJSON(data []byte) error {
 	return err
 }
 
-// ISO8601Datetime.String() - override default String() on time
-func (t ISO8601Datetime) String() string {
+// iso8601Datetime.String() - override default String() on time
+func (t iso8601Datetime) String() string {
 	return t.Format(iso8601Layout)
 }
 
-// UnixMilli (Unix Millisecond) marshals/unmarshals the number of milliseconds elapsed since January 1, 1970 UTC
-type UnixMilli struct {
+// unixMilli (Unix Millisecond) marshals/unmarshals the number of milliseconds elapsed since January 1, 1970 UTC
+type unixMilli struct {
 	time.Time
 }
 
 // MarshalJSON implements the json.Marshaler interface.
-func (t UnixMilli) MarshalJSON() ([]byte, error) {
+func (t unixMilli) MarshalJSON() ([]byte, error) {
 	return json.Marshal(t.UnixNano() / int64(time.Millisecond))
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
-func (t *UnixMilli) UnmarshalJSON(data []byte) error {
+func (t *unixMilli) UnmarshalJSON(data []byte) error {
 	// Ignore null, like in the main JSON package.
 	s := string(data)
 	if s == "null" {
