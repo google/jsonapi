@@ -432,7 +432,6 @@ func handleAttributeUnmarshal(data *Node, args []string, fieldType reflect.Struc
 	if attributes == nil || len(data.Attributes) == 0 {
 		return nil
 	}
-
 	val := attributes[args[1]]
 
 	// continue if the attribute was not included in the request
@@ -482,10 +481,10 @@ func assign(field, value reflect.Value) {
 
 // handleTimeAttributes - handle field of type time.Time and *time.Time
 // TODO: consider refactoring/removing this toggling (would be a breaking change)
-// time.Time implements RFC3339 (https://golang.org/pkg/time/#Time.UnmarshalJSON) but is overridden here.
-// jsonapi doesn't specify, but does recommend ISO8601 (http://jsonapi.org/recommendations/#date-and-time-fields)
-// IMHO (skimata): just default on recommended ISO8601, and include custom-type support that would handle
-// any struct field type that implements the json marshaler/unmarshaler (PR#104)
+// standard time.Time implements RFC3339 (https://golang.org/pkg/time/#Time.UnmarshalJSON) but is overridden here.
+// jsonapi doesn't specify, but does recommends ISO8601 (http://jsonapi.org/recommendations/#date-and-time-fields)
+// IMHO (skimata): just default on recommended ISO8601, all others desired formats
+// should implement w/ a custom marshaler/unmarshaler
 func handleTimeAttributes(data *Node, args []string, fieldValue reflect.Value, structField reflect.StructField) error {
 	b, err := json.Marshal(data.Attributes[args[1]])
 	if err != nil {
