@@ -1236,12 +1236,17 @@ func TestMarshalUnmarshalCompositeStruct(t *testing.T) {
 
 	{
 		type Model struct {
-			Thing   `jsonapi:"-"`
-			ModelID int    `jsonapi:"primary,models"`
-			Foo     string `jsonapi:"attr,foo"`
-			Bar     string `jsonapi:"attr,bar"`
-			Bat     string `jsonapi:"attr,bat"`
-			Buzz    int    `jsonapi:"attr,buzz"`
+			Thing      `jsonapi:"-"`
+			ModelID    int             `jsonapi:"primary,models"`
+			Foo        string          `jsonapi:"attr,foo"`
+			Bar        string          `jsonapi:"attr,bar"`
+			Bat        string          `jsonapi:"attr,bat"`
+			Buzz       int             `jsonapi:"attr,buzz"`
+			CreateDate iso8601Datetime `jsonapi:"attr,create-date"`
+		}
+
+		isoDate := iso8601Datetime{
+			Time: time.Date(2016, time.December, 8, 15, 18, 54, 0, time.UTC),
 		}
 
 		scenarios = append(scenarios, test{
@@ -1252,19 +1257,21 @@ func TestMarshalUnmarshalCompositeStruct(t *testing.T) {
 					Type: "models",
 					ID:   "1",
 					Attributes: map[string]interface{}{
-						"bar":  "barry",
-						"bat":  "batty",
-						"buzz": 99,
-						"foo":  "fooey",
+						"bar":         "barry",
+						"bat":         "batty",
+						"buzz":        99,
+						"foo":         "fooey",
+						"create-date": isoDate.String(),
 					},
 				},
 			},
 			expected: &Model{
-				ModelID: 1,
-				Foo:     "fooey",
-				Bar:     "barry",
-				Bat:     "batty",
-				Buzz:    99,
+				ModelID:    1,
+				Foo:        "fooey",
+				Bar:        "barry",
+				Bat:        "batty",
+				Buzz:       99,
+				CreateDate: isoDate,
 			},
 		})
 	}
@@ -1405,6 +1412,73 @@ func TestMarshalUnmarshalCompositeStruct(t *testing.T) {
 			},
 		})
 	}
+
+	{
+		type Model struct {
+			*Thing
+			ModelID    int                   `jsonapi:"primary,models"`
+			Foo        string                `jsonapi:"attr,foo"`
+			Bar        string                `jsonapi:"attr,bar"`
+			Bat        string                `jsonapi:"attr,bat"`
+			FunTimes   []unixMilli           `jsonapi:"attr,fun-times"`
+			SadTimes   []*unixMilli          `jsonapi:"attr,sad-times"`
+			GoodTimes  map[string]unixMilli  `jsonapi:"attr,good-times"`
+			BadTimes   map[string]*unixMilli `jsonapi:"attr,bad-times"`
+			CreateDate *unixMilli            `jsonapi:"attr,create-date"`
+			UpdateDate unixMilli             `jsonapi:"attr,update-date"`
+		}
+
+		unixMs := unixMilli{
+			Time: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+		}
+
+		scenarios = append(scenarios, test{
+			name: "unixMilli in all supported variations",
+			dst:  &Model{},
+			payload: &OnePayload{
+				Data: &Node{
+					Type: "models",
+					ID:   "1",
+					Attributes: map[string]interface{}{
+						"bar":       "barry",
+						"bat":       "batty",
+						"foo":       "fooey",
+						"fun-times": []int64{1257894000000, 1257894000000},
+						"sad-times": []int64{1257894000000, 1257894000000},
+						"bad-times": map[string]int64{
+							"abc": 1257894000000,
+							"xyz": 1257894000000,
+						},
+						"good-times": map[string]int64{
+							"abc": 1257894000000,
+							"xyz": 1257894000000,
+						},
+						"create-date": 1257894000000,
+						"update-date": 1257894000000,
+					},
+				},
+			},
+			expected: &Model{
+				ModelID:  1,
+				Foo:      "fooey",
+				Bar:      "barry",
+				Bat:      "batty",
+				FunTimes: []unixMilli{unixMs, unixMs},
+				SadTimes: []*unixMilli{&unixMs, &unixMs},
+				GoodTimes: map[string]unixMilli{
+					"abc": unixMs,
+					"xyz": unixMs,
+				},
+				BadTimes: map[string]*unixMilli{
+					"abc": &unixMs,
+					"xyz": &unixMs,
+				},
+				CreateDate: &unixMs,
+				UpdateDate: unixMs,
+			},
+		})
+	}
+
 	for _, scenario := range scenarios {
 		t.Logf("running scenario: %s\n", scenario.name)
 
@@ -1426,7 +1500,7 @@ func TestMarshalUnmarshalCompositeStruct(t *testing.T) {
 			t.Fatal(err)
 		}
 		if !isJSONEqual {
-			t.Errorf("Got\n%s\nExpected\n%s\n", buf.Bytes(), payload)
+			t.Errorf("Marshaling Got\n%s\nExpected\n%s\n", buf.Bytes(), payload)
 		}
 
 		// run jsonapi unmarshal
@@ -1436,7 +1510,7 @@ func TestMarshalUnmarshalCompositeStruct(t *testing.T) {
 
 		// assert decoded and expected models are equal
 		if !reflect.DeepEqual(scenario.expected, scenario.dst) {
-			t.Errorf("Got\n%#v\nExpected\n%#v\n", scenario.dst, scenario.expected)
+			t.Errorf("Unmarshaling Got\n%#v\nExpected\n%#v\n", scenario.dst, scenario.expected)
 		}
 	}
 }

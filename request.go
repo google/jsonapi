@@ -32,6 +32,9 @@ var (
 	ErrUnsupportedPtrType = errors.New("Pointer type in struct is not supported")
 	// ErrInvalidType is returned when the given type is incompatible with the expected type.
 	ErrInvalidType = errors.New("Invalid type provided") // I wish we used punctuation.
+
+	timeType    = reflect.TypeOf(time.Time{})
+	ptrTimeType = reflect.TypeOf(new(time.Time))
 )
 
 // UnmarshalPayload converts an io into a struct instance using jsonapi tags on
@@ -218,10 +221,12 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				assign(em.structField, tmp)
 				data = copy
 			}
-			return nil
+		} else {
+			// handle non-nil scenarios
+			if err := unmarshalNode(data, em.model, included); err != nil {
+				return err
+			}
 		}
-		// handle non-nil scenarios
-		return unmarshalNode(data, em.model, included)
 	}
 
 	return nil
@@ -418,7 +423,7 @@ func handleToManyRelationUnmarshal(relationData interface{}, fieldType reflect.T
 	return &models, nil
 }
 
-// TODO: break this out into smaller funcs
+// handleAttributeUnmarshal
 func handleAttributeUnmarshal(data *Node, args []string, fieldType reflect.StructField, fieldValue reflect.Value) error {
 	if len(args) < 2 {
 		return ErrBadJSONAPIStructTag
@@ -427,17 +432,6 @@ func handleAttributeUnmarshal(data *Node, args []string, fieldType reflect.Struc
 	if attributes == nil || len(data.Attributes) == 0 {
 		return nil
 	}
-
-	var iso8601 bool
-
-	if len(args) > 2 {
-		for _, arg := range args[2:] {
-			if arg == annotationISO8601 {
-				iso8601 = true
-			}
-		}
-	}
-
 	val := attributes[args[1]]
 
 	// continue if the attribute was not included in the request
@@ -445,194 +439,23 @@ func handleAttributeUnmarshal(data *Node, args []string, fieldType reflect.Struc
 		return nil
 	}
 
-	v := reflect.ValueOf(val)
-
-	// Handle field of type time.Time
-	if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
-		if iso8601 {
-			var tm string
-			if v.Kind() == reflect.String {
-				tm = v.Interface().(string)
-			} else {
-				return ErrInvalidISO8601
-			}
-
-			t, err := time.Parse(iso8601TimeFormat, tm)
-			if err != nil {
-				return ErrInvalidISO8601
-			}
-
-			fieldValue.Set(reflect.ValueOf(t))
-			delete(data.Attributes, args[1])
-			return nil
-		}
-
-		var at int64
-
-		if v.Kind() == reflect.Float64 {
-			at = int64(v.Interface().(float64))
-		} else if v.Kind() == reflect.Int {
-			at = v.Int()
-		} else {
-			return ErrInvalidTime
-		}
-
-		t := time.Unix(at, 0)
-
-		fieldValue.Set(reflect.ValueOf(t))
-		delete(data.Attributes, args[1])
-		return nil
+	// custom handling of time
+	if isTimeValue(fieldValue) {
+		return handleTimeAttributes(data, args, fieldValue, fieldType)
 	}
 
-	if fieldValue.Type() == reflect.TypeOf([]string{}) {
-		values := make([]string, v.Len())
-		for i := 0; i < v.Len(); i++ {
-			values[i] = v.Index(i).Interface().(string)
-		}
-
-		fieldValue.Set(reflect.ValueOf(values))
-		delete(data.Attributes, args[1])
-		return nil
-	}
-
-	if fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
-		if iso8601 {
-			var tm string
-			if v.Kind() == reflect.String {
-				tm = v.Interface().(string)
-			} else {
-				return ErrInvalidISO8601
-
-			}
-
-			v, err := time.Parse(iso8601TimeFormat, tm)
-			if err != nil {
-				return ErrInvalidISO8601
-			}
-
-			t := &v
-
-			fieldValue.Set(reflect.ValueOf(t))
-			delete(data.Attributes, args[1])
-			return nil
-		}
-
-		var at int64
-
-		if v.Kind() == reflect.Float64 {
-			at = int64(v.Interface().(float64))
-		} else if v.Kind() == reflect.Int {
-			at = v.Int()
-		} else {
-			return ErrInvalidTime
-		}
-
-		v := time.Unix(at, 0)
-		t := &v
-
-		fieldValue.Set(reflect.ValueOf(t))
-		delete(data.Attributes, args[1])
-		return nil
-	}
-
-	// JSON value was a float (numeric)
-	if v.Kind() == reflect.Float64 {
-		floatValue := v.Interface().(float64)
-
-		// The field may or may not be a pointer to a numeric; the kind var
-		// will not contain a pointer type
-		var kind reflect.Kind
-		if fieldValue.Kind() == reflect.Ptr {
-			kind = fieldType.Type.Elem().Kind()
-		} else {
-			kind = fieldType.Type.Kind()
-		}
-
-		var numericValue reflect.Value
-
-		switch kind {
-		case reflect.Int:
-			n := int(floatValue)
-			numericValue = reflect.ValueOf(&n)
-		case reflect.Int8:
-			n := int8(floatValue)
-			numericValue = reflect.ValueOf(&n)
-		case reflect.Int16:
-			n := int16(floatValue)
-			numericValue = reflect.ValueOf(&n)
-		case reflect.Int32:
-			n := int32(floatValue)
-			numericValue = reflect.ValueOf(&n)
-		case reflect.Int64:
-			n := int64(floatValue)
-			numericValue = reflect.ValueOf(&n)
-		case reflect.Uint:
-			n := uint(floatValue)
-			numericValue = reflect.ValueOf(&n)
-		case reflect.Uint8:
-			n := uint8(floatValue)
-			numericValue = reflect.ValueOf(&n)
-		case reflect.Uint16:
-			n := uint16(floatValue)
-			numericValue = reflect.ValueOf(&n)
-		case reflect.Uint32:
-			n := uint32(floatValue)
-			numericValue = reflect.ValueOf(&n)
-		case reflect.Uint64:
-			n := uint64(floatValue)
-			numericValue = reflect.ValueOf(&n)
-		case reflect.Float32:
-			n := float32(floatValue)
-			numericValue = reflect.ValueOf(&n)
-		case reflect.Float64:
-			n := floatValue
-			numericValue = reflect.ValueOf(&n)
-		default:
-			return ErrUnknownFieldNumberType
-		}
-
-		assign(fieldValue, numericValue)
-		delete(data.Attributes, args[1])
-		return nil
-	}
-
-	// Field was a Pointer type
-	if fieldValue.Kind() == reflect.Ptr {
-		var concreteVal reflect.Value
-
-		switch cVal := val.(type) {
-		case string:
-			concreteVal = reflect.ValueOf(&cVal)
-		case bool:
-			concreteVal = reflect.ValueOf(&cVal)
-		case complex64:
-			concreteVal = reflect.ValueOf(&cVal)
-		case complex128:
-			concreteVal = reflect.ValueOf(&cVal)
-		case uintptr:
-			concreteVal = reflect.ValueOf(&cVal)
-		default:
-			return ErrUnsupportedPtrType
-		}
-
-		if fieldValue.Type() != concreteVal.Type() {
-			return ErrUnsupportedPtrType
-		}
-
-		fieldValue.Set(concreteVal)
-		delete(data.Attributes, args[1])
-		return nil
+	// standard attributes that the json package knows how to handle, plus implementions on json.Unmarshaler
+	if implementsJSONUnmarshaler(fieldType.Type) || hasStandardJSONSupport(fieldType) {
+		return handleWithJSONMarshaler(data, args, fieldValue)
 	}
 
 	// As a final catch-all, ensure types line up to avoid a runtime panic.
 	// Ignore interfaces since interfaces are poly
-	if fieldValue.Kind() != reflect.Interface && fieldValue.Kind() != v.Kind() {
+	// TODO: might not need the if statement anymore.  can just end the func w/ `return ErrInvalidType`?
+	if fieldValue.Kind() != reflect.Interface && fieldValue.Kind() != reflect.ValueOf(val).Kind() {
 		return ErrInvalidType
 	}
 
-	// set val and clear attribute key so its not processed again
-	fieldValue.Set(reflect.ValueOf(val))
-	delete(data.Attributes, args[1])
 	return nil
 }
 
@@ -654,4 +477,101 @@ func assign(field, value reflect.Value) {
 	} else {
 		field.Set(reflect.Indirect(value))
 	}
+}
+
+// handleTimeAttributes - handle field of type time.Time and *time.Time
+// TODO: consider refactoring/removing this toggling (would be a breaking change)
+// standard time.Time implements RFC3339 (https://golang.org/pkg/time/#Time.UnmarshalJSON) but is overridden here.
+// jsonapi doesn't specify, but does recommends ISO8601 (http://jsonapi.org/recommendations/#date-and-time-fields)
+// IMHO (skimata): just default on recommended ISO8601, all others desired formats
+// should implement w/ a custom marshaler/unmarshaler
+func handleTimeAttributes(data *Node, args []string, fieldValue reflect.Value, structField reflect.StructField) error {
+	b, err := json.Marshal(data.Attributes[args[1]])
+	if err != nil {
+		return err
+	}
+	var tm time.Time
+	if useISO8601(args) {
+		iso := &iso8601Datetime{}
+		if err := iso.UnmarshalJSON(b); err != nil {
+			return err
+		}
+		tm = iso.Time
+	} else {
+		epoch := &unix{}
+		if err := epoch.UnmarshalJSON(b); err != nil {
+			return err
+		}
+		tm = epoch.Time
+	}
+
+	if structField.Type.Kind() == reflect.Ptr {
+		fieldValue.Set(reflect.ValueOf(&tm))
+	} else {
+		fieldValue.Set(reflect.ValueOf(tm))
+	}
+
+	delete(data.Attributes, args[1])
+	return nil
+}
+
+func handleWithJSONMarshaler(data *Node, args []string, fieldValue reflect.Value) error {
+	v := fieldValue.Addr().Interface()
+
+	b, err := json.Marshal(data.Attributes[args[1]])
+	if err != nil {
+		return err
+	}
+
+	if err := json.Unmarshal(b, v); err != nil {
+		return err
+	}
+
+	// success; clear value
+	delete(data.Attributes, args[1])
+	return nil
+}
+
+func isTimeValue(fieldValue reflect.Value) bool {
+	switch fieldValue.Type() {
+	default:
+		return false
+	case timeType, ptrTimeType:
+		return true
+	}
+
+}
+
+func hasStandardJSONSupport(structField reflect.StructField) bool {
+	kind := structField.Type.Kind()
+	if kind == reflect.Ptr {
+		kind = structField.Type.Elem().Kind()
+	}
+
+	switch kind {
+	default:
+		return false
+	case reflect.Map, reflect.Slice:
+		return hasStandardJSONSupport(reflect.StructField{Type: structField.Type.Elem()})
+	case
+		reflect.Bool,
+		reflect.String,
+		reflect.Complex64, reflect.Complex128,
+		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Uintptr,
+		reflect.Float32, reflect.Float64:
+		return true
+	}
+}
+
+func useISO8601(args []string) bool {
+	if len(args) > 2 {
+		for _, arg := range args[2:] {
+			if arg == annotationISO8601 {
+				return true
+			}
+		}
+	}
+	return false
 }

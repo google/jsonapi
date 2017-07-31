@@ -202,8 +202,10 @@ func MarshalOnePayloadEmbedded(w io.Writer, model interface{}) error {
 	return nil
 }
 
-func visitModelNode(model interface{}, included *map[string]*Node,
-	sideload bool) (*Node, error) {
+// visitModelNode converts models to jsonapi payloads
+// it handles the deepest models first. (i.e. embedded models)
+// this is so that upper-level attributes can overwrite lower-level attributes
+func visitModelNode(model interface{}, included *map[string]*Node, sideload bool) (*Node, error) {
 	node := new(Node)
 
 	var er error
@@ -211,12 +213,13 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 	modelValue := reflect.ValueOf(model).Elem()
 	modelType := reflect.ValueOf(model).Type().Elem()
 
+	// handle just the embedded models first
 	for i := 0; i < modelValue.NumField(); i++ {
 		fieldValue := modelValue.Field(i)
 		fieldType := modelType.Field(i)
 
+		// skip if annotated w/ ignore
 		tag := fieldType.Tag.Get(annotationJSONAPI)
-
 		if shouldIgnoreField(tag) {
 			continue
 		}
@@ -239,6 +242,22 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 				break
 			}
 			node.merge(embNode)
+		}
+	}
+
+	// handle everthing else
+	for i := 0; i < modelValue.NumField(); i++ {
+		fieldValue := modelValue.Field(i)
+		fieldType := modelType.Field(i)
+
+		tag := fieldType.Tag.Get(annotationJSONAPI)
+
+		if shouldIgnoreField(tag) {
+			continue
+		}
+
+		// skip embedded because it was handled in a previous loop
+		if isEmbeddedStruct(fieldType) || isEmbeddedStructPtr(fieldType) {
 			continue
 		}
 
