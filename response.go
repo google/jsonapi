@@ -389,11 +389,6 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 					continue
 				}
 
-				if jsonMarshaler, ok := isJSONMarshaler(fieldValue); ok {
-					node.Attributes[args[1]] = jsonMarshaler
-					continue
-				}
-
 				strAttr, ok := fieldValue.Interface().(string)
 				if ok {
 					node.Attributes[args[1]] = strAttr

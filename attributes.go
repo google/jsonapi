@@ -14,6 +14,10 @@ import (
 
 const iso8601Layout = "2006-01-02T15:04:05Z07:00"
 
+var (
+	jsonUnmarshaler = reflect.TypeOf(new(json.Unmarshaler)).Elem()
+)
+
 // iso8601Datetime represents a ISO8601 formatted datetime
 // It is a time.Time instance that marshals and unmarshals to the ISO8601 ref
 type iso8601Datetime struct {
@@ -103,61 +107,6 @@ func (t *unixMilli) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// func to help determine json.Marshaler implementation
-// checks both pointer and non-pointer implementations
-func isJSONMarshaler(fv reflect.Value) (json.Marshaler, bool) {
-	if u, ok := fv.Interface().(json.Marshaler); ok {
-		return u, ok
-	}
-
-	if !fv.CanAddr() {
-		return nil, false
-	}
-
-	u, ok := fv.Addr().Interface().(json.Marshaler)
-	return u, ok
-}
-
-func doesImplementJSONUnmarshaler(fv reflect.Value) bool {
-	_, ok := isJSONUnmarshaler(fv)
-	return (ok || isSliceOfJSONUnmarshaler(fv) || isMapOfJSONUnmarshaler(fv))
-}
-
-// func to help determine json.Unmarshaler implementation
-// checks both pointer and non-pointer implementations
-func isJSONUnmarshaler(fv reflect.Value) (json.Unmarshaler, bool) {
-	if u, ok := fv.Interface().(json.Unmarshaler); ok {
-		return u, ok
-	}
-
-	if !fv.CanAddr() {
-		return nil, false
-	}
-
-	u, ok := fv.Addr().Interface().(json.Unmarshaler)
-	return u, ok
-}
-
-func isSliceOfJSONUnmarshaler(fv reflect.Value) bool {
-	if fv.Kind() != reflect.Slice {
-		return false
-	}
-
-	typ := reflect.TypeOf(fv.Interface()).Elem()
-	_, ok := isJSONUnmarshaler(reflect.Indirect(reflect.New(typ)))
-	return ok
-}
-
-func isMapOfJSONUnmarshaler(fv reflect.Value) bool {
-	if fv.Kind() != reflect.Map {
-		return false
-	}
-
-	typ := reflect.TypeOf(fv.Interface()).Elem()
-	_, ok := isJSONUnmarshaler(reflect.Indirect(reflect.New(typ)))
-	return ok
-}
-
 // stringToInt64 convert time in either decimal or exponential notation to int64
 // https://golang.org/doc/go1.8#encoding_json
 // go1.8 prefers decimal notation
@@ -178,4 +127,35 @@ func stringToInt64(s string) (int64, error) {
 		v = iv
 	}
 	return v, nil
+}
+
+func implementsJSONUnmarshaler(t reflect.Type) bool {
+	ok, _ := deepCheckImplementation(t, jsonUnmarshaler)
+	return ok
+}
+
+func deepCheckImplementation(t, interfaceType reflect.Type) (bool, reflect.Type) {
+	// check as-is
+	if t.Implements(interfaceType) {
+		return true, t
+	}
+
+	switch t.Kind() {
+	case reflect.Array, reflect.Chan, reflect.Map, reflect.Ptr, reflect.Slice:
+		// check ptr implementation
+		ptrType := reflect.PtrTo(t)
+		if ptrType.Implements(interfaceType) {
+			return true, ptrType
+		}
+		// since these are reference types, re-check on the element of t
+		return deepCheckImplementation(t.Elem(), interfaceType)
+	default:
+		// check ptr implementation
+		ptrType := reflect.PtrTo(t)
+		if ptrType.Implements(interfaceType) {
+			return true, ptrType
+		}
+		// nothing else to check, return false
+		return false, nil
+	}
 }

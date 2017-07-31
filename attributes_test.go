@@ -227,38 +227,113 @@ func TestUnixMilli(t *testing.T) {
 	}
 }
 
-func TestIsJSONMarshaler(t *testing.T) {
+func TestImplementsJSONUnmarshaler(t *testing.T) {
 	{ // positive
-		isoDateTime := iso8601Datetime{}
-		v := reflect.ValueOf(&isoDateTime)
-		if _, ok := isJSONMarshaler(v); !ok {
-			t.Error("got false; expected ISO8601Datetime to implement json.Marshaler")
+		raw := json.RawMessage{}
+		typ := reflect.TypeOf(&raw)
+		if ok := implementsJSONUnmarshaler(typ); !ok {
+			t.Error("expected json.RawMessage to implement json.Unmarshaler")
 		}
 	}
-	{ // negative
-		type customString string
-		input := customString("foo")
-		v := reflect.ValueOf(&input)
-		if _, ok := isJSONMarshaler(v); ok {
-			t.Error("got true; expected customString to not implement json.Marshaler")
-		}
-	}
-}
-
-func TestIsJSONUnmarshaler(t *testing.T) {
 	{ // positive
 		isoDateTime := iso8601Datetime{}
-		v := reflect.ValueOf(&isoDateTime)
-		if _, ok := isJSONUnmarshaler(v); !ok {
+		typ := reflect.TypeOf(&isoDateTime)
+		if ok := implementsJSONUnmarshaler(typ); !ok {
 			t.Error("expected ISO8601Datetime to implement json.Unmarshaler")
 		}
 	}
 	{ // negative
 		type customString string
 		input := customString("foo")
-		v := reflect.ValueOf(&input)
-		if _, ok := isJSONUnmarshaler(v); ok {
+		typ := reflect.TypeOf(&input)
+		if ok := implementsJSONUnmarshaler(typ); ok {
 			t.Error("got true; expected customString to not implement json.Unmarshaler")
+		}
+	}
+}
+
+func TestDeepCheckImplementation(t *testing.T) {
+	tests := []struct {
+		name  string
+		input interface{}
+	}{
+		{
+			name:  "concrete ( RawMessage is a reflect.Type of slice)",
+			input: json.RawMessage{},
+		},
+		{
+			name:  "RawMessage ptr",
+			input: &json.RawMessage{},
+		},
+		{
+			name:  "concrete slice of RawMessage",
+			input: []json.RawMessage{},
+		},
+		{
+			name:  "slice of RawMessage ptrs",
+			input: []*json.RawMessage{},
+		},
+		{
+			name:  "concrete map of RawMessage",
+			input: map[string]json.RawMessage{},
+		},
+		{
+			name:  "map of RawMessage ptrs",
+			input: map[string]*json.RawMessage{},
+		},
+		{
+			name:  "map of RawMessage slice",
+			input: map[string][]json.RawMessage{},
+		},
+		{
+			name: "ptr ptr of RawMessage",
+			input: func() **json.RawMessage {
+				r := &json.RawMessage{}
+				return &r
+			}(),
+		},
+		{
+			name:  "concrete unixMilli (struct)",
+			input: unixMilli{},
+		},
+		{
+			name:  "unixMilli ptr",
+			input: &unixMilli{},
+		},
+		{
+			name:  "concrete slice of unixMilli",
+			input: []unixMilli{},
+		},
+		{
+			name:  "slice of unixMilli ptrs",
+			input: []*unixMilli{},
+		},
+		{
+			name:  "concrete map of unixMilli",
+			input: map[string]unixMilli{},
+		},
+		{
+			name:  "map of unixMilli ptrs",
+			input: map[string]*unixMilli{},
+		},
+		{
+			name:  "map of unixMilli slice",
+			input: map[string][]unixMilli{},
+		},
+		{
+			name: "ptr ptr of unixMilli",
+			input: func() **unixMilli {
+				r := &unixMilli{}
+				return &r
+			}(),
+		},
+	}
+
+	for _, scenario := range tests {
+		typ := reflect.TypeOf(scenario.input)
+		ok, elemType := deepCheckImplementation(typ, jsonUnmarshaler)
+		if !ok {
+			t.Errorf("\n\tE=%v\n\tA=%v", typ, elemType)
 		}
 	}
 }

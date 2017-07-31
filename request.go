@@ -445,7 +445,7 @@ func handleAttributeUnmarshal(data *Node, args []string, fieldType reflect.Struc
 	}
 
 	// standard attributes that the json package knows how to handle, plus implementions on json.Unmarshaler
-	if doesImplementJSONUnmarshaler(fieldValue) || hasStandardJSONSupport(fieldType) {
+	if implementsJSONUnmarshaler(fieldType.Type) || hasStandardJSONSupport(fieldType) {
 		return handleWithJSONMarshaler(data, args, fieldValue)
 	}
 
