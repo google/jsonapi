@@ -33,8 +33,8 @@ var (
 	// ErrInvalidType is returned when the given type is incompatible with the expected type.
 	ErrInvalidType = errors.New("Invalid type provided") // I wish we used punctuation.
 
-	timeType    = reflect.TypeOf(time.Time{})
 	ptrTimeType = reflect.TypeOf(new(time.Time))
+	timeType    = ptrTimeType.Elem()
 )
 
 // UnmarshalPayload converts an io into a struct instance using jsonapi tags on
@@ -141,9 +141,9 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 	embeddeds := []*embedded{}
 
 	for i := 0; i < modelValue.NumField(); i++ {
-		fieldType := modelType.Field(i)
+		structField := modelType.Field(i)
 		fieldValue := modelValue.Field(i)
-		tag := fieldType.Tag.Get(annotationJSONAPI)
+		tag := structField.Tag.Get(annotationJSONAPI)
 
 		// handle explicit ignore annotation
 		if shouldIgnoreField(tag) {
@@ -151,7 +151,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 		}
 
 		// handles embedded structs
-		if isEmbeddedStruct(fieldType) {
+		if isEmbeddedStruct(structField) {
 			embeddeds = append(embeddeds,
 				&embedded{
 					model:       reflect.ValueOf(fieldValue.Addr().Interface()),
@@ -162,7 +162,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 		}
 
 		// handles pointers to embedded structs
-		if isEmbeddedStructPtr(fieldType) {
+		if isEmbeddedStructPtr(structField) {
 			embeddeds = append(embeddeds,
 				&embedded{
 					model:       reflect.ValueOf(fieldValue.Interface()),
@@ -190,11 +190,11 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				return err
 			}
 		case annotationPrimary:
-			if err := handlePrimaryUnmarshal(data, args, fieldType, fieldValue); err != nil {
+			if err := handlePrimaryUnmarshal(data, args, structField, fieldValue); err != nil {
 				return err
 			}
 		case annotationAttribute:
-			if err := handleAttributeUnmarshal(data, args, fieldType, fieldValue); err != nil {
+			if err := handleAttributeUnmarshal(data, args, structField, fieldValue); err != nil {
 				return err
 			}
 		case annotationRelation:
