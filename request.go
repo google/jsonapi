@@ -274,65 +274,34 @@ func handlePrimaryUnmarshal(data *Node, args []string, fieldType reflect.StructF
 		kind = fieldType.Type.Kind()
 	}
 
-	var idValue reflect.Value
+	switch kind {
+	default:
+		// only handle strings and numerics
+		return ErrBadJSONAPIID
+	case reflect.String:
+		assign(fieldValue, reflect.ValueOf(data.ID))
+	case
+		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 
-	// Handle String case
-	if kind == reflect.String {
-		// ID will have to be transmitted as a string per the JSON API spec
-		idValue = reflect.ValueOf(data.ID)
-	} else {
-		// Value was not a string... only other supported type was a numeric,
-		// which would have been sent as a float value.
-		floatValue, err := strconv.ParseFloat(data.ID, 64)
+		fv, err := strconv.ParseFloat(data.ID, 64)
 		if err != nil {
-			// Could not convert the value in the "id" attr to a float
 			return ErrBadJSONAPIID
 		}
 
-		// Convert the numeric float to one of the supported ID numeric types
-		// (int[8,16,32,64] or uint[8,16,32,64])
-		switch kind {
-		case reflect.Int:
-			n := int(floatValue)
-			idValue = reflect.ValueOf(&n)
-		case reflect.Int8:
-			n := int8(floatValue)
-			idValue = reflect.ValueOf(&n)
-		case reflect.Int16:
-			n := int16(floatValue)
-			idValue = reflect.ValueOf(&n)
-		case reflect.Int32:
-			n := int32(floatValue)
-			idValue = reflect.ValueOf(&n)
-		case reflect.Int64:
-			n := int64(floatValue)
-			idValue = reflect.ValueOf(&n)
-		case reflect.Uint:
-			n := uint(floatValue)
-			idValue = reflect.ValueOf(&n)
-		case reflect.Uint8:
-			n := uint8(floatValue)
-			idValue = reflect.ValueOf(&n)
-		case reflect.Uint16:
-			n := uint16(floatValue)
-			idValue = reflect.ValueOf(&n)
-		case reflect.Uint32:
-			n := uint32(floatValue)
-			idValue = reflect.ValueOf(&n)
-		case reflect.Uint64:
-			n := uint64(floatValue)
-			idValue = reflect.ValueOf(&n)
-		default:
-			// We had a JSON float (numeric), but our field was not one of the
-			// allowed numeric types
-			return ErrBadJSONAPIID
+		b, err := json.Marshal(fv)
+		if err != nil {
+			return err
+		}
+
+		v := fieldValue.Addr().Interface()
+		if err := json.Unmarshal(b, v); err != nil {
+			return err
 		}
 	}
 
-	// set value and clear ID to denote it's already been processed
-	assign(fieldValue, idValue)
+	// clear ID to denote it's already been processed
 	data.ID = ""
-
 	return nil
 }
 
