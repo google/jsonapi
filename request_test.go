@@ -794,6 +794,36 @@ func TestEmbededStructs_nilStructPtr(t *testing.T) {
 	}
 }
 
+func TestUnmarshalReadOnly(t *testing.T) {
+	type PatchBlog struct {
+		ID        int       `jsonapi:"primary,blogs,readonly"`
+		CreatedAt time.Time `jsonapi:"attr,created_at,omitempty,readonly"`
+		ViewCount int       `jsonapi:"attr,view_count,readonly,omitempty"`
+		Blog
+	}
+
+	now := time.Now()
+	blog := PatchBlog{
+		ID:        1,
+		CreatedAt: now,
+		ViewCount: 123,
+	}
+
+	if err := UnmarshalPayload(samplePayloadWithID(), &blog); err != nil {
+		t.Fatal(err)
+	}
+
+	if blog.ID != 1 {
+		t.Errorf("readonly id was set")
+	}
+	if blog.CreatedAt != now {
+		t.Errorf("readonly attr created_at was set")
+	}
+	if blog.ViewCount != 123 {
+		t.Errorf("readonly attr view_count was set")
+	}
+}
+
 func samplePayloadWithoutIncluded() map[string]interface{} {
 	return map[string]interface{}{
 		"data": map[string]interface{}{
@@ -910,6 +940,7 @@ func samplePayloadWithID() io.Reader {
 			Attributes: map[string]interface{}{
 				"title":      "New blog",
 				"view_count": 1000,
+				"created_at": time.Now().Add(1 * time.Hour).Unix(),
 			},
 		},
 	}
