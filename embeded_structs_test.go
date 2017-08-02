@@ -73,7 +73,9 @@ func TestIsEmbeddedStruct(t *testing.T) {
 	for _, test := range tests {
 		res := isEmbeddedStruct(test.input)
 		if res != test.expectedRes {
-			t.Errorf("Scenario -> %s\nGot -> %v\nExpected -> %v\n", test.scenario, res, test.expectedRes)
+			t.Errorf(
+				"Scenario -> %s\nGot -> %v\nExpected -> %v\n",
+				test.scenario, res, test.expectedRes)
 		}
 	}
 }
@@ -106,7 +108,9 @@ func TestShouldIgnoreField(t *testing.T) {
 	for _, test := range tests {
 		res := shouldIgnoreField(test.input)
 		if res != test.expectedRes {
-			t.Errorf("Scenario -> %s\nGot -> %v\nExpected -> %v\n", test.scenario, res, test.expectedRes)
+			t.Errorf(
+				"Scenario -> %s\nGot -> %v\nExpected -> %v\n",
+				test.scenario, res, test.expectedRes)
 		}
 	}
 }
@@ -136,8 +140,12 @@ func TestIsValidEmbeddedStruct(t *testing.T) {
 			expectedRes: true,
 		},
 		test{
-			scenario:    "opt-out",
-			input:       reflect.StructField{Anonymous: true, Tag: "jsonapi:\"-\"", Type: structType},
+			scenario: "opt-out",
+			input: reflect.StructField{
+				Anonymous: true,
+				Tag:       "jsonapi:\"-\"",
+				Type:      structType,
+			},
 			expectedRes: false,
 		},
 		test{
@@ -153,16 +161,20 @@ func TestIsValidEmbeddedStruct(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		res := (isEmbeddedStruct(test.input) && !shouldIgnoreField(test.input.Tag.Get(annotationJSONAPI)))
+		res := (isEmbeddedStruct(test.input) &&
+			!shouldIgnoreField(test.input.Tag.Get(annotationJSONAPI)))
 		if res != test.expectedRes {
-			t.Errorf("Scenario -> %s\nGot -> %v\nExpected -> %v\n", test.scenario, res, test.expectedRes)
+			t.Errorf(
+				"Scenario -> %s\nGot -> %v\nExpected -> %v\n",
+				test.scenario, res, test.expectedRes)
 		}
 	}
 }
 
-// TestEmbeddedUnmarshalOrder tests the behavior of the marshaler/unmarshaler of embedded structs
-// when a struct has an embedded struct w/ competing attributes, the top-level attributes take precedence
-// it compares the behavior against the standard json package
+// TestEmbeddedUnmarshalOrder tests the behavior of the marshaler/unmarshaler of
+// embedded structs when a struct has an embedded struct w/ competing
+// attributes, the top-level attributes take precedence it compares the behavior
+// against the standard json package
 func TestEmbeddedUnmarshalOrder(t *testing.T) {
 	type Bar struct {
 		Name int `jsonapi:"attr,Name"`
@@ -194,7 +206,8 @@ func TestEmbeddedUnmarshalOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// convert bytes to map[string]interface{} so that we can do a semantic JSON comparison
+	// convert bytes to map[string]interface{} so that we can do a semantic JSON
+	// comparison
 	var jsonAPIVal, jsonVal map[string]interface{}
 	if err = json.Unmarshal(jsonAPIData.Bytes(), &jsonAPIVal); err != nil {
 		t.Fatal(err)
@@ -204,7 +217,14 @@ func TestEmbeddedUnmarshalOrder(t *testing.T) {
 	}
 
 	// get to the jsonapi attribute map
-	jAttrMap := jsonAPIVal["data"].(map[string]interface{})["attributes"].(map[string]interface{})
+	jDataMap, ok := jsonAPIVal["data"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Could not parse `data`")
+	}
+	jAttrMap, ok := jDataMap["attributes"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Could not parse `attributes`")
+	}
 
 	// compare
 	if !reflect.DeepEqual(jAttrMap["Name"], jsonVal["Name"]) {
@@ -212,9 +232,10 @@ func TestEmbeddedUnmarshalOrder(t *testing.T) {
 	}
 }
 
-// TestEmbeddedMarshalOrder tests the behavior of the marshaler/unmarshaler of embedded structs
-// when a struct has an embedded struct w/ competing attributes, the top-level attributes take precedence
-// it compares the behavior against the standard json package
+// TestEmbeddedMarshalOrder tests the behavior of the marshaler/unmarshaler of
+// embedded structs when a struct has an embedded struct w/ competing
+// attributes, the top-level attributes take precedence it compares the
+// behavior against the standard json package
 func TestEmbeddedMarshalOrder(t *testing.T) {
 	type Bar struct {
 		Name int `jsonapi:"attr,Name"`
@@ -886,3 +907,7 @@ func TestMarshal_duplicateFieldFromEmbededStructs_serializationNameDiffers(t *te
 		t.Fatalf("Was expecting the `bar-count` attrobute to be %v, got %v", e, a)
 	}
 }
+
+// TODO: test permutation with outer and embeded attrs
+
+// TODO: test permutation of relations with embeded structs
