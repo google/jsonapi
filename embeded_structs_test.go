@@ -256,13 +256,13 @@ func TestEmbeddedMarshalOrder(t *testing.T) {
 
 	// unmarshal payloadWithInt to f (Foo) using jsonapi unmarshaler; expecting an error
 	f := &Foo{}
-	if err := UnmarshalPayload(bytes.NewReader(payloadWithInt), f); err == nil {
+	if err = UnmarshalPayload(bytes.NewReader(payloadWithInt), f); err == nil {
 		t.Errorf("expected an error: int value of 5 should attempt to map to Foo.Name (string) and error")
 	}
 
 	// unmarshal payloadWithString to f (Foo) using jsonapi unmarshaler; expecting no error
 	f = &Foo{}
-	if err := UnmarshalPayload(bytes.NewReader(payloadWithString), f); err != nil {
+	if err = UnmarshalPayload(bytes.NewReader(payloadWithString), f); err != nil {
 		t.Error(err)
 	}
 	if f.Name != "foo" {
