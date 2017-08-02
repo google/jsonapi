@@ -669,7 +669,8 @@ func TestMarshal_duplicatePrimaryAnnotationFromEmbededStructs(t *testing.T) {
 	}
 	var payloadData map[string]interface{}
 
-	// Test the standard libraries JSON handling of dup (ID) fields
+	// Test the standard libraries JSON handling of dup (ID) fields - it uses
+	// the Outer's ID
 	jsonData, err := json.Marshal(o)
 	if err != nil {
 		t.Fatal(err)
@@ -908,6 +909,92 @@ func TestMarshal_duplicateFieldFromEmbededStructs_serializationNameDiffers(t *te
 	}
 }
 
-// TODO: test permutation with outer and embeded attrs
+func TestMarshal_embededStruct_providesDuplicateAttr(t *testing.T) {
+	type Foo struct {
+		Number uint `json:"count" jsonapi:"attr,count"`
+	}
+	type Outer struct {
+		Foo
+		ID    uint `json:"id" jsonapi:"primary,outer"`
+		Count uint `json:"count" jsonapi:"attr,count"`
+	}
+	o := Outer{
+		ID:    1,
+		Count: 1,
+		Foo:   Foo{Number: 5},
+	}
+	var payloadData map[string]interface{}
+
+	// The standard JSON lib will take the count annotated field from the Outer
+	jsonData, err := json.Marshal(o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(jsonData, &payloadData); err != nil {
+		t.Fatal(err)
+	}
+	if e, a := o.Count, payloadData["count"].(float64); e != uint(a) {
+		t.Fatalf("Was expecting a JSON `count` of %v, got %v", e, a)
+	}
+
+	// In JSON API the handling should be that the Outer annotated count field is
+	// serialized into `attributes`
+	jsonAPIData := new(bytes.Buffer)
+	if err := MarshalPayload(jsonAPIData, &o); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(jsonAPIData.Bytes(), &payloadData); err != nil {
+		t.Fatal(err)
+	}
+	data := payloadData["data"].(map[string]interface{})
+	attributes := data["attributes"].(map[string]interface{})
+	if e, a := o.Count, attributes["count"].(float64); e != uint(a) {
+		t.Fatalf("Was expecting a JSON API `count` attribute of %v, got %v", e, a)
+	}
+}
+
+func TestMarshal_embededStructPtr_providesDuplicateAttr(t *testing.T) {
+	type Foo struct {
+		Number uint `json:"count" jsonapi:"attr,count"`
+	}
+	type Outer struct {
+		*Foo
+		ID    uint `json:"id" jsonapi:"primary,outer"`
+		Count uint `json:"count" jsonapi:"attr,count"`
+	}
+	o := Outer{
+		ID:    1,
+		Count: 1,
+		Foo:   &Foo{Number: 5},
+	}
+	var payloadData map[string]interface{}
+
+	// The standard JSON lib will take the count annotated field from the Outer
+	jsonData, err := json.Marshal(o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(jsonData, &payloadData); err != nil {
+		t.Fatal(err)
+	}
+	if e, a := o.Count, payloadData["count"].(float64); e != uint(a) {
+		t.Fatalf("Was expecting a JSON `count` of %v, got %v", e, a)
+	}
+
+	// In JSON API the handling should be that the Outer annotated count field is
+	// serialized into `attributes`
+	jsonAPIData := new(bytes.Buffer)
+	if err := MarshalPayload(jsonAPIData, &o); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(jsonAPIData.Bytes(), &payloadData); err != nil {
+		t.Fatal(err)
+	}
+	data := payloadData["data"].(map[string]interface{})
+	attributes := data["attributes"].(map[string]interface{})
+	if e, a := o.Count, attributes["count"].(float64); e != uint(a) {
+		t.Fatalf("Was expecting a JSON API `count` attribute of %v, got %v", e, a)
+	}
+}
 
 // TODO: test permutation of relations with embeded structs
