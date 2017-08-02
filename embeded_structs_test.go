@@ -190,10 +190,13 @@ func TestEmbeddedUnmarshalOrder(t *testing.T) {
 
 	// marshal f (Foo) using json marshaler
 	jsonData, err := json.Marshal(f)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// convert bytes to map[string]interface{} so that we can do a semantic JSON comparison
 	var jsonAPIVal, jsonVal map[string]interface{}
-	if err := json.Unmarshal(jsonAPIData.Bytes(), &jsonAPIVal); err != nil {
+	if err = json.Unmarshal(jsonAPIData.Bytes(), &jsonAPIVal); err != nil {
 		t.Fatal(err)
 	}
 	if err = json.Unmarshal(jsonData, &jsonVal); err != nil {
