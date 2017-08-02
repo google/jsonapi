@@ -156,7 +156,7 @@ func (bc *BadComment) JSONAPILinks() *Links {
 	}
 }
 
-// Embeded Struct Models
+// Embedded Struct Models
 type Engine struct {
 	NumberOfCylinders uint `jsonapi:"attr,cylinders"`
 	HorsePower        uint `jsonapi:"attr,hp"`

@@ -655,7 +655,7 @@ func TestMarshalUnmarshalCompositeStruct(t *testing.T) {
 	}
 }
 
-func TestMarshal_duplicatePrimaryAnnotationFromEmbededStructs(t *testing.T) {
+func TestMarshal_duplicatePrimaryAnnotationFromEmbeddedStructs(t *testing.T) {
 	type Outer struct {
 		ID string `jsonapi:"primary,outer"`
 		Comment
@@ -697,7 +697,7 @@ func TestMarshal_duplicatePrimaryAnnotationFromEmbededStructs(t *testing.T) {
 	}
 }
 
-func TestMarshal_duplicateAttributeAnnotationFromEmbededStructs(t *testing.T) {
+func TestMarshal_duplicateAttributeAnnotationFromEmbeddedStructs(t *testing.T) {
 	type Foo struct {
 		Count uint `json:"count" jsonapi:"attr,count"`
 	}
@@ -717,7 +717,7 @@ func TestMarshal_duplicateAttributeAnnotationFromEmbededStructs(t *testing.T) {
 
 	var payloadData map[string]interface{}
 
-	// The standard JSON lib will not serialize either embeded struct's fields if
+	// The standard JSON lib will not serialize either embedded struct's fields if
 	// a duplicate is encountered
 	jsonData, err := json.Marshal(o)
 	if err != nil {
@@ -744,7 +744,7 @@ func TestMarshal_duplicateAttributeAnnotationFromEmbededStructs(t *testing.T) {
 	}
 }
 
-func TestMarshal_duplicateAttributeAnnotationFromEmbededStructsPtrs(t *testing.T) {
+func TestMarshal_duplicateAttributeAnnotationFromEmbeddedStructsPtrs(t *testing.T) {
 	type Foo struct {
 		Count uint `json:"count" jsonapi:"attr,count"`
 	}
@@ -764,7 +764,7 @@ func TestMarshal_duplicateAttributeAnnotationFromEmbededStructsPtrs(t *testing.T
 
 	var payloadData map[string]interface{}
 
-	// The standard JSON lib will not serialize either embeded struct's fields if
+	// The standard JSON lib will not serialize either embedded struct's fields if
 	// a duplicate is encountered
 	jsonData, err := json.Marshal(o)
 	if err != nil {
@@ -791,7 +791,7 @@ func TestMarshal_duplicateAttributeAnnotationFromEmbededStructsPtrs(t *testing.T
 	}
 }
 
-func TestMarshal_duplicateAttributeAnnotationFromEmbededStructsMixed(t *testing.T) {
+func TestMarshal_duplicateAttributeAnnotationFromEmbeddedStructsMixed(t *testing.T) {
 	type Foo struct {
 		Count uint `json:"count" jsonapi:"attr,count"`
 	}
@@ -811,7 +811,7 @@ func TestMarshal_duplicateAttributeAnnotationFromEmbededStructsMixed(t *testing.
 
 	var payloadData map[string]interface{}
 
-	// The standard JSON lib will not serialize either embeded struct's fields if
+	// The standard JSON lib will not serialize either embedded struct's fields if
 	// a duplicate is encountered
 	jsonData, err := json.Marshal(o)
 	if err != nil {
@@ -839,7 +839,7 @@ func TestMarshal_duplicateAttributeAnnotationFromEmbededStructsMixed(t *testing.
 	}
 }
 
-func TestMarshal_duplicateFieldFromEmbededStructs_serializationNameDiffers(t *testing.T) {
+func TestMarshal_duplicateFieldFromEmbeddedStructs_serializationNameDiffers(t *testing.T) {
 	type Foo struct {
 		Count uint `json:"foo-count" jsonapi:"attr,foo-count"`
 	}
@@ -909,7 +909,7 @@ func TestMarshal_duplicateFieldFromEmbededStructs_serializationNameDiffers(t *te
 	}
 }
 
-func TestMarshal_embededStruct_providesDuplicateAttr(t *testing.T) {
+func TestMarshal_embeddedStruct_providesDuplicateAttr(t *testing.T) {
 	type Foo struct {
 		Number uint `json:"count" jsonapi:"attr,count"`
 	}
@@ -953,7 +953,7 @@ func TestMarshal_embededStruct_providesDuplicateAttr(t *testing.T) {
 	}
 }
 
-func TestMarshal_embededStructPtr_providesDuplicateAttr(t *testing.T) {
+func TestMarshal_embeddedStructPtr_providesDuplicateAttr(t *testing.T) {
 	type Foo struct {
 		Number uint `json:"count" jsonapi:"attr,count"`
 	}
@@ -997,4 +997,4 @@ func TestMarshal_embededStructPtr_providesDuplicateAttr(t *testing.T) {
 	}
 }
 
-// TODO: test permutation of relations with embeded structs
+// TODO: test permutation of relations with embedded structs
