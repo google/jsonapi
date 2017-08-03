@@ -7,33 +7,6 @@ import (
 	"testing"
 )
 
-func TestMergeNode(t *testing.T) {
-	parent := &Node{
-		Type:       "Good",
-		ID:         "99",
-		Attributes: map[string]interface{}{"fizz": "buzz"},
-	}
-
-	child := &Node{
-		Type:       "Better",
-		ClientID:   "1111",
-		Attributes: map[string]interface{}{"timbuk": 2},
-	}
-
-	expected := &Node{
-		Type:       "Better",
-		ID:         "99",
-		ClientID:   "1111",
-		Attributes: map[string]interface{}{"fizz": "buzz", "timbuk": 2},
-	}
-
-	parent.merge(child)
-
-	if !reflect.DeepEqual(expected, parent) {
-		t.Errorf("Got %+v Expected %+v", parent, expected)
-	}
-}
-
 func TestIsEmbeddedStruct(t *testing.T) {
 	type foo struct{}
 
@@ -888,6 +861,7 @@ func TestMarshal_duplicateFieldFromEmbeddedStructs_serializationNameDiffers(t *t
 	if err := MarshalPayload(jsonAPIData, &o); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := json.Unmarshal(jsonAPIData.Bytes(), &payloadData); err != nil {
 		t.Fatal(err)
 	}

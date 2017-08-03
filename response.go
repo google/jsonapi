@@ -206,13 +206,12 @@ func MarshalOnePayloadEmbedded(w io.Writer, model interface{}) error {
 // it handles the deepest models first. (i.e.) embedded models
 // this is so that upper-level attributes can overwrite lower-level attributes
 func visitModelNode(model interface{}, included *map[string]*Node, sideload bool) (*Node, error) {
-	node := new(Node)
-
 	var er error
 
 	modelValue := reflect.ValueOf(model).Elem()
 	modelType := reflect.ValueOf(model).Type().Elem()
 
+	node := new(Node)
 	nodes := make([]*Node, 0)
 	// handle just the embedded models first
 	for i := 0; i < modelValue.NumField(); i++ {
@@ -242,14 +241,19 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 				er = err
 				break
 			}
+			// append to array to process together in order to find dominant field conflicts
 			nodes = append(nodes, embNode)
 
 		}
-		node.merge(combineNodes(nodes))
+		// treat all embedded structs on this level as peers
+		// combine w/ func that track for dominant field conflicts
+		// set combined as the initial node value
+		node = combinePeerNodes(nodes)
 	}
 
-	// handle everthing else
+	// track all attributes through attr vs node.Attributes, so that we can track dominant field conflicts on this level
 	attrs := attributes{}
+	// handle everthing else
 	for i := 0; i < modelValue.NumField(); i++ {
 		fieldValue := modelValue.Field(i)
 		fieldType := modelType.Field(i)
@@ -515,8 +519,12 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 		node.Meta = metableModel.JSONAPIMeta()
 	}
 
+	// assign; attrs values will overwrite conflicting values in node.Attributes
 	node.mergeAttributes(attrs)
-	node.cleanupDominantFieldIssues()
+	// this currently handles just the dominant field conflicts
+	// the standard json library just drops these attributes that have conflicts; and this does the same
+	// however, it might be useful to surface these as an explicit error
+	node.handleNodeErrors()
 	return node, nil
 }
 
