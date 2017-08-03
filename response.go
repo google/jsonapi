@@ -213,6 +213,7 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 	modelValue := reflect.ValueOf(model).Elem()
 	modelType := reflect.ValueOf(model).Type().Elem()
 
+	nodes := make([]*Node, 0)
 	// handle just the embedded models first
 	for i := 0; i < modelValue.NumField(); i++ {
 		fieldValue := modelValue.Field(i)
@@ -241,11 +242,14 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 				er = err
 				break
 			}
-			node.merge(embNode)
+			nodes = append(nodes, embNode)
+
 		}
+		node.merge(combineNodes(nodes))
 	}
 
 	// handle everthing else
+	attrs := attributes{}
 	for i := 0; i < modelValue.NumField(); i++ {
 		fieldValue := modelValue.Field(i)
 		fieldType := modelType.Field(i)
@@ -346,7 +350,7 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 			if node.Attributes == nil {
 				node.Attributes = make(map[string]interface{})
 			}
-
+			attributeKey := args[1]
 			if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
 				t := fieldValue.Interface().(time.Time)
 
@@ -355,9 +359,9 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 				}
 
 				if iso8601 {
-					node.Attributes[args[1]] = t.UTC().Format(iso8601TimeFormat)
+					attrs.set(attributeKey, t.UTC().Format(iso8601TimeFormat))
 				} else {
-					node.Attributes[args[1]] = t.Unix()
+					attrs.set(attributeKey, t.Unix())
 				}
 			} else if fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
 				// A time pointer may be nil
@@ -375,9 +379,9 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 					}
 
 					if iso8601 {
-						node.Attributes[args[1]] = tm.UTC().Format(iso8601TimeFormat)
+						attrs.set(attributeKey, tm.UTC().Format(iso8601TimeFormat))
 					} else {
-						node.Attributes[args[1]] = tm.Unix()
+						attrs.set(attributeKey, tm.Unix())
 					}
 				}
 			} else {
@@ -391,9 +395,9 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 
 				strAttr, ok := fieldValue.Interface().(string)
 				if ok {
-					node.Attributes[args[1]] = strAttr
+					attrs.set(attributeKey, strAttr)
 				} else {
-					node.Attributes[args[1]] = fieldValue.Interface()
+					attrs.set(attributeKey, fieldValue.Interface())
 				}
 			}
 		} else if annotation == annotationRelation {
@@ -511,6 +515,8 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 		node.Meta = metableModel.JSONAPIMeta()
 	}
 
+	node.mergeAttributes(attrs)
+	node.cleanupDominantFieldIssues()
 	return node, nil
 }
 

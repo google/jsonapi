@@ -2,6 +2,10 @@ package jsonapi
 
 import "fmt"
 
+type nodeError bool
+
+const dominantFieldConflict nodeError = false
+
 // Payloader is used to encapsulate the One and Many payload types
 type Payloader interface {
 	clearIncluded()
@@ -33,18 +37,67 @@ func (p *ManyPayload) clearIncluded() {
 	p.Included = []*Node{}
 }
 
+type attributes map[string]interface{}
+
 // Node is used to represent a generic JSON API Resource
 type Node struct {
 	Type          string                 `json:"type"`
 	ID            string                 `json:"id,omitempty"`
 	ClientID      string                 `json:"client-id,omitempty"`
-	Attributes    map[string]interface{} `json:"attributes,omitempty"`
+	Attributes    attributes             `json:"attributes,omitempty"`
 	Relationships map[string]interface{} `json:"relationships,omitempty"`
 	Links         *Links                 `json:"links,omitempty"`
 	Meta          *Meta                  `json:"meta,omitempty"`
 }
 
+func isNodeError(i interface{}) bool {
+	_, ok := i.(nodeError)
+	return ok
+}
+
+func (n *Node) cleanupDominantFieldIssues() {
+	for k, v := range n.Attributes {
+		if isNodeError(v) {
+			delete(n.Attributes, k)
+		}
+	}
+}
+
+func (a attributes) set(k string, v interface{}) {
+	if _, ok := a[k]; ok {
+		a[k] = dominantFieldConflict
+	} else {
+		a[k] = v
+	}
+}
+
+func (n *Node) mergeAttributes(attrs attributes) {
+	for k, v := range attrs {
+		n.Attributes[k] = v
+	}
+}
+
+func combineNodes(nodes []*Node) *Node {
+	n := &Node{}
+	for _, node := range nodes {
+		n.peerMerge(node)
+	}
+	return n
+}
+
+func (n *Node) peerMerge(node *Node) {
+	n.mergeFunc(node, func(attrs attributes) {
+		for k, v := range node.Attributes {
+			n.Attributes.set(k, v)
+		}
+	})
+}
+
 func (n *Node) merge(node *Node) {
+	n.mergeFunc(node, n.mergeAttributes)
+}
+
+func (n *Node) mergeFunc(node *Node, attrSetter func(attrs attributes)) {
 	if node.Type != "" {
 		n.Type = node.Type
 	}
@@ -60,9 +113,7 @@ func (n *Node) merge(node *Node) {
 	if n.Attributes == nil && node.Attributes != nil {
 		n.Attributes = make(map[string]interface{})
 	}
-	for k, v := range node.Attributes {
-		n.Attributes[k] = v
-	}
+	attrSetter(node.Attributes)
 
 	if n.Relationships == nil && node.Relationships != nil {
 		n.Relationships = make(map[string]interface{})
