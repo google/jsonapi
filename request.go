@@ -385,12 +385,6 @@ func unmarshalAttribute(attribute interface{}, args []string, fieldType reflect.
 		return
 	}
 
-	// Handle field of type struct
-	if fieldValue.Type().Kind() == reflect.Struct {
-		value, err = handleStruct(attribute, args, fieldType, fieldValue)
-		return
-	}
-
 	// Handle field containing slice of structs
 	if fieldValue.Type().Kind() == reflect.Slice && reflect.TypeOf(fieldValue.Interface()).Elem().Kind() == reflect.Struct {
 		value, err = handleStructSlice(attribute, args, fieldType, fieldValue)
@@ -562,44 +556,17 @@ func handlePointer(attribute interface{}, args []string, fieldType reflect.Type,
 func handleStruct(attribute interface{}, args []string, fieldType reflect.Type, fieldValue reflect.Value) (reflect.Value, error) {
 	model := reflect.New(fieldValue.Type())
 
-	modelValue := model.Elem()
-	modelType := model.Type().Elem()
-
 	var er error
 
-	for i := 0; i < modelValue.NumField(); i++ {
-		fieldType := modelType.Field(i)
-		tag := fieldType.Tag.Get("jsonapi")
-		if tag == "" {
-			continue
-		}
+	data, er := json.Marshal(attribute)
+	if er != nil {
+		return model, er
+	}
 
-		fieldValue := modelValue.Field(i)
+	er = json.Unmarshal(data, model.Interface())
 
-		args := strings.Split(tag, ",")
-
-		if len(args) < 1 {
-			er = ErrBadJSONAPIStructTag
-			break
-		}
-
-		if reflect.TypeOf(attribute).Kind() != reflect.Map {
-			return model, nil
-		}
-
-		attributes := reflect.ValueOf(attribute).Interface().(map[string]interface{})
-		attribute := attributes[args[1]]
-
-		if attribute == nil {
-			continue
-		}
-
-		value, err := unmarshalAttribute(attribute, args, fieldType.Type, fieldValue)
-		if err != nil {
-			return model, nil
-		}
-
-		assign(fieldValue, value)
+	if er != nil {
+		return model, er
 	}
 
 	return model, er
