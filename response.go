@@ -245,11 +245,11 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 			nodes = append(nodes, embNode)
 
 		}
-		// treat all embedded structs on this level as peers
-		// combine w/ func that track for dominant field conflicts
-		// set combined as the initial node value
-		node = combinePeerNodes(nodes)
 	}
+	// treat all embedded structs on this level as peers
+	// combine w/ func that track for dominant field conflicts
+	// set combined as the initial node value
+	node = combinePeerNodes(nodes)
 
 	// track all attributes through attr vs node.Attributes, so that we can track dominant field conflicts on this level
 	attrs := attributes{}
