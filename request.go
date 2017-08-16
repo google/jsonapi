@@ -414,18 +414,7 @@ func handleAttributeUnmarshal(data *Node, args []string, fieldType reflect.Struc
 	}
 
 	// standard attributes that the json package knows how to handle, plus implementions on json.Unmarshaler
-	if implementsJSONUnmarshaler(fieldType.Type) || hasStandardJSONSupport(fieldType) {
-		return handleWithJSONMarshaler(data, args, fieldValue)
-	}
-
-	// As a final catch-all, ensure types line up to avoid a runtime panic.
-	// Ignore interfaces since interfaces are poly
-	// TODO: might not need the if statement anymore.  can just end the func w/ `return ErrInvalidType`?
-	if fieldValue.Kind() != reflect.Interface && fieldValue.Kind() != reflect.ValueOf(val).Kind() {
-		return ErrInvalidType
-	}
-
-	return nil
+	return handleWithJSONMarshaler(data, args, fieldValue)
 }
 
 func fullNode(n *Node, included *map[string]*Node) *Node {
