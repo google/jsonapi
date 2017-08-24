@@ -547,8 +547,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 
 			}
 
-		} else if annotation == "meta" {
-
+		} else if annotation == annotationMeta {
 			if data.Meta == nil {
 				continue
 			}
@@ -566,7 +565,19 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			}
 
 			// Field was a Pointer type
-			if fieldValue.Kind() == reflect.Ptr {
+			if fieldValue.Kind() == reflect.Map {
+				val, ok := val.(map[string]interface{})
+				if !ok {
+					er = ErrUnsupportedPtrType
+					break
+				}
+				if !reflect.TypeOf(val).AssignableTo(fieldValue.Type()) {
+					er = ErrUnsupportedPtrType
+					break
+				}
+				fieldValue.Set(reflect.ValueOf(val))
+
+			} else if fieldValue.Kind() == reflect.Ptr {
 				var concreteVal reflect.Value
 
 				switch cVal := val.(type) {
