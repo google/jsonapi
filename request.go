@@ -317,6 +317,17 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				continue
 			}
 
+			if fieldValue.Type() == reflect.TypeOf([]int(nil)) {
+				values := make([]int, v.Len())
+				for i := 0; i < v.Len(); i++ {
+					values[i] = int(v.Index(i).Interface().(float64))
+				}
+
+				fieldValue.Set(reflect.ValueOf(values))
+
+				continue
+			}
+
 			if fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
 				if iso8601 {
 					var tm string
@@ -433,6 +444,21 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 					concreteVal = reflect.ValueOf(&cVal)
 				case uintptr:
 					concreteVal = reflect.ValueOf(&cVal)
+				case interface{}:
+					n := new(Node)
+
+					var ok bool
+					n.Attributes, ok = val.(map[string]interface{})
+					if !ok {
+						er = ErrUnsupportedPtrType
+						break
+					}
+
+					if err := unmarshalNode(n, fieldValue, included); err != nil {
+						er = ErrUnsupportedPtrType
+						break
+					}
+					concreteVal = fieldValue
 				default:
 					return ErrUnsupportedPtrType
 				}
@@ -519,6 +545,79 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 
 				fieldValue.Set(m)
 
+			}
+
+		} else if annotation == annotationMeta {
+			if data.Meta == nil {
+				continue
+			}
+
+			meta := *data.Meta
+			if meta == nil || len(*data.Meta) == 0 {
+				continue
+			}
+
+			val := meta[args[1]]
+
+			// continue if the attribute was not included in the request
+			if val == nil {
+				continue
+			}
+
+			// Field was a Pointer type
+			if fieldValue.Kind() == reflect.Map {
+				val, ok := val.(map[string]interface{})
+				if !ok {
+					er = ErrUnsupportedPtrType
+					break
+				}
+				if !reflect.TypeOf(val).AssignableTo(fieldValue.Type()) {
+					er = ErrUnsupportedPtrType
+					break
+				}
+				fieldValue.Set(reflect.ValueOf(val))
+
+			} else if fieldValue.Kind() == reflect.Ptr {
+				var concreteVal reflect.Value
+
+				switch cVal := val.(type) {
+				case string:
+					concreteVal = reflect.ValueOf(&cVal)
+				case float64:
+					concreteVal = reflect.ValueOf(&cVal)
+				case bool:
+					concreteVal = reflect.ValueOf(&cVal)
+				case complex64:
+					concreteVal = reflect.ValueOf(&cVal)
+				case complex128:
+					concreteVal = reflect.ValueOf(&cVal)
+				case uintptr:
+					concreteVal = reflect.ValueOf(&cVal)
+				case interface{}:
+					n := new(Node)
+
+					var ok bool
+					n.Attributes, ok = val.(map[string]interface{})
+					if !ok {
+						er = ErrUnsupportedPtrType
+						break
+					}
+
+					if err := unmarshalNode(n, fieldValue, included); err != nil {
+						er = ErrUnsupportedPtrType
+						break
+					}
+					concreteVal = fieldValue
+				default:
+					return ErrUnsupportedPtrType
+				}
+
+				if fieldValue.Type() != concreteVal.Type() {
+					return ErrUnsupportedPtrType
+				}
+
+				fieldValue.Set(concreteVal)
+				continue
 			}
 
 		} else {

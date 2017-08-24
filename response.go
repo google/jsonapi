@@ -313,7 +313,7 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 				if iso8601 {
 					node.Attributes[args[1]] = t.UTC().Format(iso8601TimeFormat)
 				} else {
-					node.Attributes[args[1]] = t.Unix()
+					node.Attributes[args[1]] = t
 				}
 			} else if fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
 				// A time pointer may be nil
@@ -333,7 +333,7 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 					if iso8601 {
 						node.Attributes[args[1]] = tm.UTC().Format(iso8601TimeFormat)
 					} else {
-						node.Attributes[args[1]] = tm.Unix()
+						node.Attributes[args[1]] = tm
 					}
 				}
 			} else {
@@ -354,10 +354,20 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 			}
 		} else if annotation == annotationRelation {
 			var omitEmpty bool
+			var include = true
 
 			//add support for 'omitempty' struct tag for marshaling as absent
 			if len(args) > 2 {
 				omitEmpty = args[2] == annotationOmitEmpty
+				if args[2] == annotationExclude {
+					include = false
+				}
+			}
+
+			if len(args) > 3 {
+				if args[3] == annotationExclude {
+					include = false
+				}
 			}
 
 			isSlice := fieldValue.Type().Kind() == reflect.Slice
@@ -397,9 +407,11 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 
 				if sideload {
 					shallowNodes := []*Node{}
-					for _, n := range relationship.Data {
-						appendIncluded(included, n)
-						shallowNodes = append(shallowNodes, toShallowNode(n))
+					for i, n := range relationship.Data {
+						if include {
+							appendIncluded(included, n)
+						}
+						shallowNodes = append(shallowNodes, toShallowNode(fieldValue.Index(i).Interface(), n))
 					}
 
 					node.Relationships[args[1]] = &RelationshipManyNode{
@@ -430,9 +442,11 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 				}
 
 				if sideload {
-					appendIncluded(included, relationship)
+					if include {
+						appendIncluded(included, relationship)
+					}
 					node.Relationships[args[1]] = &RelationshipOneNode{
-						Data:  toShallowNode(relationship),
+						Data:  toShallowNode(fieldValue.Interface(), relationship),
 						Links: relLinks,
 						Meta:  relMeta,
 					}
@@ -470,11 +484,17 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 	return node, nil
 }
 
-func toShallowNode(node *Node) *Node {
-	return &Node{
+func toShallowNode(model interface{}, node *Node) *Node {
+	n := &Node{
 		ID:   node.ID,
 		Type: node.Type,
 	}
+
+	if resourceIDMetable, ok := model.(ResourceIDMetable); ok {
+		n.Meta = resourceIDMetable.JSONAPIResourceIDMeta()
+	}
+
+	return n
 }
 
 func visitModelNodeRelationships(models reflect.Value, included *map[string]*Node,

@@ -119,3 +119,9 @@ type RelationshipMetable interface {
 	// JSONRelationshipMeta will be invoked for each relationship with the corresponding relation name (e.g. `comments`)
 	JSONAPIRelationshipMeta(relation string) *Meta
 }
+
+// ResourceIDMetable is used to include meta in relationship resouce data
+type ResourceIDMetable interface {
+	// JSONResourceIDMeta will be invoked for each resouce ID item
+	JSONAPIResourceIDMeta() *Meta
+}
