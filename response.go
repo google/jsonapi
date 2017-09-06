@@ -206,13 +206,13 @@ func MarshalOnePayloadEmbedded(w io.Writer, model interface{}) error {
 // it handles the deepest models first. (i.e.) embedded models
 // this is so that upper-level attributes can overwrite lower-level attributes
 func visitModelNode(model interface{}, included *map[string]*Node, sideload bool) (*Node, error) {
-	node := new(Node)
-
 	var er error
 
 	modelValue := reflect.ValueOf(model).Elem()
 	modelType := reflect.ValueOf(model).Type().Elem()
 
+	node := new(Node)
+	nodes := make([]*Node, 0)
 	// handle just the embedded models first
 	for i := 0; i < modelValue.NumField(); i++ {
 		fieldValue := modelValue.Field(i)
@@ -241,10 +241,18 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 				er = err
 				break
 			}
-			node.merge(embNode)
+			// append to array to process together in order to find dominant field conflicts
+			nodes = append(nodes, embNode)
+
 		}
 	}
+	// treat all embedded structs on this level as peers
+	// combine w/ func that track for dominant field conflicts
+	// set combined as the initial node value
+	node = combinePeerNodes(nodes)
 
+	// track all attributes through attr vs node.Attributes, so that we can track dominant field conflicts on this level
+	attrs := attributes{}
 	// handle everthing else
 	for i := 0; i < modelValue.NumField(); i++ {
 		fieldValue := modelValue.Field(i)
@@ -346,7 +354,7 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 			if node.Attributes == nil {
 				node.Attributes = make(map[string]interface{})
 			}
-
+			attributeKey := args[1]
 			if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
 				t := fieldValue.Interface().(time.Time)
 
@@ -355,9 +363,9 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 				}
 
 				if iso8601 {
-					node.Attributes[args[1]] = t.UTC().Format(iso8601TimeFormat)
+					attrs.set(attributeKey, t.UTC().Format(iso8601TimeFormat))
 				} else {
-					node.Attributes[args[1]] = t.Unix()
+					attrs.set(attributeKey, t.Unix())
 				}
 			} else if fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
 				// A time pointer may be nil
@@ -375,9 +383,9 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 					}
 
 					if iso8601 {
-						node.Attributes[args[1]] = tm.UTC().Format(iso8601TimeFormat)
+						attrs.set(attributeKey, tm.UTC().Format(iso8601TimeFormat))
 					} else {
-						node.Attributes[args[1]] = tm.Unix()
+						attrs.set(attributeKey, tm.Unix())
 					}
 				}
 			} else {
@@ -391,9 +399,9 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 
 				strAttr, ok := fieldValue.Interface().(string)
 				if ok {
-					node.Attributes[args[1]] = strAttr
+					attrs.set(attributeKey, strAttr)
 				} else {
-					node.Attributes[args[1]] = fieldValue.Interface()
+					attrs.set(attributeKey, fieldValue.Interface())
 				}
 			}
 		} else if annotation == annotationRelation {
@@ -511,6 +519,12 @@ func visitModelNode(model interface{}, included *map[string]*Node, sideload bool
 		node.Meta = metableModel.JSONAPIMeta()
 	}
 
+	// assign; attrs values will overwrite conflicting values in node.Attributes
+	node.mergeAttributes(attrs)
+	// this currently handles just the dominant field conflicts
+	// the standard json library just drops these attributes that have conflicts; and this does the same
+	// however, it might be useful to surface these as an explicit error
+	node.handleNodeErrors()
 	return node, nil
 }
 

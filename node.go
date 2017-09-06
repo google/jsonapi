@@ -38,13 +38,71 @@ type Node struct {
 	Type          string                 `json:"type"`
 	ID            string                 `json:"id,omitempty"`
 	ClientID      string                 `json:"client-id,omitempty"`
-	Attributes    map[string]interface{} `json:"attributes,omitempty"`
+	Attributes    attributes             `json:"attributes,omitempty"`
 	Relationships map[string]interface{} `json:"relationships,omitempty"`
 	Links         *Links                 `json:"links,omitempty"`
 	Meta          *Meta                  `json:"meta,omitempty"`
 }
 
+func (n *Node) handleNodeErrors() {
+	for k, v := range n.Attributes {
+		if _, ok := v.(nodeError); ok {
+			delete(n.Attributes, k)
+		}
+	}
+}
+
+type attributes map[string]interface{}
+
+// this attributes setter
+// * adds new entries as-is
+// * tracks dominant field conflicts
+func (a attributes) set(k string, v interface{}) {
+	if val, ok := a[k]; ok {
+		if ne, ok := val.(nodeError); ok {
+			ne.Add(k, v)
+			return
+		}
+		a[k] = newDominantFieldConflict(k, val, v)
+	} else {
+		a[k] = v
+	}
+}
+
+// mergeAttributes consolidates 2 attribute maps
+// if there are conflicting keys, the values in the argument take priority
+func (n *Node) mergeAttributes(attrs attributes) {
+	for k, v := range attrs {
+		n.Attributes[k] = v
+	}
+}
+
+// mergeAttributes consolidates multiple nodes into a single consolidated node
+// the last node value has a higher priority over others in setting single value types (i.e. node.ID, node.Type)
+// if there are conflicting attributes, those will get flagged as errors
+func combinePeerNodes(nodes []*Node) *Node {
+	n := &Node{}
+	for _, node := range nodes {
+		n.peerMerge(node)
+	}
+	return n
+}
+
+// merge - a simple merge where the values in the argument have a higher priority
 func (n *Node) merge(node *Node) {
+	n.mergeFunc(node, n.mergeAttributes)
+}
+
+// peerMerge - when merging peers, we need to track nodeErrors
+func (n *Node) peerMerge(node *Node) {
+	n.mergeFunc(node, func(attrs attributes) {
+		for k, v := range node.Attributes {
+			n.Attributes.set(k, v)
+		}
+	})
+}
+
+func (n *Node) mergeFunc(node *Node, attrSetter func(attrs attributes)) {
 	if node.Type != "" {
 		n.Type = node.Type
 	}
@@ -60,9 +118,7 @@ func (n *Node) merge(node *Node) {
 	if n.Attributes == nil && node.Attributes != nil {
 		n.Attributes = make(map[string]interface{})
 	}
-	for k, v := range node.Attributes {
-		n.Attributes[k] = v
-	}
+	attrSetter(node.Attributes)
 
 	if n.Relationships == nil && node.Relationships != nil {
 		n.Relationships = make(map[string]interface{})
@@ -182,4 +238,37 @@ func deepCopyNode(n *Node) *Node {
 		copy.Meta = &tmp
 	}
 	return &copy
+}
+
+// nodeError is used to track errors in processing Node related values
+type nodeError interface {
+	Error() string
+	Add(key string, val interface{})
+}
+
+// dominantFieldConflict is a specific type of marshaling scenario that the standard json lib treats as an error
+// comment from json.dominantField(): "If there are multiple top-level fields...This condition is an error in Go and we skip"
+// tracking the key and conflicting values for future use to possibly surface an error
+type dominantFieldConflict struct {
+	key  string
+	vals []interface{}
+}
+
+func newDominantFieldConflict(key string, vals ...interface{}) interface{} {
+	return &dominantFieldConflict{
+		key:  key,
+		vals: vals,
+	}
+}
+
+func (dfc *dominantFieldConflict) Error() string {
+	return fmt.Sprintf("there is a conflict with this attribute: %s", dfc.key)
+}
+
+func (dfc *dominantFieldConflict) Add(key string, val interface{}) {
+	dfc.key = key
+	if dfc.vals == nil {
+		dfc.vals = make([]interface{}, 0)
+	}
+	dfc.vals = append(dfc.vals, val)
 }
