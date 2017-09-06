@@ -8,6 +8,7 @@ const (
 	annotationAttribute = "attr"
 	annotationRelation  = "relation"
 	annotationOmitEmpty = "omitempty"
+	annotationReadOnly  = "readonly"
 	annotationISO8601   = "iso8601"
 	annotationSeperator = ","
 	annotationIgnore    = "-"

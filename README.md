@@ -142,23 +142,34 @@ Tag value arguments are comma separated.  The first argument must be,
 `primary`, and the second must be the name that should appear in the
 `type`\* field for all data objects that represent this type of model.
 
+If the optional argument `readonly` is present the id will not be set when
+using `Unmarshal` methods.
+
 \* According the [JSON API](http://jsonapi.org) spec, the plural record
 types are shown in the examples, but not required.
 
 #### `attr`
 
 ```
-`jsonapi:"attr,<key name in attributes hash>,<optional: omitempty>"`
+`jsonapi:"attr,<key name in attributes hash>,<optional: omitempty>,<optional: readonly>"`
 ```
 
-These fields' values will end up in the `attributes`hash for a record.
-The first argument must be, `attr`, and the second should be the name
-for the key to display in the `attributes` hash for that record. The optional
-third argument is `omitempty` - if it is present the field will not be present
-in the `"attributes"` if the field's value is equivalent to the field types
-empty value (ie if the `count` field is of type `int`, `omitempty` will omit the
-field when `count` has a value of `0`). Lastly, the spec indicates that
-`attributes` key names should be dasherized for multiple word field names.
+These fields' values will end up in the `attributes`hash for a record.  The
+first argument must be, `attr`, and the second should be the name for the key to
+display in the `attributes` hash for that record.
+
+If the optional argument `omitempty` is present the field will not be present in
+the `"attributes"` if the field's value is equivalent to the field types empty
+value (ie if the `count` field is of type `int`, `omitempty` will omit the field
+when `count` has a value of `0`).
+
+If the optional argument `readonly` is present the field will not be set when
+using `Unmarshal` methods. This is useful for performing PATCH operations when
+you unmarshal into an existing model to update the fields but don't want to
+allow server set fields to be overwritten such as `created_at`.
+
+Lastly, the spec indicates that `attributes` key names should be dasherized for
+multiple word field names.
 
 #### `relation`
 

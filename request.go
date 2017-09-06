@@ -263,6 +263,14 @@ func handlePrimaryUnmarshal(data *Node, args []string, fieldType reflect.StructF
 		)
 	}
 
+	if len(args) > 2 {
+		for _, arg := range args[2:] {
+			if arg == annotationReadOnly {
+				return nil
+			}
+		}
+	}
+
 	// Deal with PTRS
 	var kind reflect.Kind
 	if fieldValue.Kind() == reflect.Ptr {
@@ -430,14 +438,19 @@ func handleAttributeUnmarshal(data *Node, args []string, fieldType reflect.Struc
 		return nil
 	}
 
-	var iso8601 bool
-
+	var iso8601, readOnly bool
 	if len(args) > 2 {
 		for _, arg := range args[2:] {
 			if arg == annotationISO8601 {
 				iso8601 = true
+			} else if arg == annotationReadOnly {
+				readOnly = true
 			}
 		}
+	}
+
+	if readOnly {
+		return nil
 	}
 
 	val := attributes[args[1]]
