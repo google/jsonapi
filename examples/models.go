@@ -63,7 +63,7 @@ func (blog Blog) JSONAPIMeta() *jsonapi.Meta {
 	}
 }
 
-// JSONAPIRelationshipLinks implements the RelationshipMetable interface for a blog
+// JSONAPIRelationshipMeta implements the RelationshipMetable interface for a blog
 func (blog Blog) JSONAPIRelationshipMeta(relation string) *jsonapi.Meta {
 	if relation == "posts" {
 		return &jsonapi.Meta{
