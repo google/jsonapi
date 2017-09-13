@@ -290,9 +290,9 @@ func TestOmitsEmptyAnnotation(t *testing.T) {
 		t.Fatalf("Was expecting the data.attributes.pages key/value to have been omitted - it was not and had a value of %v", val)
 	}
 
-	// Verify the implicity omitted fields were omitted
+	// Verify the implicitly omitted fields were omitted
 	if val, exists := attributes["PublishedAt"]; exists {
-		t.Fatalf("Was expecting the data.attributes.PublishedAt key/value to have been implicity omitted - it was not and had a value of %v", val)
+		t.Fatalf("Was expecting the data.attributes.PublishedAt key/value to have been implicitly omitted - it was not and had a value of %v", val)
 	}
 
 	// Verify the unset fields were not omitted
@@ -326,7 +326,7 @@ func TestHasPrimaryAnnotation(t *testing.T) {
 	}
 
 	if data.ID != "5" {
-		t.Fatalf("ID not transfered")
+		t.Fatalf("ID not transferred")
 	}
 }
 
