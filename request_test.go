@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func TestUnmarshall_attrStringSlice(t *testing.T) {
+func TestUnmarshal_attrStringSlice(t *testing.T) {
 	out := &Book{}
 	tags := []string{"fiction", "sale"}
 	data := map[string]interface{}{
@@ -246,6 +246,89 @@ func TestUnmarshal_nonNumericID(t *testing.T) {
 			ErrBadJSONAPIID,
 			err,
 		)
+	}
+}
+
+func TestUnmarshal_CustomType(t *testing.T) {
+	// given
+	// register the custom `UUID` type
+	uuidType := reflect.TypeOf(UUID{})
+	RegisterType(uuidType,
+		func(value interface{}) (string, error) {
+			return value.(UUID).String(), nil
+		},
+		func(value string) (interface{}, error) {
+			result, err := UUIDFromString(value)
+			if err != nil {
+				fmt.Println("Error while converting from string to UUID: " + err.Error())
+				return nil, err
+			}
+			return *result, nil
+		})
+	in := sampleModelCustomType()
+	// when
+	out := new(ModelWithUUIDs)
+	if err := UnmarshalPayload(in, out); err != nil {
+		t.Fatal(err)
+	}
+	// then
+	if !out.ID.Equal(UUID{"12345678-abcd-1234-abcd-123456789012"}) {
+		t.Fatalf("Did not set ID on dst interface: '%v'", out.ID)
+	}
+	if !out.UUIDField.Equal(UUID{"87654321-dcba-4321-dcba-210987654321"}) {
+		t.Fatalf("Did not set UUIDField on dst interface: '%v'", out.UUIDField)
+	}
+	if !out.LatestRelatedModel.ID.Equal(UUID{"12345678-abcd-1234-abcd-111111111111"}) {
+		t.Fatalf("Did not set LatestRelatedModel.ID on dst interface: '%v'", out.LatestRelatedModel.ID)
+	}
+	if !out.LatestRelatedModel.UUIDField.Equal(UUID{"87654321-dcba-4321-dcba-111111111111"}) {
+		t.Fatalf("Did not set LatestRelatedModel.UUIDField on dst interface: '%v'", out.LatestRelatedModel.UUIDField)
+	}
+	if !out.RelatedModels[0].ID.Equal(UUID{"12345678-abcd-1234-abcd-222222222222"}) {
+		t.Fatalf("Did not set RelatedModels[0].ID on dst interface: '%v'", out.LatestRelatedModel.ID)
+	}
+	if !out.RelatedModels[0].UUIDField.Equal(UUID{"87654321-dcba-4321-dcba-222222222222"}) {
+		t.Fatalf("Did not set LatestRelatedModel.UUIDField on dst interface: '%v'", out.LatestRelatedModel.UUIDField)
+	}
+
+}
+
+func TestUnmarshal_CustomType_Ptr(t *testing.T) {
+	// given
+	// register the custom `*UUID` type
+	uuidType := reflect.TypeOf(&UUID{})
+	RegisterType(uuidType,
+		func(value interface{}) (string, error) {
+			result := value.(*UUID).String()
+			return result, nil
+		},
+		func(value string) (interface{}, error) {
+			return UUIDFromString(value)
+		})
+	in := sampleModelCustomTypeWithPtrs()
+	// when
+	out := new(ModelWithUUIDs)
+	if err := UnmarshalPayload(in, out); err != nil {
+		t.Fatal(err)
+	}
+	// then
+	if !out.ID.Equal(UUID{"12345678-abcd-1234-abcd-123456789012"}) {
+		t.Fatalf("Did not set ID on dst interface: '%v'", out.ID)
+	}
+	if !out.UUIDField.Equal(UUID{"87654321-dcba-4321-dcba-210987654321"}) {
+		t.Fatalf("Did not set UUIDField on dst interface: '%v'", out.UUIDField)
+	}
+	if !out.LatestRelatedModel.ID.Equal(UUID{"12345678-abcd-1234-abcd-111111111111"}) {
+		t.Fatalf("Did not set LatestRelatedModel.ID on dst interface: '%v'", out.LatestRelatedModel.ID)
+	}
+	if !out.LatestRelatedModel.UUIDField.Equal(UUID{"87654321-dcba-4321-dcba-111111111111"}) {
+		t.Fatalf("Did not set LatestRelatedModel.UUIDField on dst interface: '%v'", out.LatestRelatedModel.UUIDField)
+	}
+	if !out.RelatedModels[0].ID.Equal(UUID{"12345678-abcd-1234-abcd-222222222222"}) {
+		t.Fatalf("Did not set RelatedModels[0].ID on dst interface: '%v'", out.LatestRelatedModel.ID)
+	}
+	if !out.RelatedModels[0].UUIDField.Equal(UUID{"87654321-dcba-4321-dcba-222222222222"}) {
+		t.Fatalf("Did not set LatestRelatedModel.UUIDField on dst interface: '%v'", out.LatestRelatedModel.UUIDField)
 	}
 }
 
@@ -944,4 +1027,68 @@ func sampleSerializedEmbeddedTestModel() *Blog {
 	UnmarshalPayload(out, blog)
 
 	return blog
+}
+
+func sampleModelCustomType() io.Reader {
+	model := sampleModelCustomTypePayload()
+	out := bytes.NewBuffer(nil)
+	err := MarshalPayload(out, model)
+	if err != nil {
+		fmt.Printf("Marshalled Custom Type failed: %s\n", err.Error())
+	}
+	fmt.Printf("Marshalled Custom Type: %s\n", out.String())
+	return out
+}
+
+func sampleModelCustomTypePayload() *ModelWithUUIDs {
+	return &ModelWithUUIDs{
+		ID:        UUID{"12345678-abcd-1234-abcd-123456789012"},
+		UUIDField: UUID{"87654321-dcba-4321-dcba-210987654321"},
+		LatestRelatedModel: &RelatedModelWithUUIDs{
+			ID:        UUID{"12345678-abcd-1234-abcd-111111111111"},
+			UUIDField: UUID{"87654321-dcba-4321-dcba-111111111111"},
+		},
+		RelatedModels: []*RelatedModelWithUUIDs{
+			&RelatedModelWithUUIDs{
+				ID:        UUID{"12345678-abcd-1234-abcd-222222222222"},
+				UUIDField: UUID{"87654321-dcba-4321-dcba-222222222222"},
+			},
+			&RelatedModelWithUUIDs{
+				ID:        UUID{"12345678-abcd-1234-abcd-333333333333"},
+				UUIDField: UUID{"87654321-dcba-4321-dcba-333333333333"},
+			},
+		},
+	}
+}
+
+func sampleModelCustomTypeWithPtrs() io.Reader {
+	model := sampleModelCustomTypeWithPtrsPayload()
+	out := bytes.NewBuffer(nil)
+	err := MarshalPayload(out, model)
+	if err != nil {
+		fmt.Printf("Marshalled Custom Type failed: %s\n", err.Error())
+	}
+	fmt.Printf("Marshalled Custom Type (with pointers): '%s'\n", out.String())
+	return out
+}
+
+func sampleModelCustomTypeWithPtrsPayload() *ModelWithUUIDPtrs {
+	return &ModelWithUUIDPtrs{
+		ID:        &UUID{"12345678-abcd-1234-abcd-123456789012"},
+		UUIDField: &UUID{"87654321-dcba-4321-dcba-210987654321"},
+		LatestRelatedModel: &RelatedModelWithUUIDPtrs{
+			ID:        &UUID{"12345678-abcd-1234-abcd-111111111111"},
+			UUIDField: &UUID{"87654321-dcba-4321-dcba-111111111111"},
+		},
+		RelatedModels: []*RelatedModelWithUUIDPtrs{
+			&RelatedModelWithUUIDPtrs{
+				ID:        &UUID{"12345678-abcd-1234-abcd-222222222222"},
+				UUIDField: &UUID{"87654321-dcba-4321-dcba-222222222222"},
+			},
+			&RelatedModelWithUUIDPtrs{
+				ID:        &UUID{"12345678-abcd-1234-abcd-333333333333"},
+				UUIDField: &UUID{"87654321-dcba-4321-dcba-333333333333"},
+			},
+		},
+	}
 }

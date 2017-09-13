@@ -17,6 +17,44 @@ type ModelBadTypes struct {
 	TimePtrField *time.Time `jsonapi:"attr,time_ptr_field"`
 }
 
+type ModelWithUUIDs struct {
+	ID                 UUID                     `jsonapi:"primary,customtypes"`
+	UUIDField          UUID                     `jsonapi:"attr,uuid_field"`
+	LatestRelatedModel *RelatedModelWithUUIDs   `jsonapi:"relation,latest_relatedmodel"`
+	RelatedModels      []*RelatedModelWithUUIDs `jsonapi:"relation,relatedmodels"`
+}
+type RelatedModelWithUUIDs struct {
+	ID        UUID `jsonapi:"primary,relatedtypes"`
+	UUIDField UUID `jsonapi:"attr,uuid_field"`
+}
+
+type ModelWithUUIDPtrs struct {
+	ID                 *UUID                       `jsonapi:"primary,customtypes"`
+	UUIDField          *UUID                       `jsonapi:"attr,uuid_field"`
+	LatestRelatedModel *RelatedModelWithUUIDPtrs   `jsonapi:"relation,latest_relatedmodel"`
+	RelatedModels      []*RelatedModelWithUUIDPtrs `jsonapi:"relation,relatedmodels"`
+}
+
+type RelatedModelWithUUIDPtrs struct {
+	ID        *UUID `jsonapi:"primary,relatedtypes"`
+	UUIDField *UUID `jsonapi:"attr,uuid_field"`
+}
+
+type UUID struct {
+	string
+}
+
+func UUIDFromString(s string) (*UUID, error) {
+	return &UUID{s}, nil
+}
+func (u UUID) String() string {
+	return u.string
+}
+
+func (u UUID) Equal(other UUID) bool {
+	return u.string == other.string
+}
+
 type WithPointer struct {
 	ID       *uint64  `jsonapi:"primary,with-pointers"`
 	Name     *string  `jsonapi:"attr,name"`
