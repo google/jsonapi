@@ -1,9 +1,23 @@
 package jsonapi
 
 import (
+	"context"
 	"fmt"
 	"time"
 )
+
+type key int
+
+const (
+	keyBaseURL key = iota
+	// ...
+)
+
+var testCtx context.Context
+
+func init() {
+	testCtx = context.WithValue(context.Background(), keyBaseURL, "http://example.com")
+}
 
 type BadModel struct {
 	ID int `jsonapi:"primary"`
@@ -78,7 +92,7 @@ type Blog struct {
 	ViewCount     int       `jsonapi:"attr,view_count"`
 }
 
-func (b *Blog) JSONAPILinks() *Links {
+func (b *Blog) JSONAPILinks(ctx context.Context) *Links {
 	return &Links{
 		"self": fmt.Sprintf("https://example.com/api/blogs/%d", b.ID),
 		"comments": Link{
@@ -93,7 +107,7 @@ func (b *Blog) JSONAPILinks() *Links {
 	}
 }
 
-func (b *Blog) JSONAPIRelationshipLinks(relation string) *Links {
+func (b *Blog) JSONAPIRelationshipLinks(ctx context.Context, relation string) *Links {
 	if relation == "posts" {
 		return &Links{
 			"related": Link{
@@ -115,13 +129,13 @@ func (b *Blog) JSONAPIRelationshipLinks(relation string) *Links {
 	return nil
 }
 
-func (b *Blog) JSONAPIMeta() *Meta {
+func (b *Blog) JSONAPIMeta(ctx context.Context) *Meta {
 	return &Meta{
 		"detail": "extra details regarding the blog",
 	}
 }
 
-func (b *Blog) JSONAPIRelationshipMeta(relation string) *Meta {
+func (b *Blog) JSONAPIRelationshipMeta(ctx context.Context, relation string) *Meta {
 	if relation == "posts" {
 		return &Meta{
 			"this": map[string]interface{}{
@@ -150,7 +164,7 @@ type BadComment struct {
 	Body string `jsonapi:"attr,body"`
 }
 
-func (bc *BadComment) JSONAPILinks() *Links {
+func (bc *BadComment) JSONAPILinks(ctx context.Context) *Links {
 	return &Links{
 		"self": []string{"invalid", "should error"},
 	}

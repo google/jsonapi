@@ -1,6 +1,9 @@
 package jsonapi
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+)
 
 // Payloader is used to encapsulate the One and Many payload types
 type Payloader interface {
@@ -94,14 +97,14 @@ type Link struct {
 // Linkable is used to include document links in response data
 // e.g. {"self": "http://example.com/posts/1"}
 type Linkable interface {
-	JSONAPILinks() *Links
+	JSONAPILinks(ctx context.Context) *Links
 }
 
 // RelationshipLinkable is used to include relationship links  in response data
 // e.g. {"related": "http://example.com/posts/1/comments"}
 type RelationshipLinkable interface {
 	// JSONAPIRelationshipLinks will be invoked for each relationship with the corresponding relation name (e.g. `comments`)
-	JSONAPIRelationshipLinks(relation string) *Links
+	JSONAPIRelationshipLinks(ctx context.Context, relation string) *Links
 }
 
 // Meta is used to represent a `meta` object.
@@ -111,11 +114,11 @@ type Meta map[string]interface{}
 // Metable is used to include document meta in response data
 // e.g. {"foo": "bar"}
 type Metable interface {
-	JSONAPIMeta() *Meta
+	JSONAPIMeta(ctx context.Context) *Meta
 }
 
 // RelationshipMetable is used to include relationship meta in response data
 type RelationshipMetable interface {
 	// JSONRelationshipMeta will be invoked for each relationship with the corresponding relation name (e.g. `comments`)
-	JSONAPIRelationshipMeta(relation string) *Meta
+	JSONAPIRelationshipMeta(ctx context.Context, relation string) *Meta
 }

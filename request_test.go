@@ -2,6 +2,7 @@ package jsonapi
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -479,7 +480,7 @@ func TestUnmarshalRelationshipsSerializedEmbedded(t *testing.T) {
 
 func TestUnmarshalNestedRelationshipsEmbedded(t *testing.T) {
 	out := bytes.NewBuffer(nil)
-	if err := MarshalOnePayloadEmbedded(out, testModel()); err != nil {
+	if err := MarshalOnePayloadEmbedded(context.Background(), out, testModel()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -931,14 +932,14 @@ func samplePayloadWithSideloaded() io.Reader {
 	testModel := testModel()
 
 	out := bytes.NewBuffer(nil)
-	MarshalPayload(out, testModel)
+	MarshalPayload(testCtx, out, testModel)
 
 	return out
 }
 
 func sampleSerializedEmbeddedTestModel() *Blog {
 	out := bytes.NewBuffer(nil)
-	MarshalOnePayloadEmbedded(out, testModel())
+	MarshalOnePayloadEmbedded(context.Background(), out, testModel())
 
 	blog := new(Blog)
 	UnmarshalPayload(out, blog)

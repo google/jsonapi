@@ -2,3 +2,5 @@
 /pkg/
 /src/
 /.idea
+.vscode
+*.test

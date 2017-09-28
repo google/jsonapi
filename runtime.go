@@ -1,6 +1,7 @@
 package jsonapi
 
 import (
+	"context"
 	"crypto/rand"
 	"fmt"
 	"io"
@@ -60,9 +61,9 @@ func (r *Runtime) UnmarshalManyPayload(reader io.Reader, kind reflect.Type) (ele
 	return
 }
 
-func (r *Runtime) MarshalPayload(w io.Writer, model interface{}) error {
+func (r *Runtime) MarshalPayload(ctx context.Context, w io.Writer, model interface{}) error {
 	return r.instrumentCall(MarshalStart, MarshalStop, func() error {
-		return MarshalPayload(w, model)
+		return MarshalPayload(ctx, w, model)
 	})
 }
 

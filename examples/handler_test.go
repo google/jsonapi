@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -12,9 +13,9 @@ import (
 func TestExampleHandler_post(t *testing.T) {
 	blog := fixtureBlogCreate(1)
 	requestBody := bytes.NewBuffer(nil)
-	jsonapi.MarshalOnePayloadEmbedded(requestBody, blog)
+	jsonapi.MarshalOnePayloadEmbedded(context.Background(), requestBody, blog)
 
-	r, err := http.NewRequest(http.MethodPost, "/blogs?id=1", requestBody)
+	r, err := http.NewRequest(http.MethodPost, "https://example.com/blogs?id=1", requestBody)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,9 +37,9 @@ func TestExampleHandler_put(t *testing.T) {
 		fixtureBlogCreate(3),
 	}
 	requestBody := bytes.NewBuffer(nil)
-	jsonapi.MarshalPayload(requestBody, blogs)
+	jsonapi.MarshalPayload(context.Background(), requestBody, blogs)
 
-	r, err := http.NewRequest(http.MethodPut, "/blogs", requestBody)
+	r, err := http.NewRequest(http.MethodPut, "https://example.com/blogs", requestBody)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +55,7 @@ func TestExampleHandler_put(t *testing.T) {
 }
 
 func TestExampleHandler_get_show(t *testing.T) {
-	r, err := http.NewRequest(http.MethodGet, "/blogs?id=1", nil)
+	r, err := http.NewRequest(http.MethodGet, "https://example.com/blogs?id=1", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +71,7 @@ func TestExampleHandler_get_show(t *testing.T) {
 }
 
 func TestExampleHandler_get_list(t *testing.T) {
-	r, err := http.NewRequest(http.MethodGet, "/blogs", nil)
+	r, err := http.NewRequest(http.MethodGet, "https://example.com/blogs", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
