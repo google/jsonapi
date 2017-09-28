@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -77,7 +78,7 @@ func exerciseHandler() {
 	// create
 	blog := fixtureBlogCreate(1)
 	in := bytes.NewBuffer(nil)
-	jsonapi.MarshalOnePayloadEmbedded(in, blog)
+	jsonapi.MarshalOnePayloadEmbedded(context.Background(), in, blog)
 
 	req, _ = http.NewRequest(http.MethodPost, "/blogs", in)
 
@@ -103,7 +104,7 @@ func exerciseHandler() {
 		fixtureBlogCreate(3),
 	}
 	in = bytes.NewBuffer(nil)
-	jsonapi.MarshalPayload(in, blogs)
+	jsonapi.MarshalPayload(context.Background(), in, blogs)
 
 	req, _ = http.NewRequest(http.MethodPut, "/blogs", in)
 

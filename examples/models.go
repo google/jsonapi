@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/google/jsonapi"
@@ -35,36 +37,38 @@ type Comment struct {
 }
 
 // JSONAPILinks implements the Linkable interface for a blog
-func (blog Blog) JSONAPILinks() *jsonapi.Links {
+func (blog Blog) JSONAPILinks(ctx context.Context) *jsonapi.Links {
+	baseURI := baseURI(ctx)
 	return &jsonapi.Links{
-		"self": fmt.Sprintf("https://example.com/blogs/%d", blog.ID),
+		"self": fmt.Sprintf("%s/blogs/%d", baseURI, blog.ID),
 	}
 }
 
 // JSONAPIRelationshipLinks implements the RelationshipLinkable interface for a blog
-func (blog Blog) JSONAPIRelationshipLinks(relation string) *jsonapi.Links {
+func (blog Blog) JSONAPIRelationshipLinks(ctx context.Context, relation string) *jsonapi.Links {
+	baseURI := baseURI(ctx)
 	if relation == "posts" {
 		return &jsonapi.Links{
-			"related": fmt.Sprintf("https://example.com/blogs/%d/posts", blog.ID),
+			"related": fmt.Sprintf("%s/blogs/%d/posts", baseURI, blog.ID),
 		}
 	}
 	if relation == "current_post" {
 		return &jsonapi.Links{
-			"related": fmt.Sprintf("https://example.com/blogs/%d/current_post", blog.ID),
+			"related": fmt.Sprintf("%s/blogs/%d/current_post", baseURI, blog.ID),
 		}
 	}
 	return nil
 }
 
 // JSONAPIMeta implements the Metable interface for a blog
-func (blog Blog) JSONAPIMeta() *jsonapi.Meta {
+func (blog Blog) JSONAPIMeta(ctx context.Context) *jsonapi.Meta {
 	return &jsonapi.Meta{
 		"detail": "extra details regarding the blog",
 	}
 }
 
 // JSONAPIRelationshipMeta implements the RelationshipMetable interface for a blog
-func (blog Blog) JSONAPIRelationshipMeta(relation string) *jsonapi.Meta {
+func (blog Blog) JSONAPIRelationshipMeta(ctx context.Context, relation string) *jsonapi.Meta {
 	if relation == "posts" {
 		return &jsonapi.Meta{
 			"detail": "posts meta information",
@@ -76,4 +80,13 @@ func (blog Blog) JSONAPIRelationshipMeta(relation string) *jsonapi.Meta {
 		}
 	}
 	return nil
+}
+
+func baseURI(ctx context.Context) string {
+	requestURI, ok := ctx.Value(keyRequestURI).(string)
+	if !ok {
+		return ""
+	}
+	u, _ := url.Parse(requestURI)
+	return fmt.Sprintf("%s://%s", u.Scheme, u.Host)
 }

@@ -1,6 +1,7 @@
 package jsonapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -62,8 +63,8 @@ var (
 //		 }
 //	 }
 //
-func MarshalPayload(w io.Writer, models interface{}) error {
-	payload, err := Marshal(models)
+func MarshalPayload(ctx context.Context, w io.Writer, models interface{}) error {
+	payload, err := Marshal(ctx, models)
 	if err != nil {
 		return err
 	}
@@ -77,7 +78,7 @@ func MarshalPayload(w io.Writer, models interface{}) error {
 // Marshal does the same as MarshalPayload except it just returns the payload
 // and doesn't write out results. Useful if you use your own JSON rendering
 // library.
-func Marshal(models interface{}) (Payloader, error) {
+func Marshal(ctx context.Context, models interface{}) (Payloader, error) {
 	switch vals := reflect.ValueOf(models); vals.Kind() {
 	case reflect.Slice:
 		m, err := convertToSliceInterface(&models)
@@ -85,21 +86,21 @@ func Marshal(models interface{}) (Payloader, error) {
 			return nil, err
 		}
 
-		payload, err := marshalMany(m)
+		payload, err := marshalMany(ctx, m)
 		if err != nil {
 			return nil, err
 		}
 
 		if linkableModels, isLinkable := models.(Linkable); isLinkable {
-			jl := linkableModels.JSONAPILinks()
+			jl := linkableModels.JSONAPILinks(ctx)
 			if er := jl.validate(); er != nil {
 				return nil, er
 			}
-			payload.Links = linkableModels.JSONAPILinks()
+			payload.Links = linkableModels.JSONAPILinks(ctx)
 		}
 
 		if metableModels, ok := models.(Metable); ok {
-			payload.Meta = metableModels.JSONAPIMeta()
+			payload.Meta = metableModels.JSONAPIMeta(ctx)
 		}
 
 		return payload, nil
@@ -108,7 +109,7 @@ func Marshal(models interface{}) (Payloader, error) {
 		if reflect.Indirect(vals).Kind() != reflect.Struct {
 			return nil, ErrUnexpectedType
 		}
-		return marshalOne(models)
+		return marshalOne(ctx, models)
 	default:
 		return nil, ErrUnexpectedType
 	}
@@ -121,8 +122,8 @@ func Marshal(models interface{}) (Payloader, error) {
 //
 // models interface{} should be either a struct pointer or a slice of struct
 // pointers.
-func MarshalPayloadWithoutIncluded(w io.Writer, model interface{}) error {
-	payload, err := Marshal(model)
+func MarshalPayloadWithoutIncluded(ctx context.Context, w io.Writer, model interface{}) error {
+	payload, err := Marshal(ctx, model)
 	if err != nil {
 		return err
 	}
@@ -137,10 +138,10 @@ func MarshalPayloadWithoutIncluded(w io.Writer, model interface{}) error {
 // marshalOne does the same as MarshalOnePayload except it just returns the
 // payload and doesn't write out results. Useful is you use your JSON rendering
 // library.
-func marshalOne(model interface{}) (*OnePayload, error) {
+func marshalOne(ctx context.Context, model interface{}) (*OnePayload, error) {
 	included := make(map[string]*Node)
 
-	rootNode, err := visitModelNode(model, &included, true)
+	rootNode, err := visitModelNode(ctx, model, &included, true)
 	if err != nil {
 		return nil, err
 	}
@@ -154,14 +155,14 @@ func marshalOne(model interface{}) (*OnePayload, error) {
 // marshalMany does the same as MarshalManyPayload except it just returns the
 // payload and doesn't write out results. Useful is you use your JSON rendering
 // library.
-func marshalMany(models []interface{}) (*ManyPayload, error) {
+func marshalMany(ctx context.Context, models []interface{}) (*ManyPayload, error) {
 	payload := &ManyPayload{
 		Data: []*Node{},
 	}
 	included := map[string]*Node{}
 
 	for _, model := range models {
-		node, err := visitModelNode(model, &included, true)
+		node, err := visitModelNode(ctx, model, &included, true)
 		if err != nil {
 			return nil, err
 		}
@@ -187,8 +188,8 @@ func marshalMany(models []interface{}) (*ManyPayload, error) {
 // this method is intended for.
 //
 // model interface{} should be a pointer to a struct.
-func MarshalOnePayloadEmbedded(w io.Writer, model interface{}) error {
-	rootNode, err := visitModelNode(model, nil, false)
+func MarshalOnePayloadEmbedded(ctx context.Context, w io.Writer, model interface{}) error {
+	rootNode, err := visitModelNode(ctx, model, nil, false)
 	if err != nil {
 		return err
 	}
@@ -202,7 +203,7 @@ func MarshalOnePayloadEmbedded(w io.Writer, model interface{}) error {
 	return nil
 }
 
-func visitModelNode(model interface{}, included *map[string]*Node,
+func visitModelNode(ctx context.Context, model interface{}, included *map[string]*Node,
 	sideload bool) (*Node, error) {
 	node := new(Node)
 
@@ -373,17 +374,18 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 
 			var relLinks *Links
 			if linkableModel, ok := model.(RelationshipLinkable); ok {
-				relLinks = linkableModel.JSONAPIRelationshipLinks(args[1])
+				relLinks = linkableModel.JSONAPIRelationshipLinks(ctx, args[1])
 			}
 
 			var relMeta *Meta
 			if metableModel, ok := model.(RelationshipMetable); ok {
-				relMeta = metableModel.JSONAPIRelationshipMeta(args[1])
+				relMeta = metableModel.JSONAPIRelationshipMeta(ctx, args[1])
 			}
 
 			if isSlice {
 				// to-many relationship
 				relationship, err := visitModelNodeRelationships(
+					ctx,
 					fieldValue,
 					included,
 					sideload,
@@ -420,6 +422,7 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 				}
 
 				relationship, err := visitModelNode(
+					ctx,
 					fieldValue.Interface(),
 					included,
 					sideload,
@@ -456,15 +459,15 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 	}
 
 	if linkableModel, isLinkable := model.(Linkable); isLinkable {
-		jl := linkableModel.JSONAPILinks()
+		jl := linkableModel.JSONAPILinks(ctx)
 		if er := jl.validate(); er != nil {
 			return nil, er
 		}
-		node.Links = linkableModel.JSONAPILinks()
+		node.Links = linkableModel.JSONAPILinks(ctx)
 	}
 
 	if metableModel, ok := model.(Metable); ok {
-		node.Meta = metableModel.JSONAPIMeta()
+		node.Meta = metableModel.JSONAPIMeta(ctx)
 	}
 
 	return node, nil
@@ -477,14 +480,14 @@ func toShallowNode(node *Node) *Node {
 	}
 }
 
-func visitModelNodeRelationships(models reflect.Value, included *map[string]*Node,
+func visitModelNodeRelationships(ctx context.Context, models reflect.Value, included *map[string]*Node,
 	sideload bool) (*RelationshipManyNode, error) {
 	nodes := []*Node{}
 
 	for i := 0; i < models.Len(); i++ {
 		n := models.Index(i).Interface()
 
-		node, err := visitModelNode(n, included, sideload)
+		node, err := visitModelNode(ctx, n, included, sideload)
 		if err != nil {
 			return nil, err
 		}

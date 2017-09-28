@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 
@@ -10,6 +11,12 @@ import (
 const (
 	headerAccept      = "Accept"
 	headerContentType = "Content-Type"
+)
+
+type contextKey int
+
+const (
+	keyRequestURI contextKey = iota
 )
 
 // ExampleHandler is the handler we are using to demonstrate building an HTTP
@@ -55,8 +62,8 @@ func (h *ExampleHandler) createBlog(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Set(headerContentType, jsonapi.MediaType)
-
-	if err := jsonapiRuntime.MarshalPayload(w, blog); err != nil {
+	ctx := context.WithValue(r.Context(), keyRequestURI, r.RequestURI)
+	if err := jsonapiRuntime.MarshalPayload(ctx, w, blog); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -70,7 +77,8 @@ func (h *ExampleHandler) echoBlogs(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set(headerContentType, jsonapi.MediaType)
-	if err := jsonapiRuntime.MarshalPayload(w, blogs); err != nil {
+	ctx := context.WithValue(r.Context(), keyRequestURI, r.RequestURI)
+	if err := jsonapiRuntime.MarshalPayload(ctx, w, blogs); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -93,7 +101,8 @@ func (h *ExampleHandler) showBlog(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	w.Header().Set(headerContentType, jsonapi.MediaType)
-	if err := jsonapiRuntime.MarshalPayload(w, blog); err != nil {
+	ctx := context.WithValue(r.Context(), keyRequestURI, r.RequestURI)
+	if err := jsonapiRuntime.MarshalPayload(ctx, w, blog); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -107,8 +116,8 @@ func (h *ExampleHandler) listBlogs(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", jsonapi.MediaType)
 	w.WriteHeader(http.StatusOK)
-
-	if err := jsonapiRuntime.MarshalPayload(w, blogs); err != nil {
+	ctx := context.WithValue(r.Context(), keyRequestURI, r.RequestURI)
+	if err := jsonapiRuntime.MarshalPayload(ctx, w, blogs); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
