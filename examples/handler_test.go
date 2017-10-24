@@ -100,3 +100,19 @@ func TestHttpErrorWhenHeaderDoesNotMatch(t *testing.T) {
 		t.Fatal("expected Unsupported Media Type staus error")
 	}
 }
+
+func TestHttpErrorWhenMethodDoesNotMatch(t *testing.T) {
+	r, err := http.NewRequest(http.MethodPatch, "/blogs", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.Header.Set(headerAccept, jsonapi.MediaType)
+
+	rr := httptest.NewRecorder()
+	handler := &ExampleHandler{}
+	handler.ServeHTTP(rr, r)
+
+	if rr.Code != http.StatusNotFound {
+		t.Fatal("expected HTTP Status Not Found status error")
+	}
+}
