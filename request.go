@@ -32,6 +32,9 @@ var (
 	ErrUnsupportedPtrType = errors.New("Pointer type in struct is not supported")
 	// ErrInvalidType is returned when the given type is incompatible with the expected type.
 	ErrInvalidType = errors.New("Invalid type provided") // I wish we used punctuation.
+	// ErrInvalidNumberString is returned when the JSON value was a string, but
+	// could not be parsed as a number.
+	ErrInvalidNumberString = errors.New("The string value could not be parsed as a number")
 )
 
 // UnmarshalPayload converts an io into a struct instance using jsonapi tags on
@@ -248,12 +251,15 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				continue
 			}
 
-			var iso8601 bool
+			var iso8601, str bool
 
 			if len(args) > 2 {
 				for _, arg := range args[2:] {
-					if arg == annotationISO8601 {
+					switch arg {
+					case annotationISO8601:
 						iso8601 = true
+					case annotationString:
+						str = true
 					}
 				}
 			}
@@ -414,6 +420,40 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 					return ErrUnknownFieldNumberType
 				}
 
+				assign(fieldValue, numericValue)
+				continue
+			}
+
+			// We have a string and there is a `string` struct tag on the model we're
+			// unmarshalling.
+			if str && v.Kind() == reflect.String {
+				var numericValue reflect.Value
+
+				stringVal := v.Interface().(string)
+
+				// The field may or may not be a pointer to a numeric; the kind var
+				// will not contain a pointer type
+				var kind reflect.Kind
+				if fieldValue.Kind() == reflect.Ptr {
+					kind = fieldType.Type.Elem().Kind()
+				} else {
+					kind = fieldType.Type.Kind()
+				}
+
+				switch kind {
+				case reflect.Int64:
+					n, err := strconv.ParseInt(stringVal, 10, 64)
+					if err != nil {
+						return ErrInvalidNumberString
+					}
+					numericValue = reflect.ValueOf(&n)
+				case reflect.Int:
+					n, err := strconv.Atoi(stringVal)
+					if err != nil {
+						return ErrInvalidNumberString
+					}
+					numericValue = reflect.ValueOf(&n)
+				}
 				assign(fieldValue, numericValue)
 				continue
 			}

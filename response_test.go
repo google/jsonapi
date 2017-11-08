@@ -413,6 +413,47 @@ func TestMarshalISO8601Time(t *testing.T) {
 	}
 }
 
+func TestMarshalIntString(t *testing.T) {
+	optParentID := 2
+	optBigParentID := int64(1362085645204177151)
+	testModel := &StringInt{
+		ID:             5,
+		ParentID:       1,
+		OptParentID:    &optParentID,
+		BigParentID:    1362085645204177151,
+		OptBigParentID: &optBigParentID,
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalPayload(out, testModel); err != nil {
+		t.Fatal(err)
+	}
+
+	resp := new(OnePayload)
+	if err := json.NewDecoder(out).Decode(resp); err != nil {
+		t.Fatal(err)
+	}
+
+	data := resp.Data
+
+	if data.Attributes == nil {
+		t.Fatalf("Expected attributes")
+	}
+
+	if data.Attributes["parent-id"] != "1" {
+		t.Fatal("ParentID was not serialised as a string correctly")
+	}
+	if data.Attributes["opt-parent-id"] != "2" {
+		t.Fatal("OptParentID was not serialised as a string correctly")
+	}
+	if data.Attributes["big-parent-id"] != "1362085645204177151" {
+		t.Fatal("BigParentID was not serialised as a string correctly")
+	}
+	if data.Attributes["opt-big-parent-id"] != "1362085645204177151" {
+		t.Fatal("OptBigParentID was not serialised as a string correctly")
+	}
+}
+
 func TestMarshalISO8601TimePointer(t *testing.T) {
 	tm := time.Date(2016, 8, 17, 8, 27, 12, 23849, time.UTC)
 	testModel := &Timestamp{
