@@ -326,6 +326,28 @@ func TestUnmarshalParsesStringInts(t *testing.T) {
 	}
 }
 
+func TestUnmarshalParsesStringIntInvalidInputs(t *testing.T) {
+	payload := &OnePayload{
+		Data: &Node{
+			Type: "string-ints",
+			Attributes: map[string]interface{}{
+				"parent-id":     "one",
+				"opt-parent-id": "Lorem ipsum",
+			},
+		},
+	}
+
+	in := bytes.NewBuffer(nil)
+	json.NewEncoder(in).Encode(payload)
+
+	out := new(StringInt)
+	err := UnmarshalPayload(in, out)
+
+	if err == nil || err != ErrInvalidNumberString {
+		t.Fatal("Parsing did not give the proper error message for an invalid string")
+	}
+}
+
 func TestUnmarshalParsesISO8601TimePointer(t *testing.T) {
 	payload := &OnePayload{
 		Data: &Node{
