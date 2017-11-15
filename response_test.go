@@ -199,16 +199,27 @@ func TestWithOmitsEmptyAnnotationOnAttribute(t *testing.T) {
 		Number string `json:"number"`
 	}
 
+	type Address struct {
+		City   string `json:"city"`
+		Street string `json:"street"`
+	}
+
+	type Tags map[string]int
+
 	type Author struct {
-		ID     int      `jsonapi:"primary,authors"`
-		Name   string   `jsonapi:"attr,title"`
-		Phones []*Phone `jsonapi:"attr,phones,omitempty"`
+		ID      int      `jsonapi:"primary,authors"`
+		Name    string   `jsonapi:"attr,title"`
+		Phones  []*Phone `jsonapi:"attr,phones,omitempty"`
+		Address *Address `jsonapi:"attr,address,omitempty"`
+		Tags    Tags     `jsonapi:"attr,tags,omitempty"`
 	}
 
 	author := &Author{
-		ID:     999,
-		Name:   "Igor",
-		Phones: nil,
+		ID:      999,
+		Name:    "Igor",
+		Phones:  nil,                        // should be omitted
+		Address: nil,                        // should be omitted
+		Tags:    Tags{"dogs": 1, "cats": 2}, // should not be omitted
 	}
 
 	out := bytes.NewBuffer(nil)
@@ -229,6 +240,12 @@ func TestWithOmitsEmptyAnnotationOnAttribute(t *testing.T) {
 	}
 	if _, ok := attributes["phones"]; ok {
 		t.Fatal("Was expecting the data.attributes.phones to have been omitted")
+	}
+	if _, ok := attributes["address"]; ok {
+		t.Fatal("Was expecting the data.attributes.phones to have been omitted")
+	}
+	if _, ok := attributes["tags"]; !ok {
+		t.Fatal("Was expecting the data.attributes.tags to have NOT been omitted")
 	}
 }
 
