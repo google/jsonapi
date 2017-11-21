@@ -11,7 +11,7 @@ import (
 
 func TestMarshalPayload(t *testing.T) {
 	book := &Book{ID: 1}
-	books := []*Book{book, &Book{ID: 2}}
+	books := []*Book{book, {ID: 2}}
 	var jsonData map[string]interface{}
 
 	// One
@@ -290,9 +290,9 @@ func TestOmitsEmptyAnnotation(t *testing.T) {
 		t.Fatalf("Was expecting the data.attributes.pages key/value to have been omitted - it was not and had a value of %v", val)
 	}
 
-	// Verify the implicity omitted fields were omitted
+	// Verify the implicitly omitted fields were omitted
 	if val, exists := attributes["PublishedAt"]; exists {
-		t.Fatalf("Was expecting the data.attributes.PublishedAt key/value to have been implicity omitted - it was not and had a value of %v", val)
+		t.Fatalf("Was expecting the data.attributes.PublishedAt key/value to have been implicitly omitted - it was not and had a value of %v", val)
 	}
 
 	// Verify the unset fields were not omitted
@@ -326,7 +326,7 @@ func TestHasPrimaryAnnotation(t *testing.T) {
 	}
 
 	if data.ID != "5" {
-		t.Fatalf("ID not transfered")
+		t.Fatalf("ID not transferred")
 	}
 }
 
@@ -623,11 +623,11 @@ func TestMarshalPayloadWithoutIncluded(t *testing.T) {
 		Title:    "Foo",
 		Body:     "Bar",
 		Comments: []*Comment{
-			&Comment{
+			{
 				ID:   20,
 				Body: "First",
 			},
-			&Comment{
+			{
 				ID:   21,
 				Body: "Hello World",
 			},
@@ -660,12 +660,12 @@ func TestMarshalPayload_many(t *testing.T) {
 			Title:     "Title 1",
 			CreatedAt: time.Now(),
 			Posts: []*Post{
-				&Post{
+				{
 					ID:    1,
 					Title: "Foo",
 					Body:  "Bar",
 				},
-				&Post{
+				{
 					ID:    2,
 					Title: "Fuubar",
 					Body:  "Bas",
@@ -682,12 +682,12 @@ func TestMarshalPayload_many(t *testing.T) {
 			Title:     "Title 2",
 			CreatedAt: time.Now(),
 			Posts: []*Post{
-				&Post{
+				{
 					ID:    3,
 					Title: "Foo",
 					Body:  "Bar",
 				},
-				&Post{
+				{
 					ID:    4,
 					Title: "Fuubar",
 					Body:  "Bas",
@@ -770,8 +770,8 @@ func TestMarshalManyWithoutIncluded(t *testing.T) {
 
 func TestMarshalMany_SliceOfInterfaceAndSliceOfStructsSameJSON(t *testing.T) {
 	structs := []*Book{
-		&Book{ID: 1, Author: "aren55555", ISBN: "abc"},
-		&Book{ID: 2, Author: "shwoodard", ISBN: "xyz"},
+		{ID: 1, Author: "aren55555", ISBN: "abc"},
+		{ID: 2, Author: "shwoodard", ISBN: "xyz"},
 	}
 	interfaces := []interface{}{}
 	for _, s := range structs {
@@ -823,16 +823,16 @@ func testBlog() *Blog {
 		Title:     "Title 1",
 		CreatedAt: time.Now(),
 		Posts: []*Post{
-			&Post{
+			{
 				ID:    1,
 				Title: "Foo",
 				Body:  "Bar",
 				Comments: []*Comment{
-					&Comment{
+					{
 						ID:   1,
 						Body: "foo",
 					},
-					&Comment{
+					{
 						ID:   2,
 						Body: "bar",
 					},
@@ -842,16 +842,16 @@ func testBlog() *Blog {
 					Body: "foo",
 				},
 			},
-			&Post{
+			{
 				ID:    2,
 				Title: "Fuubar",
 				Body:  "Bas",
 				Comments: []*Comment{
-					&Comment{
+					{
 						ID:   1,
 						Body: "foo",
 					},
-					&Comment{
+					{
 						ID:   3,
 						Body: "bas",
 					},
@@ -867,11 +867,11 @@ func testBlog() *Blog {
 			Title: "Foo",
 			Body:  "Bar",
 			Comments: []*Comment{
-				&Comment{
+				{
 					ID:   1,
 					Body: "foo",
 				},
-				&Comment{
+				{
 					ID:   2,
 					Body: "bar",
 				},
