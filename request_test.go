@@ -987,7 +987,7 @@ func TestUnmarshalNestedStruct(t *testing.T) {
 	}
 
 	if out.Boss.HiredAt.IsZero() {
-		t.Fatalf("expected out.Boss.HiredAt to be zero, but got `%d`", out.Boss.HiredAt)
+		t.Fatalf("expected out.Boss.HiredAt to be zero, but got `%t`", out.Boss.HiredAt.IsZero())
 	}
 }
 
