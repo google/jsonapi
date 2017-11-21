@@ -979,15 +979,15 @@ func TestUnmarshalNestedStruct(t *testing.T) {
 	}
 
 	if out.Boss.Firstname != "Hubert" {
-		t.Fatalf("Nested struct was not unmarshalled")
+		t.Fatalf("expected `Hubert` at out.Boss.Firstname, but got `%s`", out.Boss.Firstname)
 	}
 
 	if out.Boss.Age != 176 {
-		t.Fatalf("Nested struct was not unmarshalled")
+		t.Fatalf("expected `176` at out.Boss.Age, but got `%d`", out.Boss.Age)
 	}
 
 	if out.Boss.HiredAt.IsZero() {
-		t.Fatalf("Nested struct was not unmarshalled")
+		t.Fatalf("expected out.Boss.HiredAt to be zero, but got `%d`", out.Boss.HiredAt)
 	}
 }
 
@@ -1040,14 +1040,16 @@ func TestUnmarshalNestedStructSlice(t *testing.T) {
 	}
 
 	if out.Teams[0].Name != "Delivery Crew" {
-		t.Fatalf("Nested struct Team was not unmarshalled")
+		t.Fatalf("Nested struct not unmarshalled: Expected `Delivery Crew` but got `%s`", out.Teams[0].Name)
 	}
 
 	if len(out.Teams[0].Members) != 2 {
-		t.Fatalf("Nested struct Members were not unmarshalled")
+		t.Fatalf("Nested struct not unmarshalled: Expected to have `2` Members but got `%d`",
+			len(out.Teams[0].Members))
 	}
 
 	if out.Teams[0].Members[0].Firstname != "Philip J." {
-		t.Fatalf("Nested struct member was not unmarshalled")
+		t.Fatalf("Nested struct not unmarshalled: Expected `Philip J.` but got `%s`",
+			out.Teams[0].Members[0].Firstname)
 	}
 }
