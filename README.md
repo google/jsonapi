@@ -76,7 +76,7 @@ all of your data easily.
 
 [examples/app.go](https://github.com/google/jsonapi/blob/master/examples/app.go)
 
-This runnable file demonstrates the implementation of a create, a show,
+This program demonstrates the implementation of a create, a show,
 and a list [http.Handler](http://golang.org/pkg/net/http#Handler).  It
 outputs some example requests and responses as well as serialized
 examples of the source/target structs to json.  That is to say, I show
@@ -85,13 +85,13 @@ turned it into your struct types.
 
 To run,
 
-* Make sure you have go installed
+* Make sure you have [Go installed](https://golang.org/doc/install)
 * Create the following directories or similar: `~/go`
 * Set `GOPATH` to `PWD` in your shell session, `export GOPATH=$PWD`
 * `go get github.com/google/jsonapi`.  (Append `-u` after `get` if you
   are updating.)
-* `go run $GOPATH/src/github.com/google/jsonapi/examples/app.go` or `cd
-  $GOPATH/src/github.com/google/jsonapi/examples && go run app.go`
+* `cd $GOPATH/src/github.com/google/jsonapi/examples`
+* `go build && ./examples`
 
 ## `jsonapi` Tag Reference
 
