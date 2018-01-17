@@ -34,9 +34,14 @@ var (
 // ErrUnsupportedPtrType is returned when the Struct field was a pointer but
 // the JSON value was of a different type
 func ErrUnsupportedPtrType(rf reflect.Value, f reflect.StructField) error {
+	typeName := f.Type.Elem().Name()
+	kind := f.Type.Elem().Kind()
+	if kind.String() != "" && kind.String() != typeName {
+		typeName = fmt.Sprintf("%s (%s)", typeName, kind.String())
+	}
 	return fmt.Errorf(
-		"[jsonapi unmarshalNode]: Can't unmarshal %+v (%s) to struct field `%s`, which is a pointer to `%s` (%s), which is not a supported type",
-		rf, rf.Type().Name(), f.Name, f.Type.Elem().Name(), f.Type.Elem().Kind(),
+		"[jsonapi]: Can't unmarshal %+v (%s) to struct field `%s`, which is a pointer to `%s`, which is not a supported type",
+		rf, rf.Type().Name(), f.Name, typeName,
 	)
 }
 
