@@ -542,6 +542,10 @@ func handlePointer(attribute interface{}, args []string, fieldType reflect.Type,
 		concreteVal = reflect.ValueOf(&cVal)
 	case uintptr:
 		concreteVal = reflect.ValueOf(&cVal)
+	case map[string]interface{}:
+		var err error
+		concreteVal, err = handleStruct(attribute, args, fieldType, fieldValue)
+		return concreteVal.Elem(), err
 	default:
 		return reflect.Value{}, ErrUnsupportedPtrType
 	}
