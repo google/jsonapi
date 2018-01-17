@@ -963,6 +963,24 @@ func TestUnmarshalNestedStruct(t *testing.T) {
 				"name":       "Planet Express",
 				"boss":       boss,
 				"founded-at": "2016-08-17T08:27:12Z",
+				"teams": []Team{
+					Team{
+						Name: "Dev",
+						Members: []Employee{
+							Employee{Firstname: "Sean"},
+							Employee{Firstname: "Iz"},
+						},
+						Leader: &Employee{Firstname: "Iz"},
+					},
+					Team{
+						Name: "DxE",
+						Members: []Employee{
+							Employee{Firstname: "Akshay"},
+							Employee{Firstname: "Peri"},
+						},
+						Leader: &Employee{Firstname: "Peri"},
+					},
+				},
 			},
 		},
 	}
@@ -988,6 +1006,50 @@ func TestUnmarshalNestedStruct(t *testing.T) {
 
 	if out.Boss.HiredAt.IsZero() {
 		t.Fatalf("expected out.Boss.HiredAt to be zero, but got `%t`", out.Boss.HiredAt.IsZero())
+	}
+
+	if len(out.Teams) != 2 {
+		t.Fatalf("expected len(out.Teams) to be 2, but got `%d`", len(out.Teams))
+	}
+
+	if out.Teams[0].Name != "Dev" {
+		t.Fatalf("expected out.Teams[0].Name to be `Dev`, but got `%s`", out.Teams[0].Name)
+	}
+
+	if out.Teams[1].Name != "DxE" {
+		t.Fatalf("expected out.Teams[1].Name to be `DxE`, but got `%s`", out.Teams[1].Name)
+	}
+
+	if len(out.Teams[0].Members) != 2 {
+		t.Fatalf("expected len(out.Teams[0].Members) to be 2, but got `%d`", len(out.Teams[0].Members))
+	}
+
+	if len(out.Teams[1].Members) != 2 {
+		t.Fatalf("expected len(out.Teams[1].Members) to be 2, but got `%d`", len(out.Teams[1].Members))
+	}
+
+	if out.Teams[0].Members[0].Firstname != "Sean" {
+		t.Fatalf("expected out.Teams[0].Members[0].Firstname to be `Sean`, but got `%s`", out.Teams[0].Members[0].Firstname)
+	}
+
+	if out.Teams[0].Members[1].Firstname != "Iz" {
+		t.Fatalf("expected out.Teams[0].Members[1].Firstname to be `Iz`, but got `%s`", out.Teams[0].Members[1].Firstname)
+	}
+
+	if out.Teams[1].Members[0].Firstname != "Akshay" {
+		t.Fatalf("expected out.Teams[1].Members[0].Firstname to be `Akshay`, but got `%s`", out.Teams[1].Members[0].Firstname)
+	}
+
+	if out.Teams[1].Members[1].Firstname != "Peri" {
+		t.Fatalf("expected out.Teams[1].Members[1].Firstname to be `Peri`, but got `%s`", out.Teams[1].Members[1].Firstname)
+	}
+
+	if out.Teams[0].Leader.Firstname != "Iz" {
+		t.Fatalf("expected out.Teams[0].Leader.Firstname to be `Iz`, but got `%s`", out.Teams[0].Leader.Firstname)
+	}
+
+	if out.Teams[1].Leader.Firstname != "Peri" {
+		t.Fatalf("expected out.Teams[1].Leader.Firstname to be `Peri`, but got `%s`", out.Teams[1].Leader.Firstname)
 	}
 }
 
