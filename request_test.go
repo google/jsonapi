@@ -126,7 +126,7 @@ func TestUnmarshalToStructWithPointerAttr_BadType(t *testing.T) {
 	in := map[string]interface{}{
 		"name": true, // This is the wrong type.
 	}
-	expectedErrorMessage := ErrUnsupportedPtrType("*string").Error()
+	expectedErrorMessage := "[jsonapi unmarshalNode]: Can't unmarshal true (bool) to struct field `Name`, which is a pointer to `string` (string), which is not a supported type"
 
 	err := UnmarshalPayload(sampleWithPointerPayload(in), out)
 

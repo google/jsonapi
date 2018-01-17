@@ -33,8 +33,11 @@ var (
 
 // ErrUnsupportedPtrType is returned when the Struct field was a pointer but
 // the JSON value was of a different type
-func ErrUnsupportedPtrType(t interface{}) error {
-	return fmt.Errorf("Pointer (%s) in struct is not supported", t)
+func ErrUnsupportedPtrType(rf reflect.Value, f reflect.StructField) error {
+	return fmt.Errorf(
+		"[jsonapi unmarshalNode]: Can't unmarshal %+v (%s) to struct field `%s`, which is a pointer to `%s` (%s), which is not a supported type",
+		rf, rf.Type().Name(), f.Name, f.Type.Elem().Name(), f.Type.Elem().Kind(),
+	)
 }
 
 // UnmarshalPayload converts an io into a struct instance using jsonapi tags on
@@ -424,7 +427,6 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			// Field was a Pointer type
 			if fieldValue.Kind() == reflect.Ptr {
 				var concreteVal reflect.Value
-
 				switch cVal := val.(type) {
 				case string:
 					concreteVal = reflect.ValueOf(&cVal)
@@ -437,11 +439,11 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				case uintptr:
 					concreteVal = reflect.ValueOf(&cVal)
 				default:
-					return ErrUnsupportedPtrType(cVal)
+					return ErrUnsupportedPtrType(reflect.ValueOf(val), fieldType)
 				}
 
 				if fieldValue.Type() != concreteVal.Type() {
-					return ErrUnsupportedPtrType(fieldValue.Type())
+					return ErrUnsupportedPtrType(reflect.ValueOf(val), fieldType)
 				}
 
 				fieldValue.Set(concreteVal)
