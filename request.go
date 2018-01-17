@@ -27,12 +27,23 @@ var (
 	// (numeric) but the Struct field was a non numeric type (i.e. not int, uint,
 	// float, etc)
 	ErrUnknownFieldNumberType = errors.New("The struct field was not of a known number type")
-	// ErrUnsupportedPtrType is returned when the Struct field was a pointer but
-	// the JSON value was of a different type
-	ErrUnsupportedPtrType = errors.New("Pointer type in struct is not supported")
 	// ErrInvalidType is returned when the given type is incompatible with the expected type.
 	ErrInvalidType = errors.New("Invalid type provided") // I wish we used punctuation.
 )
+
+// ErrUnsupportedPtrType is returned when the Struct field was a pointer but
+// the JSON value was of a different type
+func ErrUnsupportedPtrType(rf reflect.Value, t reflect.Type, structField reflect.StructField) error {
+	typeName := t.Elem().Name()
+	kind := t.Elem().Kind()
+	if kind.String() != "" && kind.String() != typeName {
+		typeName = fmt.Sprintf("%s (%s)", typeName, kind.String())
+	}
+	return fmt.Errorf(
+		"jsonapi: Can't unmarshal %+v (%s) to struct field `%s`, which is a pointer to `%s`",
+		rf, rf.Type().Kind(), structField.Name, typeName,
+	)
+}
 
 // UnmarshalPayload converts an io into a struct instance using jsonapi tags on
 // struct fields. This method supports single request payloads only, at the
@@ -256,7 +267,8 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				continue
 			}
 
-			value, err := unmarshalAttribute(attribute, args, fieldType.Type, fieldValue)
+			structField := fieldType
+			value, err := unmarshalAttribute(attribute, args, structField, fieldValue)
 			if err != nil {
 				er = err
 				break
@@ -363,9 +375,10 @@ func assign(field, value reflect.Value) {
 	}
 }
 
-func unmarshalAttribute(attribute interface{}, args []string, fieldType reflect.Type, fieldValue reflect.Value) (value reflect.Value, err error) {
+func unmarshalAttribute(attribute interface{}, args []string, structField reflect.StructField, fieldValue reflect.Value) (value reflect.Value, err error) {
 
 	value = reflect.ValueOf(attribute)
+	fieldType := structField.Type
 
 	// Handle field of type []string
 	if fieldValue.Type() == reflect.TypeOf([]string{}) {
@@ -399,7 +412,7 @@ func unmarshalAttribute(attribute interface{}, args []string, fieldType reflect.
 
 	// Field was a Pointer type
 	if fieldValue.Kind() == reflect.Ptr {
-		value, err = handlePointer(attribute, args, fieldType, fieldValue)
+		value, err = handlePointer(attribute, args, fieldType, fieldValue, structField)
 		return
 	}
 
@@ -527,7 +540,7 @@ func handleNumeric(attribute interface{}, args []string, fieldType reflect.Type,
 	return numericValue, nil
 }
 
-func handlePointer(attribute interface{}, args []string, fieldType reflect.Type, fieldValue reflect.Value) (reflect.Value, error) {
+func handlePointer(attribute interface{}, args []string, fieldType reflect.Type, fieldValue reflect.Value, structField reflect.StructField) (reflect.Value, error) {
 	t := fieldValue.Type()
 	var concreteVal reflect.Value
 
@@ -543,11 +556,11 @@ func handlePointer(attribute interface{}, args []string, fieldType reflect.Type,
 	case uintptr:
 		concreteVal = reflect.ValueOf(&cVal)
 	default:
-		return reflect.Value{}, ErrUnsupportedPtrType
+		return reflect.Value{}, ErrUnsupportedPtrType(reflect.ValueOf(attribute), fieldType, structField)
 	}
 
 	if t != concreteVal.Type() {
-		return reflect.Value{}, ErrUnsupportedPtrType
+		return reflect.Value{}, ErrUnsupportedPtrType(reflect.ValueOf(attribute), fieldType, structField)
 	}
 
 	return concreteVal, nil

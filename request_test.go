@@ -121,12 +121,65 @@ func TestUnmarshalPayloadWithPointerAttr_AbsentVal(t *testing.T) {
 	}
 }
 
-func TestUnmarshalToStructWithPointerAttr_BadType(t *testing.T) {
+func TestUnmarshalToStructWithPointerAttr_BadType_bool(t *testing.T) {
 	out := new(WithPointer)
 	in := map[string]interface{}{
 		"name": true, // This is the wrong type.
 	}
-	expectedErrorMessage := ErrUnsupportedPtrType.Error()
+	expectedErrorMessage := "jsonapi: Can't unmarshal true (bool) to struct field `Name`, which is a pointer to `string`"
+
+	err := UnmarshalPayload(sampleWithPointerPayload(in), out)
+
+	if err == nil {
+		t.Fatalf("Expected error due to invalid type.")
+	}
+	if err.Error() != expectedErrorMessage {
+		t.Fatalf("Unexpected error message: %s", err.Error())
+	}
+}
+
+func TestUnmarshalToStructWithPointerAttr_BadType_MapPtr(t *testing.T) {
+	out := new(WithPointer)
+	in := map[string]interface{}{
+		"name": &map[string]interface{}{"a": 5}, // This is the wrong type.
+	}
+	expectedErrorMessage := "jsonapi: Can't unmarshal map[a:5] (map) to struct field `Name`, which is a pointer to `string`"
+
+	err := UnmarshalPayload(sampleWithPointerPayload(in), out)
+
+	if err == nil {
+		t.Fatalf("Expected error due to invalid type.")
+	}
+	if err.Error() != expectedErrorMessage {
+		t.Fatalf("Unexpected error message: %s", err.Error())
+	}
+}
+
+func TestUnmarshalToStructWithPointerAttr_BadType_Struct(t *testing.T) {
+	out := new(WithPointer)
+	type FooStruct struct{ A int }
+	in := map[string]interface{}{
+		"name": FooStruct{A: 5}, // This is the wrong type.
+	}
+	expectedErrorMessage := "jsonapi: Can't unmarshal map[A:5] (map) to struct field `Name`, which is a pointer to `string`"
+
+	err := UnmarshalPayload(sampleWithPointerPayload(in), out)
+
+	if err == nil {
+		t.Fatalf("Expected error due to invalid type.")
+	}
+	if err.Error() != expectedErrorMessage {
+		t.Fatalf("Unexpected error message: %s", err.Error())
+	}
+}
+
+func TestUnmarshalToStructWithPointerAttr_BadType_IntSlice(t *testing.T) {
+	out := new(WithPointer)
+	type FooStruct struct{ A, B int }
+	in := map[string]interface{}{
+		"name": []int{4, 5}, // This is the wrong type.
+	}
+	expectedErrorMessage := "jsonapi: Can't unmarshal [4 5] (slice) to struct field `Name`, which is a pointer to `string`"
 
 	err := UnmarshalPayload(sampleWithPointerPayload(in), out)
 
