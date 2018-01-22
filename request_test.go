@@ -999,6 +999,52 @@ func sampleSerializedEmbeddedTestModel() *Blog {
 	return blog
 }
 
+func TestUnmarshalNestedStructPtr(t *testing.T) {
+	type Director struct {
+		Firstname string `json:"firstname"`
+		Surname   string `json:"surname"`
+	}
+	type Movie struct {
+		ID       string    `jsonapi:"primary,movies"`
+		Name     string    `jsonapi:"attr,name"`
+		Director *Director `jsonapi:"attr,director"`
+	}
+	sample := map[string]interface{}{
+		"data": map[string]interface{}{
+			"type": "movies",
+			"id":   "123",
+			"attributes": map[string]interface{}{
+				"name": "The Shawshank Redemption",
+				"director": map[string]interface{}{
+					"firstname": "Frank",
+					"surname":   "Darabont",
+				},
+			},
+		},
+	}
+
+	data, err := json.Marshal(sample)
+	if err != nil {
+		t.Fatal(err)
+	}
+	in := bytes.NewReader(data)
+	out := new(Movie)
+
+	if err := UnmarshalPayload(in, out); err != nil {
+		t.Fatal(err)
+	}
+
+	if out.Name != "The Shawshank Redemption" {
+		t.Fatalf("expected out.Name to be `The Shawshank Redemption`, but got `%s`", out.Name)
+	}
+	if out.Director.Firstname != "Frank" {
+		t.Fatalf("expected out.Director.Firstname to be `Frank`, but got `%s`", out.Director.Firstname)
+	}
+	if out.Director.Surname != "Darabont" {
+		t.Fatalf("expected out.Director.Surname to be `Darabont`, but got `%s`", out.Director.Surname)
+	}
+}
+
 func TestUnmarshalNestedStruct(t *testing.T) {
 
 	boss := map[string]interface{}{
