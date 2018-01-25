@@ -558,6 +558,9 @@ func handlePointer(attribute interface{}, args []string, fieldType reflect.Type,
 	case map[string]interface{}:
 		var err error
 		concreteVal, err = handleStruct(attribute, args, fieldType, fieldValue)
+		if err != nil {
+			return reflect.Value{}, ErrUnsupportedPtrType(reflect.ValueOf(attribute), fieldType, structField)
+		}
 		return concreteVal.Elem(), err
 	default:
 		return reflect.Value{}, ErrUnsupportedPtrType(reflect.ValueOf(attribute), fieldType, structField)
