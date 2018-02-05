@@ -90,8 +90,10 @@ To run,
 * Set `GOPATH` to `PWD` in your shell session, `export GOPATH=$PWD`
 * `go get github.com/google/jsonapi`.  (Append `-u` after `get` if you
   are updating.)
-* `go run $GOPATH/src/github.com/google/jsonapi/examples/app.go` or `cd
-  $GOPATH/src/github.com/google/jsonapi/examples && go run app.go`
+* `cd	$GOPATH/src/github.com/google/jsonapi/examples && go run app.go
+	fixtures.go handler.go models.go` or `cd
+	$GOPATH/src/github.com/google/jsonapi/examples && go build . &&
+	./examples`
 
 ## `jsonapi` Tag Reference
 
