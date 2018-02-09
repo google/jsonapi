@@ -31,6 +31,44 @@ type Timestamp struct {
 	Next *time.Time `jsonapi:"attr,next,iso8601"`
 }
 
+type Timestamps struct {
+	ID   int          `jsonapi:"primary,timestamp-arrays"`
+	Time []time.Time  `jsonapi:"attr,timestamps,iso8601"`
+	Next []*time.Time `jsonapi:"attr,next,iso8601"`
+}
+
+type NumberArrays struct {
+	ID      int       `jsonapi:"primary,number-arrays"`
+	Ints    []int     `jsonapi:"attr,ints"`
+	Int8s   []int8    `jsonapi:"attr,8-ints"`
+	Int16s  []int16   `jsonapi:"attr,16-ints"`
+	Int32s  []int32   `jsonapi:"attr,32-ints"`
+	Int64s  []int64   `jsonapi:"attr,64-ints"`
+	UInts   []uint    `jsonapi:"attr,uints"`
+	UInt8s  []uint8   `jsonapi:"attr,uint8s"`
+	UInt16s []uint16  `jsonapi:"attr,uint16s"`
+	UInt32s []uint32  `jsonapi:"attr,uint32s"`
+	UInt64s []uint64  `jsonapi:"attr,uint64s"`
+	Floats  []float32 `jsonapi:"attr,floats"`
+	Doubles []float64 `jsonapi:"attr,doubles"`
+}
+
+type NumberPtrArrays struct {
+	ID      int        `jsonapi:"primary,number-ptr-arrays"`
+	Ints    []*int     `jsonapi:"attr,ints"`
+	Int8s   []*int8    `jsonapi:"attr,8-ints"`
+	Int16s  []*int16   `jsonapi:"attr,16-ints"`
+	Int32s  []*int32   `jsonapi:"attr,32-ints"`
+	Int64s  []*int64   `jsonapi:"attr,64-ints"`
+	UInts   []*uint    `jsonapi:"attr,uints"`
+	UInt8s  []*uint8   `jsonapi:"attr,uint8s"`
+	UInt16s []*uint16  `jsonapi:"attr,uint16s"`
+	UInt32s []*uint32  `jsonapi:"attr,uint32s"`
+	UInt64s []*uint64  `jsonapi:"attr,uint64s"`
+	Floats  []*float32 `jsonapi:"attr,floats"`
+	Doubles []*float64 `jsonapi:"attr,doubles"`
+}
+
 type Car struct {
 	ID    *string `jsonapi:"primary,cars"`
 	Make  *string `jsonapi:"attr,make,omitempty"`

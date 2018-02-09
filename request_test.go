@@ -264,6 +264,545 @@ func TestUnmarshalSetsAttrs(t *testing.T) {
 	}
 }
 
+func TestUnmarshalParsesIntArray(t *testing.T) {
+	ints := []int{
+		1,
+		2,
+	}
+	int8s := []int8{
+		125,
+		-128,
+	}
+	int16s := []int16{
+		32000,
+		-32000,
+	}
+	int32s := []int32{
+		1000000,
+		-2000000,
+	}
+	int64s := []int64{
+		922337203685477,
+		-922337203685477,
+	}
+
+	payload := &OnePayload{
+		Data: &Node{
+			Type: "number-arrays",
+			Attributes: map[string]interface{}{
+				"ints":    ints,
+				"8-ints":  int8s,
+				"16-ints": int16s,
+				"32-ints": int32s,
+				"64-ints": int64s,
+			},
+		},
+	}
+
+	in := bytes.NewBuffer(nil)
+	json.NewEncoder(in).Encode(payload)
+
+	out := new(NumberArrays)
+
+	if err := UnmarshalPayload(in, out); err != nil {
+		t.Fatal(err)
+	}
+
+	if out.Ints[0] != ints[0] {
+		t.Fatal("Parsing the first int failed")
+	}
+
+	if out.Ints[1] != ints[1] {
+		t.Fatal("Parsing the second int failed")
+	}
+
+	if out.Int8s[0] != int8s[0] {
+		t.Fatal("Parsing the first int8 failed")
+	}
+
+	if out.Int8s[1] != int8s[1] {
+		t.Fatal("Parsing the second int8 failed")
+	}
+
+	if out.Int16s[0] != int16s[0] {
+		t.Fatal("Parsing the first int16 failed")
+	}
+
+	if out.Int16s[1] != int16s[1] {
+		t.Fatal("Parsing the second int16 failed")
+	}
+
+	if out.Int32s[0] != int32s[0] {
+		t.Fatal("Parsing the first int32 failed")
+	}
+
+	if out.Int32s[1] != int32s[1] {
+		t.Fatal("Parsing the second int32 failed")
+	}
+
+	if out.Int64s[0] != int64s[0] {
+		t.Fatal("Parsing the first int64 failed")
+	}
+
+	if out.Int64s[1] != int64s[1] {
+		t.Fatal("Parsing the second int64 failed")
+	}
+}
+
+func TestUnmarshalParsesIntPtrArray(t *testing.T) {
+	ints := []int{
+		1,
+		2,
+	}
+	int8s := []int8{
+		125,
+		-128,
+	}
+	int16s := []int16{
+		32000,
+		-32000,
+	}
+	int32s := []int32{
+		1000000,
+		-2000000,
+	}
+	int64s := []int64{
+		922337203685477,
+		-922337203685477,
+	}
+
+	payload := &OnePayload{
+		Data: &Node{
+			Type: "number-ptr-arrays",
+			Attributes: map[string]interface{}{
+				"ints":    ints,
+				"8-ints":  int8s,
+				"16-ints": int16s,
+				"32-ints": int32s,
+				"64-ints": int64s,
+			},
+		},
+	}
+
+	in := bytes.NewBuffer(nil)
+	json.NewEncoder(in).Encode(payload)
+
+	out := new(NumberPtrArrays)
+
+	if err := UnmarshalPayload(in, out); err != nil {
+		t.Fatal(err)
+	}
+
+	if *out.Ints[0] != ints[0] {
+		t.Fatal("Parsing the first int failed")
+	}
+
+	if *out.Ints[1] != ints[1] {
+		t.Fatal("Parsing the second int failed")
+	}
+
+	if *out.Int8s[0] != int8s[0] {
+		t.Fatal("Parsing the first int8 failed")
+	}
+
+	if *out.Int8s[1] != int8s[1] {
+		t.Fatal("Parsing the second int8 failed")
+	}
+
+	if *out.Int16s[0] != int16s[0] {
+		t.Fatal("Parsing the first int16 failed")
+	}
+
+	if *out.Int16s[1] != int16s[1] {
+		t.Fatal("Parsing the second int16 failed")
+	}
+
+	if *out.Int32s[0] != int32s[0] {
+		t.Fatal("Parsing the first int32 failed")
+	}
+
+	if *out.Int32s[1] != int32s[1] {
+		t.Fatal("Parsing the second int32 failed")
+	}
+
+	if *out.Int64s[0] != int64s[0] {
+		t.Fatal("Parsing the first int64 failed")
+	}
+
+	if *out.Int64s[1] != int64s[1] {
+		t.Fatal("Parsing the second int64 failed")
+	}
+}
+
+func TestUnmarshalParsesUIntArray(t *testing.T) {
+	uints := []uint{
+		1,
+		2,
+	}
+	uint8s := []uint8{
+		1,
+		2,
+	}
+	uint16s := []uint16{
+		32000,
+		64000,
+	}
+	uint32s := []uint32{
+		1000000,
+		2000000,
+	}
+	uint64s := []uint64{
+		922337203685477,
+		184467440737095,
+	}
+
+	payload := &OnePayload{
+		Data: &Node{
+			Type: "number-arrays",
+			Attributes: map[string]interface{}{
+				"uints":   uints,
+				"uint8s":  uint8s,
+				"uint16s": uint16s,
+				"uint32s": uint32s,
+				"uint64s": uint64s,
+			},
+		},
+	}
+
+	in := bytes.NewBuffer(nil)
+	json.NewEncoder(in).Encode(payload)
+
+	out := new(NumberArrays)
+
+	if err := UnmarshalPayload(in, out); err != nil {
+		t.Fatal(err)
+	}
+
+	if out.UInts[0] != 1 {
+		t.Fatal("Parsing the first uint failed")
+	}
+
+	if out.UInts[1] != 2 {
+		t.Fatal("Parsing the second uint failed")
+	}
+
+	if out.UInt8s[0] != uint8s[0] {
+		t.Fatal("Parsing the first uint8 failed")
+	}
+
+	if out.UInt8s[1] != uint8s[1] {
+		t.Fatal("Parsing the second uint8 failed")
+	}
+
+	if out.UInt16s[0] != uint16s[0] {
+		t.Fatal("Parsing the first uint16 failed")
+	}
+
+	if out.UInt16s[1] != uint16s[1] {
+		t.Fatal("Parsing the second uint16 failed")
+	}
+
+	if out.UInt32s[0] != uint32s[0] {
+		t.Fatal("Parsing the first uint32 failed")
+	}
+
+	if out.UInt32s[1] != uint32s[1] {
+		t.Fatal("Parsing the second uint32 failed")
+	}
+
+	if out.UInt64s[0] != uint64s[0] {
+		t.Fatal("Parsing the first uint64 failed")
+	}
+
+	if out.UInt64s[1] != uint64s[1] {
+		t.Fatal("Parsing the second uint64 failed")
+	}
+}
+
+func TestUnmarshalParsesUIntPtrArray(t *testing.T) {
+	uints := []uint{
+		1,
+		2,
+	}
+	uint8s := []uint8{
+		1,
+		2,
+	}
+	uint16s := []uint16{
+		32000,
+		64000,
+	}
+	uint32s := []uint32{
+		1000000,
+		2000000,
+	}
+	uint64s := []uint64{
+		922337203685477,
+		184467440737095,
+	}
+
+	payload := &OnePayload{
+		Data: &Node{
+			Type: "number-ptr-arrays",
+			Attributes: map[string]interface{}{
+				"uints":   uints,
+				"uint8s":  uint8s,
+				"uint16s": uint16s,
+				"uint32s": uint32s,
+				"uint64s": uint64s,
+			},
+		},
+	}
+
+	in := bytes.NewBuffer(nil)
+	json.NewEncoder(in).Encode(payload)
+
+	out := new(NumberPtrArrays)
+
+	if err := UnmarshalPayload(in, out); err != nil {
+		t.Fatal(err)
+	}
+
+	if *out.UInts[0] != 1 {
+		t.Fatal("Parsing the first uint failed")
+	}
+
+	if *out.UInts[1] != 2 {
+		t.Fatal("Parsing the second uint failed")
+	}
+
+	if *out.UInt8s[0] != uint8s[0] {
+		t.Fatal("Parsing the first uint8 failed")
+	}
+
+	if *out.UInt8s[1] != uint8s[1] {
+		t.Fatal("Parsing the second uint8 failed")
+	}
+
+	if *out.UInt16s[0] != uint16s[0] {
+		t.Fatal("Parsing the first uint16 failed")
+	}
+
+	if *out.UInt16s[1] != uint16s[1] {
+		t.Fatal("Parsing the second uint16 failed")
+	}
+
+	if *out.UInt32s[0] != uint32s[0] {
+		t.Fatal("Parsing the first uint32 failed")
+	}
+
+	if *out.UInt32s[1] != uint32s[1] {
+		t.Fatal("Parsing the second uint32 failed")
+	}
+
+	if *out.UInt64s[0] != uint64s[0] {
+		t.Fatal("Parsing the first uint64 failed")
+	}
+
+	if *out.UInt64s[1] != uint64s[1] {
+		t.Fatal("Parsing the second uint64 failed")
+	}
+}
+
+func TestUnmarshalParsesFloatArray(t *testing.T) {
+	floats := []float32{
+		1.5,
+		2.4,
+	}
+
+	payload := &OnePayload{
+		Data: &Node{
+			Type: "number-arrays",
+			Attributes: map[string]interface{}{
+				"floats": floats,
+			},
+		},
+	}
+
+	in := bytes.NewBuffer(nil)
+	json.NewEncoder(in).Encode(payload)
+
+	out := new(NumberArrays)
+
+	if err := UnmarshalPayload(in, out); err != nil {
+		t.Fatal(err)
+	}
+
+	if out.Floats[0] != 1.5 {
+		t.Fatal("Parsing the first float failed")
+	}
+
+	if out.Floats[1] != 2.4 {
+		t.Fatal("Parsing the second float failed")
+	}
+}
+
+func TestUnmarshalParsesFloatPtrArray(t *testing.T) {
+	floats := []float32{
+		1.5,
+		2.4,
+	}
+
+	payload := &OnePayload{
+		Data: &Node{
+			Type: "number-ptr-arrays",
+			Attributes: map[string]interface{}{
+				"floats": floats,
+			},
+		},
+	}
+
+	in := bytes.NewBuffer(nil)
+	json.NewEncoder(in).Encode(payload)
+
+	out := new(NumberPtrArrays)
+
+	if err := UnmarshalPayload(in, out); err != nil {
+		t.Fatal(err)
+	}
+
+	if *out.Floats[0] != 1.5 {
+		t.Fatal("Parsing the first float failed")
+	}
+
+	if *out.Floats[1] != 2.4 {
+		t.Fatal("Parsing the second float failed")
+	}
+}
+
+func TestUnmarshalParsesDoubleArray(t *testing.T) {
+	doubles := []float64{
+		123456789.5,
+		987654321.5,
+	}
+
+	payload := &OnePayload{
+		Data: &Node{
+			Type: "number-arrays",
+			Attributes: map[string]interface{}{
+				"doubles": doubles,
+			},
+		},
+	}
+
+	in := bytes.NewBuffer(nil)
+	json.NewEncoder(in).Encode(payload)
+
+	out := new(NumberArrays)
+
+	if err := UnmarshalPayload(in, out); err != nil {
+		t.Fatal(err)
+	}
+
+	if out.Doubles[0] != 123456789.5 {
+		t.Fatal("Parsing the first double failed")
+	}
+
+	if out.Doubles[1] != 987654321.5 {
+		t.Fatal("Parsing the second double failed")
+	}
+}
+
+func TestUnmarshalParsesDoublePtrArray(t *testing.T) {
+	doubles := []float64{
+		123456789.5,
+		987654321.5,
+	}
+
+	payload := &OnePayload{
+		Data: &Node{
+			Type: "number-ptr-arrays",
+			Attributes: map[string]interface{}{
+				"doubles": doubles,
+			},
+		},
+	}
+
+	in := bytes.NewBuffer(nil)
+	json.NewEncoder(in).Encode(payload)
+
+	out := new(NumberPtrArrays)
+
+	if err := UnmarshalPayload(in, out); err != nil {
+		t.Fatal(err)
+	}
+
+	if *out.Doubles[0] != 123456789.5 {
+		t.Fatal("Parsing the first double failed")
+	}
+
+	if *out.Doubles[1] != 987654321.5 {
+		t.Fatal("Parsing the second double failed")
+	}
+}
+
+func TestUnmarshalParsesISO8601Array(t *testing.T) {
+	timestamps := []string{
+		"2016-08-17T08:27:12Z",
+		"2016-08-18T08:27:12Z",
+	}
+
+	payload := &OnePayload{
+		Data: &Node{
+			Type: "timestamp-arrays",
+			Attributes: map[string]interface{}{
+				"timestamps": timestamps,
+			},
+		},
+	}
+
+	in := bytes.NewBuffer(nil)
+	json.NewEncoder(in).Encode(payload)
+
+	out := new(Timestamps)
+
+	if err := UnmarshalPayload(in, out); err != nil {
+		t.Fatal(err)
+	}
+
+	first := time.Date(2016, 8, 17, 8, 27, 12, 0, time.UTC)
+	second := time.Date(2016, 8, 18, 8, 27, 12, 0, time.UTC)
+
+	if !out.Time[0].Equal(first) {
+		t.Fatal("Parsing the first ISO8601 timestamp failed")
+	}
+
+	if !out.Time[1].Equal(second) {
+		t.Fatal("Parsing the second ISO8601 timestamp failed")
+	}
+}
+
+func TestUnmarshalParsesISO8601TimePointerArray(t *testing.T) {
+	timestamps := []string{
+		"2016-08-17T08:27:12Z",
+		"2016-08-18T08:27:12Z",
+	}
+
+	payload := &OnePayload{
+		Data: &Node{
+			Type: "timestamps-arrays",
+			Attributes: map[string]interface{}{
+				"next": timestamps,
+			},
+		},
+	}
+
+	in := bytes.NewBuffer(nil)
+	json.NewEncoder(in).Encode(payload)
+
+	out := new(Timestamps)
+
+	if err := UnmarshalPayload(in, out); err != nil {
+		t.Fatal(err)
+	}
+
+	expected := time.Date(2016, 8, 17, 8, 27, 12, 0, time.UTC)
+
+	if !out.Next[0].Equal(expected) {
+		t.Fatal("Parsing the ISO8601 timestamp failed")
+	}
+}
+
 func TestUnmarshalParsesISO8601(t *testing.T) {
 	payload := &OnePayload{
 		Data: &Node{

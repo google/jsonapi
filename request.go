@@ -2,10 +2,12 @@ package jsonapi
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"reflect"
 	"strconv"
 	"strings"
@@ -27,11 +29,15 @@ var (
 	// (numeric) but the Struct field was a non numeric type (i.e. not int, uint,
 	// float, etc)
 	ErrUnknownFieldNumberType = errors.New("The struct field was not of a known number type")
+	// ErrInvalidBase64Str is returned when an input string is invalid base64
+	ErrInvalidBase64Str = errors.New("The input could not be decoded as a base64 string")
 	// ErrUnsupportedPtrType is returned when the Struct field was a pointer but
 	// the JSON value was of a different type
 	ErrUnsupportedPtrType = errors.New("Pointer type in struct is not supported")
 	// ErrInvalidType is returned when the given type is incompatible with the expected type.
 	ErrInvalidType = errors.New("Invalid type provided") // I wish we used punctuation.
+	// ErrUnsupportedSliceType is returned when the given slice type cannot be unmarshaled.
+	ErrUnsupportedSliceType = errors.New("Slice type is not supported")
 )
 
 // UnmarshalPayload converts an io into a struct instance using jsonapi tags on
@@ -194,48 +200,13 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				break
 			}
 
-			// Convert the numeric float to one of the supported ID numeric types
-			// (int[8,16,32,64] or uint[8,16,32,64])
-			var idValue reflect.Value
-			switch kind {
-			case reflect.Int:
-				n := int(floatValue)
-				idValue = reflect.ValueOf(&n)
-			case reflect.Int8:
-				n := int8(floatValue)
-				idValue = reflect.ValueOf(&n)
-			case reflect.Int16:
-				n := int16(floatValue)
-				idValue = reflect.ValueOf(&n)
-			case reflect.Int32:
-				n := int32(floatValue)
-				idValue = reflect.ValueOf(&n)
-			case reflect.Int64:
-				n := int64(floatValue)
-				idValue = reflect.ValueOf(&n)
-			case reflect.Uint:
-				n := uint(floatValue)
-				idValue = reflect.ValueOf(&n)
-			case reflect.Uint8:
-				n := uint8(floatValue)
-				idValue = reflect.ValueOf(&n)
-			case reflect.Uint16:
-				n := uint16(floatValue)
-				idValue = reflect.ValueOf(&n)
-			case reflect.Uint32:
-				n := uint32(floatValue)
-				idValue = reflect.ValueOf(&n)
-			case reflect.Uint64:
-				n := uint64(floatValue)
-				idValue = reflect.ValueOf(&n)
-			default:
+			err = unmarshalNumber(floatValue, fieldValue, fieldValue.Type())
+			if err != nil {
 				// We had a JSON float (numeric), but our field was not one of the
 				// allowed numeric types
 				er = ErrBadJSONAPIID
 				break
 			}
-
-			assign(fieldValue, idValue)
 		} else if annotation == annotationClientID {
 			if data.ClientID == "" {
 				continue
@@ -267,189 +238,11 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 
 			v := reflect.ValueOf(val)
 
-			// Handle field of type time.Time
-			if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
-				if iso8601 {
-					var tm string
-					if v.Kind() == reflect.String {
-						tm = v.Interface().(string)
-					} else {
-						er = ErrInvalidISO8601
-						break
-					}
-
-					t, err := time.Parse(iso8601TimeFormat, tm)
-					if err != nil {
-						er = ErrInvalidISO8601
-						break
-					}
-
-					fieldValue.Set(reflect.ValueOf(t))
-
-					continue
-				}
-
-				var at int64
-
-				if v.Kind() == reflect.Float64 {
-					at = int64(v.Interface().(float64))
-				} else if v.Kind() == reflect.Int {
-					at = v.Int()
-				} else {
-					return ErrInvalidTime
-				}
-
-				t := time.Unix(at, 0)
-
-				fieldValue.Set(reflect.ValueOf(t))
-
-				continue
+			err := unmarshalValue(fieldValue, v, fieldType.Type, iso8601)
+			if err != nil {
+				er = err
+				break
 			}
-
-			if fieldValue.Type() == reflect.TypeOf([]string{}) {
-				values := make([]string, v.Len())
-				for i := 0; i < v.Len(); i++ {
-					values[i] = v.Index(i).Interface().(string)
-				}
-
-				fieldValue.Set(reflect.ValueOf(values))
-
-				continue
-			}
-
-			if fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
-				if iso8601 {
-					var tm string
-					if v.Kind() == reflect.String {
-						tm = v.Interface().(string)
-					} else {
-						er = ErrInvalidISO8601
-						break
-					}
-
-					v, err := time.Parse(iso8601TimeFormat, tm)
-					if err != nil {
-						er = ErrInvalidISO8601
-						break
-					}
-
-					t := &v
-
-					fieldValue.Set(reflect.ValueOf(t))
-
-					continue
-				}
-
-				var at int64
-
-				if v.Kind() == reflect.Float64 {
-					at = int64(v.Interface().(float64))
-				} else if v.Kind() == reflect.Int {
-					at = v.Int()
-				} else {
-					return ErrInvalidTime
-				}
-
-				v := time.Unix(at, 0)
-				t := &v
-
-				fieldValue.Set(reflect.ValueOf(t))
-
-				continue
-			}
-
-			// JSON value was a float (numeric)
-			if v.Kind() == reflect.Float64 {
-				floatValue := v.Interface().(float64)
-
-				// The field may or may not be a pointer to a numeric; the kind var
-				// will not contain a pointer type
-				var kind reflect.Kind
-				if fieldValue.Kind() == reflect.Ptr {
-					kind = fieldType.Type.Elem().Kind()
-				} else {
-					kind = fieldType.Type.Kind()
-				}
-
-				var numericValue reflect.Value
-
-				switch kind {
-				case reflect.Int:
-					n := int(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Int8:
-					n := int8(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Int16:
-					n := int16(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Int32:
-					n := int32(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Int64:
-					n := int64(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Uint:
-					n := uint(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Uint8:
-					n := uint8(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Uint16:
-					n := uint16(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Uint32:
-					n := uint32(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Uint64:
-					n := uint64(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Float32:
-					n := float32(floatValue)
-					numericValue = reflect.ValueOf(&n)
-				case reflect.Float64:
-					n := floatValue
-					numericValue = reflect.ValueOf(&n)
-				default:
-					return ErrUnknownFieldNumberType
-				}
-
-				assign(fieldValue, numericValue)
-				continue
-			}
-
-			// Field was a Pointer type
-			if fieldValue.Kind() == reflect.Ptr {
-				var concreteVal reflect.Value
-
-				switch cVal := val.(type) {
-				case string:
-					concreteVal = reflect.ValueOf(&cVal)
-				case bool:
-					concreteVal = reflect.ValueOf(&cVal)
-				case complex64:
-					concreteVal = reflect.ValueOf(&cVal)
-				case complex128:
-					concreteVal = reflect.ValueOf(&cVal)
-				case uintptr:
-					concreteVal = reflect.ValueOf(&cVal)
-				default:
-					return ErrUnsupportedPtrType
-				}
-
-				if fieldValue.Type() != concreteVal.Type() {
-					return ErrUnsupportedPtrType
-				}
-
-				fieldValue.Set(concreteVal)
-				continue
-			}
-
-			// As a final catch-all, ensure types line up to avoid a runtime panic.
-			if fieldValue.Kind() != v.Kind() {
-				return ErrInvalidType
-			}
-			fieldValue.Set(reflect.ValueOf(val))
 
 		} else if annotation == annotationRelation {
 			isSlice := fieldValue.Type().Kind() == reflect.Slice
@@ -529,6 +322,279 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 	return er
 }
 
+func unmarshalValue(fieldValue, v reflect.Value, fieldType reflect.Type, iso8601 bool) error {
+	// Handle slices
+	if fieldValue.Kind() == reflect.Slice {
+		t := fieldValue.Type()
+		sliceType := t.Elem()
+
+		if sliceType.Kind() == reflect.Ptr {
+			// Then dereference it
+			sliceType = sliceType.Elem()
+		}
+
+		// []uint8 will be decoded as a base64-encoded string
+		if sliceType.Kind() == reflect.Uint8 {
+			decoder := base64.NewDecoder(base64.StdEncoding, strings.NewReader(v.Interface().(string)))
+			body, e := ioutil.ReadAll(decoder)
+			if e != nil {
+				return ErrInvalidBase64Str
+			}
+
+			if t.Elem().Kind() == reflect.Ptr {
+				var uint8PtrSlice []*uint8
+
+				for i := range body {
+					uint8PtrSlice = append(uint8PtrSlice, &body[i])
+				}
+
+				fieldValue.Set(reflect.ValueOf(uint8PtrSlice))
+			} else {
+				fieldValue.Set(reflect.ValueOf(body))
+			}
+
+			return nil
+		}
+
+		values := reflect.MakeSlice(reflect.SliceOf(t.Elem()), v.Len(), v.Len())
+
+		for i := 0; i < v.Len(); i++ {
+			val := v.Index(i).Interface()
+			switch fieldValue.Type().Elem() {
+
+			// Try to unmarshal time types
+			case reflect.TypeOf(time.Time{}):
+				t := time.Time{}
+				value := reflect.ValueOf(&t)
+				e := unmarshalTime(reflect.ValueOf(val.(string)), value.Elem(), iso8601)
+				if e != nil {
+					return e
+				}
+
+				values.Index(i).Set(reflect.ValueOf(t))
+				continue
+			case reflect.TypeOf(new(time.Time)):
+				t := new(time.Time)
+				value := reflect.ValueOf(&t)
+				e := unmarshalTimePtr(reflect.ValueOf(val.(string)), value.Elem(), iso8601)
+				if e != nil {
+					return e
+				}
+
+				values.Index(i).Set(reflect.ValueOf(t))
+				continue
+			}
+
+			switch sliceType.Kind() {
+			// If the slice type is a string, unmarshal it
+			case reflect.String:
+				values.Index(i).Set(reflect.ValueOf(val))
+			// Attempt to unmarshal number types
+			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint,
+				reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Float32, reflect.Float64:
+				e := unmarshalNumber(val, values.Index(i), fieldValue.Type().Elem())
+				if e != nil {
+					return e
+				}
+			// No other slice types are currently supported
+			default:
+				return ErrUnsupportedSliceType
+			}
+		}
+
+		fieldValue.Set(values)
+
+		return nil
+	}
+
+	// Handle field of type time.Time
+	if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
+		return unmarshalTime(v, fieldValue, iso8601)
+	}
+
+	// Handle field of type *time.Time
+	if fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
+		return unmarshalTimePtr(v, fieldValue, iso8601)
+	}
+
+	// JSON value was a float (numeric)
+	if v.Kind() == reflect.Float64 {
+		return unmarshalNumber(v.Interface(), fieldValue, fieldType)
+	}
+
+	// Field was a Pointer type
+	if fieldValue.Kind() == reflect.Ptr {
+		return unmarshalPtr(v, fieldValue)
+	}
+
+	// As a final catch-all, ensure types line up to avoid a runtime panic.
+	if fieldValue.Kind() != v.Kind() {
+		return ErrInvalidType
+	}
+
+	fieldValue.Set(reflect.ValueOf(v.Interface()))
+	return nil
+}
+
+func unmarshalTime(v reflect.Value, fieldValue reflect.Value, iso8601 bool) error {
+	if iso8601 {
+		var tm string
+		if v.Kind() == reflect.String {
+			tm = v.Interface().(string)
+		} else {
+			return ErrInvalidISO8601
+		}
+
+		t, err := time.Parse(iso8601TimeFormat, tm)
+		if err != nil {
+			return ErrInvalidISO8601
+		}
+
+		fieldValue.Set(reflect.ValueOf(t))
+		return nil
+	}
+
+	var at int64
+
+	if v.Kind() == reflect.Float64 {
+		at = int64(v.Interface().(float64))
+	} else if v.Kind() == reflect.Int {
+		at = v.Int()
+	} else {
+		return ErrInvalidTime
+	}
+
+	t := time.Unix(at, 0)
+
+	fieldValue.Set(reflect.ValueOf(t))
+
+	return nil
+}
+
+func unmarshalTimePtr(v, fieldValue reflect.Value, iso8601 bool) error {
+	if iso8601 {
+		var tm string
+		if v.Kind() == reflect.String {
+			tm = v.Interface().(string)
+		} else {
+			return ErrInvalidISO8601
+		}
+
+		v, err := time.Parse(iso8601TimeFormat, tm)
+		if err != nil {
+			return ErrInvalidISO8601
+		}
+
+		t := &v
+
+		fieldValue.Set(reflect.ValueOf(t))
+
+		return nil
+	}
+
+	var at int64
+
+	if v.Kind() == reflect.Float64 {
+		at = int64(v.Interface().(float64))
+	} else if v.Kind() == reflect.Int {
+		at = v.Int()
+	} else {
+		return ErrInvalidTime
+	}
+
+	unix := time.Unix(at, 0)
+	t := &unix
+
+	fieldValue.Set(reflect.ValueOf(t))
+
+	return nil
+}
+
+func unmarshalNumber(v interface{}, fieldValue reflect.Value, fieldType reflect.Type) error {
+	floatValue := v.(float64)
+
+	// The field may or may not be a pointer to a numeric; the kind var
+	// will not contain a pointer type
+	var kind reflect.Kind
+	if fieldValue.Kind() == reflect.Ptr {
+		kind = fieldType.Elem().Kind()
+	} else {
+		kind = fieldType.Kind()
+	}
+
+	var numericValue reflect.Value
+
+	switch kind {
+	case reflect.Int:
+		n := int(floatValue)
+		numericValue = reflect.ValueOf(&n)
+	case reflect.Int8:
+		n := int8(floatValue)
+		numericValue = reflect.ValueOf(&n)
+	case reflect.Int16:
+		n := int16(floatValue)
+		numericValue = reflect.ValueOf(&n)
+	case reflect.Int32:
+		n := int32(floatValue)
+		numericValue = reflect.ValueOf(&n)
+	case reflect.Int64:
+		n := int64(floatValue)
+		numericValue = reflect.ValueOf(&n)
+	case reflect.Uint:
+		n := uint(floatValue)
+		numericValue = reflect.ValueOf(&n)
+	case reflect.Uint8:
+		n := uint8(floatValue)
+		numericValue = reflect.ValueOf(&n)
+	case reflect.Uint16:
+		n := uint16(floatValue)
+		numericValue = reflect.ValueOf(&n)
+	case reflect.Uint32:
+		n := uint32(floatValue)
+		numericValue = reflect.ValueOf(&n)
+	case reflect.Uint64:
+		n := uint64(floatValue)
+		numericValue = reflect.ValueOf(&n)
+	case reflect.Float32:
+		n := float32(floatValue)
+		numericValue = reflect.ValueOf(&n)
+	case reflect.Float64:
+		n := floatValue
+		numericValue = reflect.ValueOf(&n)
+	default:
+		return ErrUnknownFieldNumberType
+	}
+
+	assign(fieldValue, numericValue)
+	return nil
+}
+
+func unmarshalPtr(v, fieldValue reflect.Value) error {
+	var concreteVal reflect.Value
+
+	switch cVal := v.Interface().(type) {
+	case string:
+		concreteVal = reflect.ValueOf(&cVal)
+	case bool:
+		concreteVal = reflect.ValueOf(&cVal)
+	case complex64:
+		concreteVal = reflect.ValueOf(&cVal)
+	case complex128:
+		concreteVal = reflect.ValueOf(&cVal)
+	case uintptr:
+		concreteVal = reflect.ValueOf(&cVal)
+	default:
+		return ErrUnsupportedPtrType
+	}
+
+	if fieldValue.Type() != concreteVal.Type() {
+		return ErrUnsupportedPtrType
+	}
+
+	fieldValue.Set(concreteVal)
+	return nil
+}
+
 func fullNode(n *Node, included *map[string]*Node) *Node {
 	includedKey := fmt.Sprintf("%s,%s", n.Type, n.ID)
 
@@ -542,6 +608,7 @@ func fullNode(n *Node, included *map[string]*Node) *Node {
 // assign will take the value specified and assign it to the field; if
 // field is expecting a ptr assign will assign a ptr.
 func assign(field, value reflect.Value) {
+
 	if field.Kind() == reflect.Ptr {
 		field.Set(value)
 	} else {
