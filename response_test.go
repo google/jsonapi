@@ -194,6 +194,61 @@ func TestWithOmitsEmptyAnnotationOnRelation_MixedData(t *testing.T) {
 	}
 }
 
+func TestWithOmitsEmptyAnnotationOnAttribute(t *testing.T) {
+	type Phone struct {
+		Number string `json:"number"`
+	}
+
+	type Address struct {
+		City   string `json:"city"`
+		Street string `json:"street"`
+	}
+
+	type Tags map[string]int
+
+	type Author struct {
+		ID      int      `jsonapi:"primary,authors"`
+		Name    string   `jsonapi:"attr,title"`
+		Phones  []*Phone `jsonapi:"attr,phones,omitempty"`
+		Address *Address `jsonapi:"attr,address,omitempty"`
+		Tags    Tags     `jsonapi:"attr,tags,omitempty"`
+	}
+
+	author := &Author{
+		ID:      999,
+		Name:    "Igor",
+		Phones:  nil,                        // should be omitted
+		Address: nil,                        // should be omitted
+		Tags:    Tags{"dogs": 1, "cats": 2}, // should not be omitted
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalPayload(out, author); err != nil {
+		t.Fatal(err)
+	}
+
+	var jsonData map[string]interface{}
+	if err := json.Unmarshal(out.Bytes(), &jsonData); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify that there is no field "phones" in attributes
+	payload := jsonData["data"].(map[string]interface{})
+	attributes := payload["attributes"].(map[string]interface{})
+	if _, ok := attributes["title"]; !ok {
+		t.Fatal("Was expecting the data.attributes.title to have NOT been omitted")
+	}
+	if _, ok := attributes["phones"]; ok {
+		t.Fatal("Was expecting the data.attributes.phones to have been omitted")
+	}
+	if _, ok := attributes["address"]; ok {
+		t.Fatal("Was expecting the data.attributes.phones to have been omitted")
+	}
+	if _, ok := attributes["tags"]; !ok {
+		t.Fatal("Was expecting the data.attributes.tags to have NOT been omitted")
+	}
+}
+
 func TestMarshalIDPtr(t *testing.T) {
 	id, make, model := "123e4567-e89b-12d3-a456-426655440000", "Ford", "Mustang"
 	car := &Car{

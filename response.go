@@ -341,7 +341,7 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 				emptyValue := reflect.Zero(fieldValue.Type())
 
 				// See if we need to omit this field
-				if omitEmpty && fieldValue.Interface() == emptyValue.Interface() {
+				if omitEmpty && reflect.DeepEqual(fieldValue.Interface(), emptyValue.Interface()) {
 					continue
 				}
 
