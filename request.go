@@ -140,7 +140,6 @@ func UnmarshalManyPayload(in io.Reader, t reflect.Type) ([]interface{}, error) {
 }
 
 func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) (err error) {
-
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("data is not a jsonapi representation of '%v'", model.Type())
@@ -386,8 +385,11 @@ func assign(field, value reflect.Value) {
 	}
 }
 
-func unmarshalAttribute(attribute interface{}, args []string, structField reflect.StructField, fieldValue reflect.Value) (value reflect.Value, err error) {
-
+func unmarshalAttribute(
+	attribute interface{},
+	args []string,
+	structField reflect.StructField,
+	fieldValue reflect.Value) (value reflect.Value, err error) {
 	value = reflect.ValueOf(attribute)
 	fieldType := structField.Type
 
@@ -398,7 +400,8 @@ func unmarshalAttribute(attribute interface{}, args []string, structField reflec
 	}
 
 	// Handle field of type time.Time
-	if fieldValue.Type() == reflect.TypeOf(time.Time{}) || fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
+	if fieldValue.Type() == reflect.TypeOf(time.Time{}) ||
+		fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
 		value, err = handleTime(attribute, args, fieldType, fieldValue)
 		return
 	}
@@ -410,7 +413,8 @@ func unmarshalAttribute(attribute interface{}, args []string, structField reflec
 	}
 
 	// Handle field containing slice of structs
-	if fieldValue.Type().Kind() == reflect.Slice && reflect.TypeOf(fieldValue.Interface()).Elem().Kind() == reflect.Struct {
+	if fieldValue.Type().Kind() == reflect.Slice &&
+		reflect.TypeOf(fieldValue.Interface()).Elem().Kind() == reflect.Struct {
 		value, err = handleStructSlice(attribute, args, fieldType, fieldValue)
 		return
 	}
@@ -436,7 +440,11 @@ func unmarshalAttribute(attribute interface{}, args []string, structField reflec
 	return
 }
 
-func handleStringSlice(attribute interface{}, args []string, fieldType reflect.Type, fieldValue reflect.Value) (reflect.Value, error) {
+func handleStringSlice(
+	attribute interface{},
+	args []string,
+	fieldType reflect.Type,
+	fieldValue reflect.Value) (reflect.Value, error) {
 	v := reflect.ValueOf(attribute)
 	values := make([]string, v.Len())
 	for i := 0; i < v.Len(); i++ {
@@ -446,8 +454,11 @@ func handleStringSlice(attribute interface{}, args []string, fieldType reflect.T
 	return reflect.ValueOf(values), nil
 }
 
-func handleTime(attribute interface{}, args []string, fieldType reflect.Type, fieldValue reflect.Value) (reflect.Value, error) {
-
+func handleTime(
+	attribute interface{},
+	args []string,
+	fieldType reflect.Type,
+	fieldValue reflect.Value) (reflect.Value, error) {
 	var isIso8601 bool
 	v := reflect.ValueOf(attribute)
 
@@ -494,7 +505,11 @@ func handleTime(attribute interface{}, args []string, fieldType reflect.Type, fi
 	return reflect.ValueOf(t), nil
 }
 
-func handleNumeric(attribute interface{}, args []string, fieldType reflect.Type, fieldValue reflect.Value) (reflect.Value, error) {
+func handleNumeric(
+	attribute interface{},
+	args []string,
+	fieldType reflect.Type,
+	fieldValue reflect.Value) (reflect.Value, error) {
 	v := reflect.ValueOf(attribute)
 	floatValue := v.Interface().(float64)
 
@@ -551,7 +566,12 @@ func handleNumeric(attribute interface{}, args []string, fieldType reflect.Type,
 	return numericValue, nil
 }
 
-func handlePointer(attribute interface{}, args []string, fieldType reflect.Type, fieldValue reflect.Value, structField reflect.StructField) (reflect.Value, error) {
+func handlePointer(
+	attribute interface{},
+	args []string,
+	fieldType reflect.Type,
+	fieldValue reflect.Value,
+	structField reflect.StructField) (reflect.Value, error) {
 	t := fieldValue.Type()
 	var concreteVal reflect.Value
 
@@ -560,50 +580,55 @@ func handlePointer(attribute interface{}, args []string, fieldType reflect.Type,
 		concreteVal = reflect.ValueOf(&cVal)
 	case bool:
 		concreteVal = reflect.ValueOf(&cVal)
-	case complex64:
-		concreteVal = reflect.ValueOf(&cVal)
-	case complex128:
-		concreteVal = reflect.ValueOf(&cVal)
-	case uintptr:
+	case complex64, complex128, uintptr:
 		concreteVal = reflect.ValueOf(&cVal)
 	case map[string]interface{}:
 		var err error
 		concreteVal, err = handleStruct(attribute, args, fieldType, fieldValue)
 		if err != nil {
-			return reflect.Value{}, newErrUnsupportedPtrType(reflect.ValueOf(attribute), fieldType, structField)
+			return reflect.Value{}, newErrUnsupportedPtrType(
+				reflect.ValueOf(attribute), fieldType, structField)
 		}
 		return concreteVal.Elem(), err
 	default:
-		return reflect.Value{}, newErrUnsupportedPtrType(reflect.ValueOf(attribute), fieldType, structField)
+		return reflect.Value{}, newErrUnsupportedPtrType(
+			reflect.ValueOf(attribute), fieldType, structField)
 	}
 
 	if t != concreteVal.Type() {
-		return reflect.Value{}, newErrUnsupportedPtrType(reflect.ValueOf(attribute), fieldType, structField)
+		return reflect.Value{}, newErrUnsupportedPtrType(
+			reflect.ValueOf(attribute), fieldType, structField)
 	}
 
 	return concreteVal, nil
 }
 
-func handleStruct(attribute interface{}, args []string, fieldType reflect.Type, fieldValue reflect.Value) (reflect.Value, error) {
+func handleStruct(
+	attribute interface{},
+	args []string,
+	fieldType reflect.Type,
+	fieldValue reflect.Value) (reflect.Value, error) {
 	model := reflect.New(fieldValue.Type())
 
-	var er error
-
-	data, er := json.Marshal(attribute)
-	if er != nil {
-		return model, er
+	data, err := json.Marshal(attribute)
+	if err != nil {
+		return model, err
 	}
 
-	er = json.Unmarshal(data, model.Interface())
+	err = json.Unmarshal(data, model.Interface())
 
-	if er != nil {
-		return model, er
+	if err != nil {
+		return model, err
 	}
 
-	return model, er
+	return model, err
 }
 
-func handleStructSlice(attribute interface{}, args []string, fieldType reflect.Type, fieldValue reflect.Value) (reflect.Value, error) {
+func handleStructSlice(
+	attribute interface{},
+	args []string,
+	fieldType reflect.Type,
+	fieldValue reflect.Value) (reflect.Value, error) {
 	models := reflect.New(fieldValue.Type()).Elem()
 	dataMap := reflect.ValueOf(attribute).Interface().([]interface{})
 	for _, data := range dataMap {
