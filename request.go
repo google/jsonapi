@@ -29,20 +29,31 @@ var (
 	ErrUnknownFieldNumberType = errors.New("The struct field was not of a known number type")
 	// ErrInvalidType is returned when the given type is incompatible with the expected type.
 	ErrInvalidType = errors.New("Invalid type provided") // I wish we used punctuation.
+
 )
 
 // ErrUnsupportedPtrType is returned when the Struct field was a pointer but
 // the JSON value was of a different type
-func ErrUnsupportedPtrType(rf reflect.Value, t reflect.Type, structField reflect.StructField) error {
-	typeName := t.Elem().Name()
-	kind := t.Elem().Kind()
+type ErrUnsupportedPtrType struct {
+	rf          reflect.Value
+	t           reflect.Type
+	structField reflect.StructField
+}
+
+func (eupt ErrUnsupportedPtrType) Error() string {
+	typeName := eupt.t.Elem().Name()
+	kind := eupt.t.Elem().Kind()
 	if kind.String() != "" && kind.String() != typeName {
 		typeName = fmt.Sprintf("%s (%s)", typeName, kind.String())
 	}
-	return fmt.Errorf(
+	return fmt.Sprintf(
 		"jsonapi: Can't unmarshal %+v (%s) to struct field `%s`, which is a pointer to `%s`",
-		rf, rf.Type().Kind(), structField.Name, typeName,
+		eupt.rf, eupt.rf.Type().Kind(), eupt.structField.Name, typeName,
 	)
+}
+
+func newErrUnsupportedPtrType(rf reflect.Value, t reflect.Type, structField reflect.StructField) error {
+	return ErrUnsupportedPtrType{rf, t, structField}
 }
 
 // UnmarshalPayload converts an io into a struct instance using jsonapi tags on
@@ -559,15 +570,15 @@ func handlePointer(attribute interface{}, args []string, fieldType reflect.Type,
 		var err error
 		concreteVal, err = handleStruct(attribute, args, fieldType, fieldValue)
 		if err != nil {
-			return reflect.Value{}, ErrUnsupportedPtrType(reflect.ValueOf(attribute), fieldType, structField)
+			return reflect.Value{}, newErrUnsupportedPtrType(reflect.ValueOf(attribute), fieldType, structField)
 		}
 		return concreteVal.Elem(), err
 	default:
-		return reflect.Value{}, ErrUnsupportedPtrType(reflect.ValueOf(attribute), fieldType, structField)
+		return reflect.Value{}, newErrUnsupportedPtrType(reflect.ValueOf(attribute), fieldType, structField)
 	}
 
 	if t != concreteVal.Type() {
-		return reflect.Value{}, ErrUnsupportedPtrType(reflect.ValueOf(attribute), fieldType, structField)
+		return reflect.Value{}, newErrUnsupportedPtrType(reflect.ValueOf(attribute), fieldType, structField)
 	}
 
 	return concreteVal, nil
