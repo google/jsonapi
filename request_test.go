@@ -136,6 +136,9 @@ func TestUnmarshalToStructWithPointerAttr_BadType_bool(t *testing.T) {
 	if err.Error() != expectedErrorMessage {
 		t.Fatalf("Unexpected error message: %s", err.Error())
 	}
+	if _, ok := err.(ErrUnsupportedPtrType); !ok {
+		t.Fatalf("Unexpected error type: %s", reflect.TypeOf(err))
+	}
 }
 
 func TestUnmarshalToStructWithPointerAttr_BadType_MapPtr(t *testing.T) {
@@ -152,6 +155,9 @@ func TestUnmarshalToStructWithPointerAttr_BadType_MapPtr(t *testing.T) {
 	}
 	if err.Error() != expectedErrorMessage {
 		t.Fatalf("Unexpected error message: %s", err.Error())
+	}
+	if _, ok := err.(ErrUnsupportedPtrType); !ok {
+		t.Fatalf("Unexpected error type: %s", reflect.TypeOf(err))
 	}
 }
 
@@ -171,6 +177,9 @@ func TestUnmarshalToStructWithPointerAttr_BadType_Struct(t *testing.T) {
 	if err.Error() != expectedErrorMessage {
 		t.Fatalf("Unexpected error message: %s", err.Error())
 	}
+	if _, ok := err.(ErrUnsupportedPtrType); !ok {
+		t.Fatalf("Unexpected error type: %s", reflect.TypeOf(err))
+	}
 }
 
 func TestUnmarshalToStructWithPointerAttr_BadType_IntSlice(t *testing.T) {
@@ -188,6 +197,9 @@ func TestUnmarshalToStructWithPointerAttr_BadType_IntSlice(t *testing.T) {
 	}
 	if err.Error() != expectedErrorMessage {
 		t.Fatalf("Unexpected error message: %s", err.Error())
+	}
+	if _, ok := err.(ErrUnsupportedPtrType); !ok {
+		t.Fatalf("Unexpected error type: %s", reflect.TypeOf(err))
 	}
 }
 
