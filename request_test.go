@@ -70,6 +70,32 @@ func TestUnmarshalToStructWithPointerAttr(t *testing.T) {
 	}
 }
 
+func TestUnmarshall_attrFromExtendedAnonymousField(t *testing.T) {
+	out := new(WithExtendedAnonymousField)
+	commonField := "Common value"
+	data := map[string]interface{}{
+		"data": map[string]interface{}{
+			"type": "with-extended-anonymous-fields",
+			"id":   "1",
+			"attributes": map[string]interface{}{
+				"common_field": commonField,
+			},
+		},
+	}
+	b, err := json.Marshal(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := UnmarshalPayload(bytes.NewReader(b), out); err != nil {
+		t.Fatal(err)
+	}
+
+	if expected, actual := commonField, out.CommonField; expected != actual {
+		t.Fatalf("Was expecting CommonField to be `%s`, got `%s`", expected, actual)
+	}
+}
+
 func TestUnmarshalPayload_ptrsAllNil(t *testing.T) {
 	out := new(WithPointer)
 	if err := UnmarshalPayload(

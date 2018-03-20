@@ -320,6 +320,33 @@ func TestMarshall_invalidIDType(t *testing.T) {
 	}
 }
 
+func TestMarshall_attrFromExtendedAnonymousField(t *testing.T) {
+	id, commonField := 1, "Common value"
+	model := &WithExtendedAnonymousField{}
+	model.ID = id
+	model.CommonField = commonField
+
+	out := bytes.NewBuffer(nil)
+
+	if err := MarshalOnePayload(out, model); err != nil {
+		t.Fatal(err)
+	}
+
+	var jsonData map[string]interface{}
+	if err := json.Unmarshal(out.Bytes(), &jsonData); err != nil {
+		t.Fatal(err)
+	}
+
+	attributes := jsonData["data"].(map[string]interface{})["attributes"].(map[string]interface{})
+	val, exists := attributes["common_field"]
+	if !exists {
+		t.Fatal("Was expecting the data.attributes.common_field member to exist")
+	}
+	if val != commonField {
+		t.Fatalf("Was expecting the data.attributes.common_field member to be `%s`, got `%s`", commonField, val)
+	}
+}
+
 func TestOmitsEmptyAnnotation(t *testing.T) {
 	book := &Book{
 		Author:      "aren55555",

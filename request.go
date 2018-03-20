@@ -8,7 +8,6 @@ import (
 	"io"
 	"reflect"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -124,34 +123,16 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 		}
 	}()
 
-	modelValue := model.Elem()
-	modelType := model.Type().Elem()
-
 	var er error
 
-	for i := 0; i < modelValue.NumField(); i++ {
-		fieldType := modelType.Field(i)
-		tag := fieldType.Tag.Get("jsonapi")
-		if tag == "" {
-			continue
-		}
+	fields, er := extractFields(model)
 
-		fieldValue := modelValue.Field(i)
+	if er != nil {
+		return er
+	}
 
-		args := strings.Split(tag, ",")
-
-		if len(args) < 1 {
-			er = ErrBadJSONAPIStructTag
-			break
-		}
-
-		annotation := args[0]
-
-		if (annotation == annotationClientID && len(args) != 1) ||
-			(annotation != annotationClientID && len(args) < 2) {
-			er = ErrBadJSONAPIStructTag
-			break
-		}
+	for _, field := range fields {
+		fieldValue, annotation, kind, args := field.Value, field.Annotation, field.Kind, field.Args
 
 		if annotation == annotationPrimary {
 			if data.ID == "" {
@@ -159,25 +140,17 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			}
 
 			// Check the JSON API Type
-			if data.Type != args[1] {
+			if data.Type != args[0] {
 				er = fmt.Errorf(
 					"Trying to Unmarshal an object of type %#v, but %#v does not match",
 					data.Type,
-					args[1],
+					args[0],
 				)
 				break
 			}
 
 			// ID will have to be transmitted as astring per the JSON API spec
 			v := reflect.ValueOf(data.ID)
-
-			// Deal with PTRS
-			var kind reflect.Kind
-			if fieldValue.Kind() == reflect.Ptr {
-				kind = fieldType.Type.Elem().Kind()
-			} else {
-				kind = fieldType.Type.Kind()
-			}
 
 			// Handle String case
 			if kind == reflect.String {
@@ -250,15 +223,15 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 
 			var iso8601 bool
 
-			if len(args) > 2 {
-				for _, arg := range args[2:] {
+			if len(args) > 1 {
+				for _, arg := range args[1:] {
 					if arg == annotationISO8601 {
 						iso8601 = true
 					}
 				}
 			}
 
-			val := attributes[args[1]]
+			val := attributes[args[0]]
 
 			// continue if the attribute was not included in the request
 			if val == nil {
@@ -362,15 +335,6 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			if v.Kind() == reflect.Float64 {
 				floatValue := v.Interface().(float64)
 
-				// The field may or may not be a pointer to a numeric; the kind var
-				// will not contain a pointer type
-				var kind reflect.Kind
-				if fieldValue.Kind() == reflect.Ptr {
-					kind = fieldType.Type.Elem().Kind()
-				} else {
-					kind = fieldType.Type.Kind()
-				}
-
 				var numericValue reflect.Value
 
 				switch kind {
@@ -454,7 +418,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 		} else if annotation == annotationRelation {
 			isSlice := fieldValue.Type().Kind() == reflect.Slice
 
-			if data.Relationships == nil || data.Relationships[args[1]] == nil {
+			if data.Relationships == nil || data.Relationships[args[0]] == nil {
 				continue
 			}
 
@@ -464,7 +428,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 
 				buf := bytes.NewBuffer(nil)
 
-				json.NewEncoder(buf).Encode(data.Relationships[args[1]])
+				json.NewEncoder(buf).Encode(data.Relationships[args[0]])
 				json.NewDecoder(buf).Decode(relationship)
 
 				data := relationship.Data
@@ -493,7 +457,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				buf := bytes.NewBuffer(nil)
 
 				json.NewEncoder(buf).Encode(
-					data.Relationships[args[1]],
+					data.Relationships[args[0]],
 				)
 				json.NewDecoder(buf).Decode(relationship)
 
