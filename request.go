@@ -278,7 +278,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 						break
 					}
 
-					t, err := time.Parse(iso8601TimeFormat, tm)
+					t, err := time.Parse(time.RFC3339, tm)
 					if err != nil {
 						er = ErrInvalidISO8601
 						break
@@ -327,7 +327,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 						break
 					}
 
-					v, err := time.Parse(iso8601TimeFormat, tm)
+					v, err := time.Parse(time.RFC3339, tm)
 					if err != nil {
 						er = ErrInvalidISO8601
 						break

@@ -468,6 +468,35 @@ func TestMarshalISO8601Time(t *testing.T) {
 	}
 }
 
+func TestMarshalISO8601TimeWithLocalTimezone(t *testing.T) {
+	loc, _ := time.LoadLocation("Europe/Vienna")
+
+	testModel := &Timestamp{
+		ID:   5,
+		Time: time.Date(2016, 8, 17, 8, 27, 12, 23849, loc),
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalPayload(out, testModel); err != nil {
+		t.Fatal(err)
+	}
+
+	resp := new(OnePayload)
+	if err := json.NewDecoder(out).Decode(resp); err != nil {
+		t.Fatal(err)
+	}
+
+	data := resp.Data
+
+	if data.Attributes == nil {
+		t.Fatalf("Expected attributes")
+	}
+
+	if data.Attributes["timestamp"] != "2016-08-17T08:27:12+02:00" {
+		t.Fatal("Timestamp was not serialised into ISO8601 correctly")
+	}
+}
+
 func TestMarshalISO8601TimePointer(t *testing.T) {
 	tm := time.Date(2016, 8, 17, 8, 27, 12, 23849, time.UTC)
 	testModel := &Timestamp{
@@ -492,6 +521,36 @@ func TestMarshalISO8601TimePointer(t *testing.T) {
 	}
 
 	if data.Attributes["next"] != "2016-08-17T08:27:12Z" {
+		t.Fatal("Next was not serialised into ISO8601 correctly")
+	}
+}
+
+func TestMarshalISO8601TimePointerWithLocalTimezone(t *testing.T) {
+	loc, _ := time.LoadLocation("Europe/Vienna")
+
+	tm := time.Date(2016, 8, 17, 8, 27, 12, 23849, loc)
+	testModel := &Timestamp{
+		ID:   5,
+		Next: &tm,
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalPayload(out, testModel); err != nil {
+		t.Fatal(err)
+	}
+
+	resp := new(OnePayload)
+	if err := json.NewDecoder(out).Decode(resp); err != nil {
+		t.Fatal(err)
+	}
+
+	data := resp.Data
+
+	if data.Attributes == nil {
+		t.Fatalf("Expected attributes")
+	}
+
+	if data.Attributes["next"] != "2016-08-17T08:27:12+02:00" {
 		t.Fatal("Next was not serialised into ISO8601 correctly")
 	}
 }

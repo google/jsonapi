@@ -311,7 +311,7 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 				}
 
 				if iso8601 {
-					node.Attributes[args[1]] = t.UTC().Format(iso8601TimeFormat)
+					node.Attributes[args[1]] = t.Format(time.RFC3339)
 				} else {
 					node.Attributes[args[1]] = t.Unix()
 				}
@@ -331,7 +331,7 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 					}
 
 					if iso8601 {
-						node.Attributes[args[1]] = tm.UTC().Format(iso8601TimeFormat)
+						node.Attributes[args[1]] = tm.Format(time.RFC3339)
 					} else {
 						node.Attributes[args[1]] = tm.Unix()
 					}
