@@ -703,6 +703,54 @@ func TestManyPayload_withLinks(t *testing.T) {
 	}
 }
 
+func TestUnmarshalCustomTypeAttributes(t *testing.T) {
+	customInt := CustomIntType(5)
+	customFloat := CustomFloatType(1.5)
+	customString := CustomStringType("Test")
+
+	data := map[string]interface{}{
+		"data": map[string]interface{}{
+			"type": "customtypes",
+			"id":   "1",
+			"attributes": map[string]interface{}{
+				"int":        customInt,
+				"intptr":     &customInt,
+				"intptrnull": nil,
+
+				"float":  customFloat,
+				"string": customString,
+			},
+		},
+	}
+	payload, err := payload(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Parse JSON API payload
+	customAttributeTypes := new(CustomAttributeTypes)
+	if err := UnmarshalPayload(bytes.NewReader(payload), customAttributeTypes); err != nil {
+		t.Fatal(err)
+	}
+
+	if expected, actual := customInt, customAttributeTypes.Int; expected != actual {
+		t.Fatalf("Was expecting custom int to be `%s`, got `%s`", expected, actual)
+	}
+	if expected, actual := customInt, *customAttributeTypes.IntPtr; expected != actual {
+		t.Fatalf("Was expecting custom int pointer to be `%s`, got `%s`", expected, actual)
+	}
+	if customAttributeTypes.IntPtrNull != nil {
+		t.Fatalf("Was expecting custom int pointer to be <nil>, got `%s`", customAttributeTypes.IntPtrNull)
+	}
+
+	if expected, actual := customFloat, customAttributeTypes.Float; expected != actual {
+		t.Fatalf("Was expecting custom float to be `%s`, got `%s`", expected, actual)
+	}
+	if expected, actual := customString, customAttributeTypes.String; expected != actual {
+		t.Fatalf("Was expecting custom string to be `%s`, got `%s`", expected, actual)
+	}
+}
+
 func samplePayloadWithoutIncluded() map[string]interface{} {
 	return map[string]interface{}{
 		"data": map[string]interface{}{

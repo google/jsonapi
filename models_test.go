@@ -155,3 +155,18 @@ func (bc *BadComment) JSONAPILinks() *Links {
 		"self": []string{"invalid", "should error"},
 	}
 }
+
+type CustomIntType int
+type CustomFloatType float64
+type CustomStringType string
+
+type CustomAttributeTypes struct {
+	ID string `jsonapi:"primary,customtypes"`
+
+	Int        CustomIntType  `jsonapi:"attr,int"`
+	IntPtr     *CustomIntType `jsonapi:"attr,intptr"`
+	IntPtrNull *CustomIntType `jsonapi:"attr,intptrnull"`
+
+	Float  CustomFloatType  `jsonapi:"attr,float"`
+	String CustomStringType `jsonapi:"attr,string"`
+}
