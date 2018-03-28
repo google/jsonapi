@@ -254,10 +254,10 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			}
 
 			// As a final catch-all, ensure types line up to avoid a runtime panic.
-			if fieldValue.Kind() != v.Kind() {
+			if fieldValue.Kind() != value.Kind() {
 				return ErrInvalidType
 			}
-			assignValue(fieldValue, reflect.ValueOf(val))
+			assignValue(fieldValue, value)
 		} else if annotation == annotationRelation {
 			isSlice := fieldValue.Type().Kind() == reflect.Slice
 

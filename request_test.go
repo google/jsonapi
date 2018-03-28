@@ -799,17 +799,17 @@ func TestUnmarshalCustomTypeAttributes(t *testing.T) {
 	}
 
 	if expected, actual := customInt, customAttributeTypes.Int; expected != actual {
-		t.Fatalf("Was expecting custom int to be `%s`, got `%s`", expected, actual)
+		t.Fatalf("Was expecting custom int to be `%d`, got `%d`", expected, actual)
 	}
 	if expected, actual := customInt, *customAttributeTypes.IntPtr; expected != actual {
-		t.Fatalf("Was expecting custom int pointer to be `%s`, got `%s`", expected, actual)
+		t.Fatalf("Was expecting custom int pointer to be `%d`, got `%d`", expected, actual)
 	}
 	if customAttributeTypes.IntPtrNull != nil {
-		t.Fatalf("Was expecting custom int pointer to be <nil>, got `%s`", customAttributeTypes.IntPtrNull)
+		t.Fatalf("Was expecting custom int pointer to be <nil>, got `%d`", customAttributeTypes.IntPtrNull)
 	}
 
 	if expected, actual := customFloat, customAttributeTypes.Float; expected != actual {
-		t.Fatalf("Was expecting custom float to be `%s`, got `%s`", expected, actual)
+		t.Fatalf("Was expecting custom float to be `%f`, got `%f`", expected, actual)
 	}
 	if expected, actual := customString, customAttributeTypes.String; expected != actual {
 		t.Fatalf("Was expecting custom string to be `%s`, got `%s`", expected, actual)
