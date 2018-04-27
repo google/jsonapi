@@ -542,9 +542,29 @@ func fullNode(n *Node, included *map[string]*Node) *Node {
 // assign will take the value specified and assign it to the field; if
 // field is expecting a ptr assign will assign a ptr.
 func assign(field, value reflect.Value) {
-	if field.Kind() == reflect.Ptr {
+	if value.Type().AssignableTo(field.Type()) {
 		field.Set(value)
+		return
+	}
+
+	indirectValue := reflect.Indirect(value)
+	if indirectValue.Type().AssignableTo(field.Type()) {
+		field.Set(indirectValue)
+		return
+	}
+
+	// Conversion required.
+
+	if field.Kind() == reflect.Ptr {
+		if value.Kind() == reflect.Ptr {
+			field.Set(value.Convert(field.Type()))
+		} else {
+			// Because field is zero value, we cannot simply field.Elem().Set().
+			v := reflect.New(field.Type().Elem())
+			v.Elem().Set(value.Convert(field.Type().Elem()))
+			field.Set(v)
+		}
 	} else {
-		field.Set(reflect.Indirect(value))
+		field.Set(reflect.Indirect(value).Convert(field.Type()))
 	}
 }

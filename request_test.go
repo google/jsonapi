@@ -703,6 +703,112 @@ func TestManyPayload_withLinks(t *testing.T) {
 	}
 }
 
+func TestUnmarshalPayloadIDTypeOfString(t *testing.T) {
+	t.Run("Unmarshal string to value type", func(t *testing.T) {
+		data := map[string]interface{}{
+			"data": map[string]interface{}{
+				"type": "books",
+				"id":   "978-3-16-148410-0",
+				"attributes": map[string]interface{}{
+					"title": "Gesammelte Werke in deutscher Sprache",
+				},
+			},
+		}
+		b, err := json.Marshal(data)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		type (
+			IBSN string
+
+			Book struct {
+				ID    IBSN   `jsonapi:"primary,books"`
+				Title string `jsonapi:"attr,title"`
+			}
+		)
+
+		book := &Book{}
+		if err := UnmarshalPayload(bytes.NewReader(b), book); err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		expected := IBSN("978-3-16-148410-0")
+		if book.ID != expected {
+			t.Fatalf("Expected book id to be %v but got %v", expected, book.ID)
+		}
+	})
+
+	t.Run("Unmarshal string to ptr type", func(t *testing.T) {
+		data := map[string]interface{}{
+			"data": map[string]interface{}{
+				"type": "books",
+				"id":   "978-3-16-148410-0",
+				"attributes": map[string]interface{}{
+					"title": "Gesammelte Werke in deutscher Sprache",
+				},
+			},
+		}
+		b, err := json.Marshal(data)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		type (
+			IBSN string
+
+			Book struct {
+				ID    *IBSN  `jsonapi:"primary,books"`
+				Title string `jsonapi:"attr,title"`
+			}
+		)
+
+		book := &Book{}
+		if err := UnmarshalPayload(bytes.NewReader(b), book); err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		expected := IBSN("978-3-16-148410-0")
+		if !reflect.DeepEqual(book.ID, &expected) {
+			t.Fatalf("Expected book id to be %v but got %v", &expected, book.ID)
+		}
+	})
+
+	t.Run("Unmarshal nil to ptr type", func(t *testing.T) {
+		data := map[string]interface{}{
+			"data": map[string]interface{}{
+				"type": "books",
+				"id":   nil,
+				"attributes": map[string]interface{}{
+					"title": "Gesammelte Werke in deutscher Sprache",
+				},
+			},
+		}
+		b, err := json.Marshal(data)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		type (
+			IBSN string
+
+			Book struct {
+				ID    *IBSN  `jsonapi:"primary,books"`
+				Title string `jsonapi:"attr,title"`
+			}
+		)
+
+		book := &Book{}
+		if err := UnmarshalPayload(bytes.NewReader(b), book); err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+
+		if book.ID != nil {
+			t.Fatalf("Expected book id to be %v but got %v", nil, book.ID)
+		}
+	})
+}
+
 func samplePayloadWithoutIncluded() map[string]interface{} {
 	return map[string]interface{}{
 		"data": map[string]interface{}{
