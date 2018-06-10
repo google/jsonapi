@@ -23,6 +23,14 @@ type ErrorsPayload struct {
 	Errors []*ErrorObject `json:"errors"`
 }
 
+// ErrorObjectLinks is an implementation of the JSON API error links payload.
+//
+// For more information on the JSON API spec's error links objects, see: http://jsonapi.org/format/#error-objects
+type ErrorObjectLinks struct {
+	// About is a link that leads to further details about this particular occurrence of the problem.
+	About string `json:"about"`
+}
+
 // ErrorObject is an `Error` implementation as well as an implementation of the JSON API error object.
 //
 // The main idea behind this struct is that you can use it directly in your code as an error type
@@ -45,8 +53,25 @@ type ErrorObject struct {
 	// Code is an application-specific error code, expressed as a string value.
 	Code string `json:"code,omitempty"`
 
+	// Links is an implementation of the JSON API error links payload.
+	Links *ErrorObjectLinks `json:"links,omitempty"`
+
+	// Source is used to indicate which part of the request document caused the error.
+	Source *ErrorSource  `json:"source,omitempty"`
+
 	// Meta is an object containing non-standard meta-information about the error.
 	Meta *map[string]interface{} `json:"meta,omitempty"`
+}
+
+// ErrorSource is a structure containing references to the source of the error, optionally including any of the following members:
+//
+// For more information on the JSON API spec's error objects, see: http://jsonapi.org/format/#error-objects
+type ErrorSource struct {
+	// Pointer is a JSON Pointer [RFC6901] to the associated entity in the request document [e.g. "/data" for a primary data object, or "/data/attributes/title" for a specific attribute].
+	Pointer string `json:"pointer,omitempty"`
+
+	// Parameter is a string indicating which URI query parameter caused the error.
+	Parameter string `json:"parameter,omitempty"`
 }
 
 // Error implements the `Error` interface.
