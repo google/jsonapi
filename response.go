@@ -207,9 +207,13 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 	node := new(Node)
 
 	var er error
+	value := reflect.ValueOf(model)
+	if value.IsNil() {
+		return nil, nil
+	}
 
-	modelValue := reflect.ValueOf(model).Elem()
-	modelType := reflect.ValueOf(model).Type().Elem()
+	modelValue := value.Elem()
+	modelType := value.Type().Elem()
 
 	for i := 0; i < modelValue.NumField(); i++ {
 		structField := modelValue.Type().Field(i)
