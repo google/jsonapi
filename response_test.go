@@ -37,6 +37,36 @@ func TestMarshalPayload(t *testing.T) {
 	}
 }
 
+func TestMarshalPayloadWithNulls(t *testing.T) {
+
+	books := []*Book{nil, {ID:101}, nil}
+	var jsonData map[string]interface{}
+
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalPayload(out, books); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := json.Unmarshal(out.Bytes(), &jsonData); err != nil {
+		t.Fatal(err)
+	}
+	raw, ok := jsonData["data"]
+	if !ok {
+		t.Fatalf("data key does not exist")
+	}
+	arr, ok := raw.([]interface{})
+	if !ok {
+		t.Fatalf("data is not an Array")
+	}
+	for i := 0; i < len(arr); i++ {
+		if books[i] == nil && arr[i] != nil ||
+			books[i] != nil && arr[i] == nil {
+			t.Fatalf("restored data is not equal to source")
+		}
+	}
+}
+
 func TestMarshal_attrStringSlice(t *testing.T) {
 	tags := []string{"fiction", "sale"}
 	b := &Book{ID: 1, Tags: tags}
