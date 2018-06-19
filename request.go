@@ -278,7 +278,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 						break
 					}
 
-					t, err := time.Parse(iso8601TimeFormat, tm)
+					t, err := parseISO8601(tm)
 					if err != nil {
 						er = ErrInvalidISO8601
 						break
@@ -327,7 +327,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 						break
 					}
 
-					v, err := time.Parse(iso8601TimeFormat, tm)
+					v, err := parseISO8601(tm)
 					if err != nil {
 						er = ErrInvalidISO8601
 						break
@@ -547,4 +547,13 @@ func assign(field, value reflect.Value) {
 	} else {
 		field.Set(reflect.Indirect(value))
 	}
+}
+
+// parse8601 attempts to parse time using all supported iso8601 timestamp styles
+func parseISO8601(tm string) (time.Time, error) {
+	v, err := time.Parse(iso8601TimeFormat, tm)
+	if err == nil {
+		return v, err
+	}
+	return time.Parse(iso8601ExpandedTimeFormat, tm)
 }

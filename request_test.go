@@ -290,6 +290,33 @@ func TestUnmarshalParsesISO8601(t *testing.T) {
 	}
 }
 
+func TestUnmarshalParsesExpandedISO8601(t *testing.T) {
+	payload := &OnePayload{
+		Data: &Node{
+			Type: "timestamps",
+			Attributes: map[string]interface{}{
+				"timestamp": "2016-08-17T08:27:12+10:00",
+			},
+		},
+	}
+
+	in := bytes.NewBuffer(nil)
+	json.NewEncoder(in).Encode(payload)
+
+	out := new(Timestamp)
+
+	if err := UnmarshalPayload(in, out); err != nil {
+		t.Fatal(err)
+	}
+
+	zone := time.FixedZone("UTC+10", int((10 * time.Hour).Seconds()))
+	expected := time.Date(2016, 8, 17, 8, 27, 12, 0, zone)
+
+	if !out.Time.Equal(expected) {
+		t.Fatal("Parsing the expanded ISO8601 timestamp failed")
+	}
+}
+
 func TestUnmarshalParsesISO8601TimePointer(t *testing.T) {
 	payload := &OnePayload{
 		Data: &Node{
