@@ -11,9 +11,6 @@ const (
 	annotationISO8601   = "iso8601"
 	annotationSeperator = ","
 
-	iso8601TimeFormat         = "2006-01-02T15:04:05Z"
-	iso8601ExpandedTimeFormat = "2006-01-02T15:04:05-07:00"
-
 	// MediaType is the identifier for the JSON API media type
 	//
 	// see http://jsonapi.org/format/#document-structure
