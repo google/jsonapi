@@ -150,17 +150,19 @@ types are shown in the examples, but not required.
 #### `attr`
 
 ```
-`jsonapi:"attr,<key name in attributes hash>,<optional: omitempty>"`
+`jsonapi:"attr,<key name in attributes hash>,<optional: omitempty>,<optional: iso8601>"`
 ```
 
 These fields' values will end up in the `attributes`hash for a record.
 The first argument must be, `attr`, and the second should be the name
-for the key to display in the `attributes` hash for that record. The optional
-third argument is `omitempty` - if it is present the field will not be present
+for the key to display in the `attributes` hash for that record. An optional
+argument is `omitempty` - if it is present the field will not be present
 in the `"attributes"` if the field's value is equivalent to the field types
 empty value (ie if the `count` field is of type `int`, `omitempty` will omit the
-field when `count` has a value of `0`). Lastly, the spec indicates that
-`attributes` key names should be dasherized for multiple word field names.
+field when `count` has a value of `0`). An optional argument is `iso8601` - if
+it is present for a time.Time field it will be processed as an iso8601 string
+rather than as a UNIX integer. Lastly, the spec indicates that `attributes` key
+names should be dasherized for multiple word field names.
 
 #### `relation`
 
