@@ -202,8 +202,10 @@ func MarshalOnePayloadEmbedded(w io.Writer, model interface{}) error {
 	return nil
 }
 
-func visitModelNode(model interface{}, included *map[string]*Node,
-	sideload bool) (*Node, error) {
+// visitModelNode converts models to jsonapi payloads
+// it handles the deepest models first. (i.e.) embedded models
+// this is so that upper-level attributes can overwrite lower-level attributes
+func visitModelNode(model interface{}, included *map[string]*Node, sideload bool) (*Node, error) {
 	node := new(Node)
 
 	var er error
@@ -215,15 +217,57 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 	modelValue := value.Elem()
 	modelType := value.Type().Elem()
 
+	// handle just the embedded models first
 	for i := 0; i < modelValue.NumField(); i++ {
-		structField := modelValue.Type().Field(i)
-		tag := structField.Tag.Get(annotationJSONAPI)
-		if tag == "" {
+		fieldValue := modelValue.Field(i)
+		fieldType := modelType.Field(i)
+
+		// skip if annotated w/ ignore
+		tag := fieldType.Tag.Get(annotationJSONAPI)
+		if shouldIgnoreField(tag) {
 			continue
 		}
 
+		// handles embedded structs and pointers to embedded structs
+		if isEmbeddedStruct(fieldType) || isEmbeddedStructPtr(fieldType) {
+			var embModel interface{}
+			if fieldType.Type.Kind() == reflect.Ptr {
+				if fieldValue.IsNil() {
+					continue
+				}
+				embModel = fieldValue.Interface()
+			} else {
+				embModel = fieldValue.Addr().Interface()
+			}
+
+			embNode, err := visitModelNode(embModel, included, sideload)
+			if err != nil {
+				er = err
+				break
+			}
+			node.merge(embNode)
+		}
+	}
+
+	// handle everthing else
+	for i := 0; i < modelValue.NumField(); i++ {
 		fieldValue := modelValue.Field(i)
 		fieldType := modelType.Field(i)
+
+		tag := fieldType.Tag.Get(annotationJSONAPI)
+
+		if shouldIgnoreField(tag) {
+			continue
+		}
+
+		// skip embedded because it was handled in a previous loop
+		if isEmbeddedStruct(fieldType) || isEmbeddedStructPtr(fieldType) {
+			continue
+		}
+
+		if tag == "" {
+			continue
+		}
 
 		args := strings.Split(tag, annotationSeperator)
 
@@ -536,4 +580,16 @@ func convertToSliceInterface(i *interface{}) ([]interface{}, error) {
 		response = append(response, vals.Index(x).Interface())
 	}
 	return response, nil
+}
+
+func isEmbeddedStruct(sField reflect.StructField) bool {
+	return sField.Anonymous && sField.Type.Kind() == reflect.Struct
+}
+
+func isEmbeddedStructPtr(sField reflect.StructField) bool {
+	return sField.Anonymous && sField.Type.Kind() == reflect.Ptr && sField.Type.Elem().Kind() == reflect.Struct
+}
+
+func shouldIgnoreField(japiTag string) bool {
+	return strings.HasPrefix(japiTag, annotationIgnore)
 }
