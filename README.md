@@ -343,6 +343,37 @@ func (post Post) JSONAPIRelationshipMeta(relation string) *Meta {
 }
 ```
 
+### Custom types
+
+If you need to support custom types (e.g. for custom time formats), you'll need to implement the json.Marshaler and json.Unmarshaler interfaces on the type.
+
+```go
+// MyTimeFormat is a custom format I invented for fun
+const MyTimeFormat = "The time is 15:04:05. The year is 2006, and it is day 2 of January."
+
+// ELTime is a custom type used to handle the custom time format
+type MyTime struct {
+	time.Time
+}
+
+// UnmarshalJSON to implement the json.Unmarshaler interface
+func (m *MyTime) UnmarshalJSON(b []byte) error {
+	t, err := time.Parse(MyTimeFormat, string(b))
+	if err != nil {
+		return err
+	}
+
+	m.Time = t
+
+	return nil
+}
+
+// MarshalJSON to implement the json.Marshaler interface
+func (m *MyTime) MarshalJSON() ([]byte, error) {
+	return json.Marshal(m.Time.Format(MyTimeFormat))
+}
+```
+
 ### Errors
 This package also implements support for JSON API compatible `errors` payloads using the following types.
 
