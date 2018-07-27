@@ -351,7 +351,7 @@ If you need to support custom types (e.g. for custom time formats), you'll need 
 // MyTimeFormat is a custom format I invented for fun
 const MyTimeFormat = "The time is 15:04:05. The year is 2006, and it is day 2 of January."
 
-// ELTime is a custom type used to handle the custom time format
+// MyTime is a custom type used to handle the custom time format
 type MyTime struct {
 	time.Time
 }
