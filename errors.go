@@ -23,6 +23,16 @@ type ErrorsPayload struct {
 	Errors []*ErrorObject `json:"errors"`
 }
 
+// ErrorObject implements the JSON API `source` object (http://jsonapi.org/format/#error-objects).
+type ErrorSource struct {
+	// If the error comes from validating data from a client,
+	// this is the `path` of the attribute that has generated the error.
+	// es. `/data/attributes/email`.
+	Pointer string `json:"pointer,omitempty"`
+	// A string indicating which URI query parameter caused the error.
+	Parameter string `json:"parameter,omitempty"`
+}
+
 // ErrorObject is an `Error` implementation as well as an implementation of the JSON API error object.
 //
 // The main idea behind this struct is that you can use it directly in your code as an error type
@@ -47,6 +57,9 @@ type ErrorObject struct {
 
 	// Meta is an object containing non-standard meta-information about the error.
 	Meta *map[string]interface{} `json:"meta,omitempty"`
+
+	// Source contains reference to the source of the error.
+	Source *ErrorSource `json:"source,omitempty"`
 }
 
 // Error implements the `Error` interface.
