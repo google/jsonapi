@@ -349,10 +349,30 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 					continue
 				}
 
-				strAttr, ok := fieldValue.Interface().(string)
-				if ok {
-					node.Attributes[args[1]] = strAttr
-				} else {
+				switch fieldValue.Kind() {
+				case reflect.String:
+					node.Attributes[args[1]] = fieldValue.Interface().(string)
+				case reflect.Ptr:
+					if fieldType.Type.Kind() == reflect.Ptr &&
+						fieldValue.Elem().Kind() == reflect.Struct {
+
+						// if nil struct don't create an empty object
+						if fieldValue.IsNil() {
+							node.Attributes[args[1]] = nil
+							continue
+						}
+
+						// build representation
+						data := make(map[string]interface{})
+						err := structToMap(fieldValue.Elem(), data)
+						if err != nil {
+							return nil, err
+						}
+						node.Attributes[args[1]] = data
+						continue
+					}
+					fallthrough
+				default:
 					node.Attributes[args[1]] = fieldValue.Interface()
 				}
 			}
@@ -536,4 +556,19 @@ func convertToSliceInterface(i *interface{}) ([]interface{}, error) {
 		response = append(response, vals.Index(x).Interface())
 	}
 	return response, nil
+}
+
+func structToMap(val reflect.Value, data map[string]interface{}) error {
+	for i := 0; i < val.NumField(); i++ {
+		fieldType := val.Type().Field(i)
+		field := val.Field(i)
+		tagParts := strings.Split(fieldType.Tag.Get("jsonapi"), ",")
+		concreteName := tagParts[0]
+		if concreteName == "omitempty" { // fallback to struct field name
+			concreteName = fieldType.Name
+		}
+		data[concreteName] = field.Interface()
+	}
+
+	return nil
 }

@@ -434,6 +434,14 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				case uintptr:
 					concreteVal = reflect.ValueOf(&cVal)
 				default:
+					// handle struct attributes
+					if kind := reflect.TypeOf(concreteVal).Kind(); kind == reflect.Struct {
+						if err := assignStruct(fieldValue, cVal); err != nil {
+							return err
+						}
+						continue // struct was parsed successfully, continue to not error out
+					}
+
 					return ErrUnsupportedPtrType
 				}
 
@@ -547,4 +555,71 @@ func assign(field, value reflect.Value) {
 	} else {
 		field.Set(reflect.Indirect(value))
 	}
+}
+
+// assignStruct will take the value specified and assign it to the struct field;
+// the field is expected to be a pointer to a struct
+func assignStruct(field reflect.Value, value interface{}) error {
+	// assert source data is a map, otherwise nil
+	concreteValMap, ok := value.(map[string]interface{})
+	if !ok {
+		return nil
+	}
+
+	// Create instance of the struct
+	newVal := reflect.New(field.Type().Elem())
+	field.Set(newVal)
+
+	for i := 0; i < newVal.Elem().NumField(); i++ {
+		structField := newVal.Elem().Type().Field(i)
+		tagParts := strings.Split(structField.Tag.Get("jsonapi"), ",")
+		concreteName := tagParts[0]
+		if concreteName == "omitempty" { // fallback to struct field name
+			concreteName = structField.Name
+		}
+		concreteVal, ok := concreteValMap[concreteName]
+
+		if !ok { // ignore if value is not given
+			continue
+		}
+
+		f := newVal.Elem().Field(i)
+		err := assignStructValue(f, concreteVal)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// assignStructValue will take the value specified and assign it to a struct field;
+// it supports numeric, string, bool and array of the same additionally, map[string]interface{}
+func assignStructValue(field reflect.Value, value interface{}) error {
+	switch field.Kind() {
+	case reflect.Bool:
+		field.SetBool(value.(bool))
+	case reflect.String:
+		field.SetString(value.(string))
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		field.SetInt(int64(value.(float64)))
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		field.SetUint(uint64(value.(float64)))
+	case reflect.Float32, reflect.Float64:
+		field.SetFloat(float64(value.(float64)))
+	case reflect.Map:
+		field.Set(reflect.ValueOf(value))
+	case reflect.Slice:
+		valueSlice := value.([]interface{})
+		newSlice := reflect.MakeSlice(field.Type(), len(valueSlice), len(valueSlice))
+		for i := 0; i < len(valueSlice); i++ {
+			err := assignStructValue(newSlice.Index(i), valueSlice[i])
+			if err != nil {
+				return err
+			}
+		}
+		field.Set(newSlice)
+	default:
+		return ErrUnsupportedPtrType
+	}
+	return nil
 }

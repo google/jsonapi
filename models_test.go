@@ -67,12 +67,21 @@ type Book struct {
 	Tags        []string `jsonapi:"attr,tags"`
 }
 
+type Author struct {
+	Firstname    string                 `jsonapi:"firstname"`
+	Lastname     string                 `jsonapi:"lastname"`
+	Age          int                    `jsonapi:"age"`
+	Publications []int                  `jsonapi:"publications"`
+	Skills       map[string]interface{} `jsonapi:"skills"`
+}
+
 type Blog struct {
 	ID            int       `jsonapi:"primary,blogs"`
 	ClientID      string    `jsonapi:"client-id"`
 	Title         string    `jsonapi:"attr,title"`
 	Posts         []*Post   `jsonapi:"relation,posts"`
 	CurrentPost   *Post     `jsonapi:"relation,current_post"`
+	Author        *Author   `jsonapi:"attr,author"`
 	CurrentPostID int       `jsonapi:"attr,current_post_id"`
 	CreatedAt     time.Time `jsonapi:"attr,created_at"`
 	ViewCount     int       `jsonapi:"attr,view_count"`

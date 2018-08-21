@@ -564,6 +564,31 @@ func TestUnmarshalNestedRelationshipsEmbedded_withClientIDs(t *testing.T) {
 	}
 }
 
+func TestUnmarshalNestedStruct(t *testing.T) {
+	payload := samplePayloadWithSideloaded()
+	out := new(Blog)
+
+	if err := UnmarshalPayload(payload, out); err != nil {
+		t.Fatal(err)
+	}
+
+	if out.Author.Age != 10 {
+		t.Errorf("Author Age not set from request")
+	}
+	if out.Author.Firstname != "Mr" {
+		t.Errorf("Author Firstname not set from request")
+	}
+	if out.Author.Lastname != "Gopher" {
+		t.Errorf("Author Lastname not set from request")
+	}
+	if len(out.Author.Publications) != 3 || out.Author.Publications[0] != 1998 {
+		t.Errorf("Author Publications not set from request")
+	}
+	if len(out.Author.Skills) != 1 || out.Author.Skills["english"] != "native" {
+		t.Errorf("Author Skills not set from request")
+	}
+}
+
 func unmarshalSamplePayload() (*Blog, error) {
 	in := samplePayload()
 	out := new(Blog)
@@ -865,6 +890,15 @@ func testModel() *Blog {
 		ClientID:  "1",
 		Title:     "Title 1",
 		CreatedAt: time.Now(),
+		Author: &Author{
+			Firstname:    "Mr",
+			Lastname:     "Gopher",
+			Age:          10,
+			Publications: []int{1998, 2000, 2002},
+			Skills: map[string]interface{}{
+				"english": "native",
+			},
+		},
 		Posts: []*Post{
 			{
 				ID:    1,
