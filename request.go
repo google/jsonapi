@@ -120,7 +120,7 @@ func UnmarshalManyPayload(in io.Reader, t reflect.Type) ([]interface{}, error) {
 func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = fmt.Errorf("data is not a jsonapi representation of '%v'", model.Type())
+			err = fmt.Errorf("data is not a jsonapi representation of '%v': %v", model.Type(), r)
 		}
 	}()
 
@@ -168,7 +168,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				break
 			}
 
-			// ID will have to be transmitted as astring per the JSON API spec
+			// ID will have to be transmitted as a string per the JSON API spec
 			v := reflect.ValueOf(data.ID)
 
 			// Deal with PTRS
@@ -182,6 +182,17 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			// Handle String case
 			if kind == reflect.String {
 				assign(fieldValue, v)
+				continue
+			}
+			// custom type that can be unmarshalled from a string
+			if v.Kind() == reflect.String && IsRegisteredType(fieldType.Type) {
+				unmashalFunc := customTypeUnmarshallingFuncs[fieldType.Type]
+				r, err := unmashalFunc(data.ID)
+				if err != nil {
+					er = err
+				} else {
+					fieldValue.Set(reflect.ValueOf(r))
+				}
 				continue
 			}
 
@@ -415,6 +426,18 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				}
 
 				assign(fieldValue, numericValue)
+				continue
+			}
+
+			// custom type that can be unmarshalled from a string
+			if v.Kind() == reflect.String && IsRegisteredType(fieldType.Type) {
+				unmashalFunc := customTypeUnmarshallingFuncs[fieldType.Type]
+				r, err := unmashalFunc(val.(string))
+				if err != nil {
+					er = err
+				} else {
+					fieldValue.Set(reflect.ValueOf(r))
+				}
 				continue
 			}
 

@@ -3,6 +3,7 @@ package jsonapi
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"sort"
 	"testing"
@@ -335,7 +336,7 @@ func TestMarshalOnePayload_omitIDString(t *testing.T) {
 	}
 }
 
-func TestMarshall_invalidIDType(t *testing.T) {
+func TestMarshal_invalidIDType(t *testing.T) {
 	type badIDStruct struct {
 		ID *bool `jsonapi:"primary,cars"`
 	}
@@ -344,10 +345,106 @@ func TestMarshall_invalidIDType(t *testing.T) {
 
 	out := bytes.NewBuffer(nil)
 	if err := MarshalPayload(out, o); err != ErrBadJSONAPIID {
-		t.Fatalf(
-			"Was expecting a `%s` error, got `%s`", ErrBadJSONAPIID, err,
-		)
+		t.Fatalf("Was expecting a `%s` error, got `%s`", ErrBadJSONAPIID, err)
 	}
+}
+
+func TestMarshal_CustomType(t *testing.T) {
+	// given
+	// register the custom `UUID` type
+	uuidType := reflect.TypeOf(UUID{})
+	RegisterType(uuidType,
+		func(value interface{}) (string, error) {
+			return value.(UUID).String(), nil
+		},
+		func(value string) (interface{}, error) {
+			result, err := UUIDFromString(value)
+			if err != nil {
+				fmt.Println("Error while converting from string to UUID: " + err.Error())
+				return nil, err
+			}
+			return *result, nil
+		})
+	// declare the struct to marshall
+	payload := sampleModelCustomTypePayload()
+	// when
+	out := bytes.NewBuffer(nil)
+	err := MarshalPayload(out, payload)
+	// then
+	t.Logf("Output: %s", out.String())
+	if err != nil {
+		t.Fatalf("Was expecting a no error, but got `%s`", err)
+	}
+	resp := new(OnePayload)
+	if err := json.NewDecoder(out).Decode(resp); err != nil {
+		t.Fatal(err)
+	}
+	data := resp.Data
+	if data.Type != "customtypes" {
+		t.Fatalf("type should have been `customtypes`, got `%s`", data.Type)
+	}
+	if data.ID != "12345678-abcd-1234-abcd-123456789012" {
+		t.Fatalf("ID not transfered")
+	}
+	if data.Attributes["uuid_field"] != "87654321-dcba-4321-dcba-210987654321" {
+		t.Fatalf("UUID attribute not marshalled as expected: '%v'", data.Attributes["uuid_field"])
+	}
+}
+func TestMarshal_CustomType_Ptr(t *testing.T) {
+	// given
+	// register the custom `*UUID` type
+	uuidType := reflect.TypeOf(&UUID{})
+	RegisterType(uuidType,
+		func(value interface{}) (string, error) {
+			result := value.(*UUID).String()
+			return result, nil
+		},
+		func(value string) (interface{}, error) {
+			return UUIDFromString(value)
+		})
+	payload := sampleModelCustomTypeWithPtrsPayload()
+	// when
+	out := bytes.NewBuffer(nil)
+	err := MarshalPayload(out, payload)
+	// then
+	t.Logf("Output: %s", out.String())
+	if err != nil {
+		t.Fatalf("Was expecting a no error, but got `%s`", err)
+	}
+	resp := new(OnePayload)
+	if err := json.NewDecoder(out).Decode(resp); err != nil {
+		t.Fatal(err)
+	}
+	data := resp.Data
+	if data.Type != "customtypes" {
+		t.Fatalf("type should have been `customtypes`, got `%s`", data.Type)
+	}
+	if data.ID != "12345678-abcd-1234-abcd-123456789012" {
+		t.Fatalf("ID not transfered as expected: '%v'", data.ID)
+	}
+	if data.Attributes["uuid_field"] != "87654321-dcba-4321-dcba-210987654321" {
+		t.Fatalf("UUID attribute not transfered as expected: '%v'", data.Attributes["uuid_field"])
+	}
+	// verify the ids in the `relationships` section
+	latestRelatedModel := data.Relationships["latest_relatedmodel"]
+	latestRelatedModelData := latestRelatedModel.(map[string]interface{})["data"].(map[string]interface{})
+	if latestRelatedModelData["id"].(string) != "12345678-abcd-1234-abcd-111111111111" {
+		t.Fatalf("latest_relatedmodel.data.id not transfered as expected: '%v'", latestRelatedModelData["id"])
+	}
+	relatedModels := data.Relationships["relatedmodels"]
+	relatedModelsData := relatedModels.(map[string]interface{})["data"].([]interface{})
+	if relatedModelsData[0].(map[string]interface{})["id"].(string) != "12345678-abcd-1234-abcd-222222222222" {
+		t.Fatalf("latest_relatedmodel.data.id not transfered as expected: '%v'", relatedModelsData[0].(map[string]interface{})["id"])
+	}
+	// verify `uuid` attributes in the `included` section
+	for i, includedElement := range resp.Included {
+		if (includedElement.ID == "12345678-abcd-1234-abcd-111111111111" && includedElement.Attributes["uuid_field"] != "87654321-dcba-4321-dcba-111111111111") ||
+			(includedElement.ID == "12345678-abcd-1234-abcd-222222222222" && includedElement.Attributes["uuid_field"] != "87654321-dcba-4321-dcba-222222222222") ||
+			(includedElement.ID == "12345678-abcd-1234-abcd-333333333333" && includedElement.Attributes["uuid_field"] != "87654321-dcba-4321-dcba-333333333333") {
+			t.Fatalf("included.data[%d].attributes.uuid does not match: '%v'", i, includedElement.Attributes["uuid_field"])
+		}
+	}
+
 }
 
 func TestOmitsEmptyAnnotation(t *testing.T) {

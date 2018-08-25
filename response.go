@@ -18,7 +18,7 @@ var (
 	// ErrBadJSONAPIID is returned when the Struct JSON API annotated "id" field
 	// was not a valid numeric type.
 	ErrBadJSONAPIID = errors.New(
-		"id should be either string, int(8,16,32,64) or uint(8,16,32,64)")
+		"id should be either a string, a registered custom type, an int(8,16,32,64) or an uint(8,16,32,64)")
 	// ErrExpectedSlice is returned when a variable or argument was expected to
 	// be a slice of *Structs; MarshalMany will return this error when its
 	// interface{} argument is invalid.
@@ -252,35 +252,41 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 				kind = fieldType.Type.Kind()
 			}
 
-			// Handle allowed types
-			switch kind {
-			case reflect.String:
-				node.ID = v.Interface().(string)
-			case reflect.Int:
-				node.ID = strconv.FormatInt(int64(v.Interface().(int)), 10)
-			case reflect.Int8:
-				node.ID = strconv.FormatInt(int64(v.Interface().(int8)), 10)
-			case reflect.Int16:
-				node.ID = strconv.FormatInt(int64(v.Interface().(int16)), 10)
-			case reflect.Int32:
-				node.ID = strconv.FormatInt(int64(v.Interface().(int32)), 10)
-			case reflect.Int64:
-				node.ID = strconv.FormatInt(v.Interface().(int64), 10)
-			case reflect.Uint:
-				node.ID = strconv.FormatUint(uint64(v.Interface().(uint)), 10)
-			case reflect.Uint8:
-				node.ID = strconv.FormatUint(uint64(v.Interface().(uint8)), 10)
-			case reflect.Uint16:
-				node.ID = strconv.FormatUint(uint64(v.Interface().(uint16)), 10)
-			case reflect.Uint32:
-				node.ID = strconv.FormatUint(uint64(v.Interface().(uint32)), 10)
-			case reflect.Uint64:
-				node.ID = strconv.FormatUint(v.Interface().(uint64), 10)
-			default:
-				// We had a JSON float (numeric), but our field was not one of the
-				// allowed numeric types
-				er = ErrBadJSONAPIID
-				break
+			if IsRegisteredType(fieldType.Type) {
+				marshallingFunc := customTypeMarshallingFuncs[fieldType.Type]
+				// we must not use 'v' here because we must keep the pointer indirection if it applies
+				node.ID, _ = marshallingFunc(fieldValue.Interface())
+			} else {
+				// Handle allowed types
+				switch kind {
+				case reflect.String:
+					node.ID = v.Interface().(string)
+				case reflect.Int:
+					node.ID = strconv.FormatInt(int64(v.Interface().(int)), 10)
+				case reflect.Int8:
+					node.ID = strconv.FormatInt(int64(v.Interface().(int8)), 10)
+				case reflect.Int16:
+					node.ID = strconv.FormatInt(int64(v.Interface().(int16)), 10)
+				case reflect.Int32:
+					node.ID = strconv.FormatInt(int64(v.Interface().(int32)), 10)
+				case reflect.Int64:
+					node.ID = strconv.FormatInt(v.Interface().(int64), 10)
+				case reflect.Uint:
+					node.ID = strconv.FormatUint(uint64(v.Interface().(uint)), 10)
+				case reflect.Uint8:
+					node.ID = strconv.FormatUint(uint64(v.Interface().(uint8)), 10)
+				case reflect.Uint16:
+					node.ID = strconv.FormatUint(uint64(v.Interface().(uint16)), 10)
+				case reflect.Uint32:
+					node.ID = strconv.FormatUint(uint64(v.Interface().(uint32)), 10)
+				case reflect.Uint64:
+					node.ID = strconv.FormatUint(v.Interface().(uint64), 10)
+				default:
+					// We had a JSON float (numeric), but our field was not one of the
+					// allowed numeric types
+					er = ErrBadJSONAPIID
+					break
+				}
 			}
 
 			node.Type = args[1]
@@ -352,6 +358,15 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 				strAttr, ok := fieldValue.Interface().(string)
 				if ok {
 					node.Attributes[args[1]] = strAttr
+				} else if IsRegisteredType(fieldValue.Type()) {
+					customMarshalFunc := customTypeMarshallingFuncs[fieldValue.Type()]
+					result, err := customMarshalFunc(fieldValue.Interface())
+					if err != nil {
+						er = err
+						break
+					} else {
+						node.Attributes[args[1]] = result
+					}
 				} else {
 					node.Attributes[args[1]] = fieldValue.Interface()
 				}
