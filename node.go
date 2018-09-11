@@ -5,6 +5,8 @@ import "fmt"
 // Payloader is used to encapsulate the One and Many payload types
 type Payloader interface {
 	clearIncluded()
+	GetIncluded() []*Node
+	SetIncluded([]*Node)
 }
 
 // OnePayload is used to represent a generic JSON API payload where a single
@@ -20,6 +22,16 @@ func (p *OnePayload) clearIncluded() {
 	p.Included = []*Node{}
 }
 
+//GetIncluded returns current included items
+func (p *OnePayload) GetIncluded() []*Node {
+	return p.Included
+}
+
+//SetIncluded updates included
+func (p *OnePayload) SetIncluded(newIncluded []*Node) {
+	p.Included = newIncluded
+}
+
 // ManyPayload is used to represent a generic JSON API payload where many
 // resources (Nodes) were included in an [] in the "data" key
 type ManyPayload struct {
@@ -31,6 +43,16 @@ type ManyPayload struct {
 
 func (p *ManyPayload) clearIncluded() {
 	p.Included = []*Node{}
+}
+
+//SetIncluded updates included
+func (p *ManyPayload) SetIncluded(newIncluded []*Node) {
+	p.Included = newIncluded
+}
+
+//GetIncluded returns current included items
+func (p *ManyPayload) GetIncluded() []*Node {
+	return p.Included
 }
 
 // Node is used to represent a generic JSON API Resource
@@ -46,7 +68,7 @@ type Node struct {
 
 // RelationshipOneNode is used to represent a generic has one JSON API relation
 type RelationshipOneNode struct {
-	Data  *Node  `json:"data"`
+	Data  *Node  `json:"data,omitempty"`
 	Links *Links `json:"links,omitempty"`
 	Meta  *Meta  `json:"meta,omitempty"`
 }
@@ -54,7 +76,7 @@ type RelationshipOneNode struct {
 // RelationshipManyNode is used to represent a generic has many JSON API
 // relation
 type RelationshipManyNode struct {
-	Data  []*Node `json:"data"`
+	Data  []*Node `json:"data,omitempty"`
 	Links *Links  `json:"links,omitempty"`
 	Meta  *Meta   `json:"meta,omitempty"`
 }
