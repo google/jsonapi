@@ -27,12 +27,23 @@ var (
 	// (numeric) but the Struct field was a non numeric type (i.e. not int, uint,
 	// float, etc)
 	ErrUnknownFieldNumberType = errors.New("The struct field was not of a known number type")
-	// ErrUnsupportedPtrType is returned when the Struct field was a pointer but
-	// the JSON value was of a different type
-	ErrUnsupportedPtrType = errors.New("Pointer type in struct is not supported")
 	// ErrInvalidType is returned when the given type is incompatible with the expected type.
 	ErrInvalidType = errors.New("Invalid type provided") // I wish we used punctuation.
 )
+
+// ErrUnsupportedPtrType is returned when the Struct field was a pointer but
+// the JSON value was of a different type
+func ErrUnsupportedPtrType(rf reflect.Value, f reflect.StructField) error {
+	typeName := f.Type.Elem().Name()
+	kind := f.Type.Elem().Kind()
+	if kind.String() != "" && kind.String() != typeName {
+		typeName = fmt.Sprintf("%s (%s)", typeName, kind.String())
+	}
+	return fmt.Errorf(
+		"[jsonapi]: Can't unmarshal %+v (%s) to struct field `%s`, which is a pointer to `%s`, which is not a supported type",
+		rf, rf.Type().Name(), f.Name, typeName,
+	)
+}
 
 // UnmarshalPayload converts an io into a struct instance using jsonapi tags on
 // struct fields. This method supports single request payloads only, at the
@@ -421,7 +432,6 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			// Field was a Pointer type
 			if fieldValue.Kind() == reflect.Ptr {
 				var concreteVal reflect.Value
-
 				switch cVal := val.(type) {
 				case string:
 					concreteVal = reflect.ValueOf(&cVal)
@@ -434,11 +444,11 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				case uintptr:
 					concreteVal = reflect.ValueOf(&cVal)
 				default:
-					return ErrUnsupportedPtrType
+					return ErrUnsupportedPtrType(reflect.ValueOf(val), fieldType)
 				}
 
 				if fieldValue.Type() != concreteVal.Type() {
-					return ErrUnsupportedPtrType
+					return ErrUnsupportedPtrType(reflect.ValueOf(val), fieldType)
 				}
 
 				fieldValue.Set(concreteVal)
