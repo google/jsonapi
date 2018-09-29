@@ -290,6 +290,64 @@ func TestUnmarshalParsesISO8601(t *testing.T) {
 	}
 }
 
+func TestUnmarshalParsesStringInts(t *testing.T) {
+	payload := &OnePayload{
+		Data: &Node{
+			Type: "string-ints",
+			Attributes: map[string]interface{}{
+				"parent-id":         "2",
+				"opt-parent-id":     "3",
+				"big-parent-id":     "1362085645204177151",
+				"opt-big-parent-id": "1362085645204177151",
+			},
+		},
+	}
+
+	in := bytes.NewBuffer(nil)
+	json.NewEncoder(in).Encode(payload)
+
+	out := new(StringInt)
+
+	if err := UnmarshalPayload(in, out); err != nil {
+		t.Fatal(err)
+	}
+
+	if out.ParentID != 2 {
+		t.Fatal("Parsing the string encoded int failed")
+	}
+	if *out.OptParentID != 3 {
+		t.Fatal("Parsing the string encoded *int failed")
+	}
+	if out.BigParentID != 1362085645204177151 {
+		t.Fatal("Parsing the string encoded int64 failed")
+	}
+	if *out.OptBigParentID != 1362085645204177151 {
+		t.Fatal("Parsing the string encoded *int64 failed")
+	}
+}
+
+func TestUnmarshalParsesStringIntInvalidInputs(t *testing.T) {
+	payload := &OnePayload{
+		Data: &Node{
+			Type: "string-ints",
+			Attributes: map[string]interface{}{
+				"parent-id":     "one",
+				"opt-parent-id": "Lorem ipsum",
+			},
+		},
+	}
+
+	in := bytes.NewBuffer(nil)
+	json.NewEncoder(in).Encode(payload)
+
+	out := new(StringInt)
+	err := UnmarshalPayload(in, out)
+
+	if err == nil || err != ErrInvalidNumberString {
+		t.Fatal("Parsing did not give the proper error message for an invalid string")
+	}
+}
+
 func TestUnmarshalParsesISO8601TimePointer(t *testing.T) {
 	payload := &OnePayload{
 		Data: &Node{

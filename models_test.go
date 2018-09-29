@@ -31,6 +31,14 @@ type Timestamp struct {
 	Next *time.Time `jsonapi:"attr,next,iso8601"`
 }
 
+type StringInt struct {
+	ID             int    `jsonapi:"primary,string-ints"`
+	ParentID       int    `jsonapi:"attr,parent-id,string"`
+	OptParentID    *int   `jsonapi:"attr,opt-parent-id,string"`
+	BigParentID    int64  `jsonapi:"attr,big-parent-id,string"`
+	OptBigParentID *int64 `jsonapi:"attr,opt-big-parent-id,string"`
+}
+
 type Car struct {
 	ID    *string `jsonapi:"primary,cars"`
 	Make  *string `jsonapi:"attr,make,omitempty"`

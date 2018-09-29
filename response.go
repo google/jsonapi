@@ -290,7 +290,7 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 				node.ClientID = clientID
 			}
 		} else if annotation == annotationAttribute {
-			var omitEmpty, iso8601 bool
+			var omitEmpty, iso8601, str bool
 
 			if len(args) > 2 {
 				for _, arg := range args[2:] {
@@ -299,6 +299,8 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 						omitEmpty = true
 					case annotationISO8601:
 						iso8601 = true
+					case annotationString:
+						str = true
 					}
 				}
 			}
@@ -349,10 +351,44 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 					continue
 				}
 
-				strAttr, ok := fieldValue.Interface().(string)
-				if ok {
-					node.Attributes[args[1]] = strAttr
-				} else {
+				// Modify the output if the user specified that we need to string encode
+				// integer types.
+				switch attr := fieldValue.Interface().(type) {
+				case string:
+					node.Attributes[args[1]] = attr
+				case *int:
+					if attr == nil {
+						node.Attributes[args[1]] = nil
+					} else {
+						if str {
+							node.Attributes[args[1]] = strconv.Itoa(*attr)
+						} else {
+							node.Attributes[args[1]] = fieldValue.Interface()
+						}
+					}
+				case int:
+					if str {
+						node.Attributes[args[1]] = strconv.Itoa(attr)
+					} else {
+						node.Attributes[args[1]] = fieldValue.Interface()
+					}
+				case *int64:
+					if attr == nil {
+						node.Attributes[args[1]] = nil
+					} else {
+						if str {
+							node.Attributes[args[1]] = strconv.FormatInt(*attr, 10)
+						} else {
+							node.Attributes[args[1]] = fieldValue.Interface()
+						}
+					}
+				case int64:
+					if str {
+						node.Attributes[args[1]] = strconv.FormatInt(attr, 10)
+					} else {
+						node.Attributes[args[1]] = fieldValue.Interface()
+					}
+				default:
 					node.Attributes[args[1]] = fieldValue.Interface()
 				}
 			}

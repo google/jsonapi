@@ -9,6 +9,7 @@ const (
 	annotationRelation  = "relation"
 	annotationOmitEmpty = "omitempty"
 	annotationISO8601   = "iso8601"
+	annotationString    = "string"
 	annotationSeperator = ","
 
 	iso8601TimeFormat = "2006-01-02T15:04:05Z"
