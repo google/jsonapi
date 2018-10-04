@@ -165,14 +165,14 @@ type Company struct {
 }
 
 type Team struct {
-	Name    string     `json:"name"`
-	Leader  *Employee  `json:"leader"`
-	Members []Employee `json:"members"`
+	Name    string     `jsonapi:"attr,name"`
+	Leader  *Employee  `jsonapi:"attr,leader"`
+	Members []Employee `jsonapi:"attr,members"`
 }
 
 type Employee struct {
-	Firstname string     `json:"firstname"`
-	Surname   string     `json:"surname"`
-	Age       int        `json:"age"`
-	HiredAt   *time.Time `json:"hired-at,iso8601"`
+	Firstname string     `jsonapi:"attr,firstname"`
+	Surname   string     `jsonapi:"attr,surname"`
+	Age       int        `jsonapi:"attr,age"`
+	HiredAt   *time.Time `jsonapi:"attr,hired-at,iso8601"`
 }

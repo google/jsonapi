@@ -1013,8 +1013,8 @@ func sampleSerializedEmbeddedTestModel() *Blog {
 
 func TestUnmarshalNestedStructPtr(t *testing.T) {
 	type Director struct {
-		Firstname string `json:"firstname"`
-		Surname   string `json:"surname"`
+		Firstname string `jsonapi:"attr,firstname"`
+		Surname   string `jsonapi:"attr,surname"`
 	}
 	type Movie struct {
 		ID       string    `jsonapi:"primary,movies"`
@@ -1058,7 +1058,6 @@ func TestUnmarshalNestedStructPtr(t *testing.T) {
 }
 
 func TestUnmarshalNestedStruct(t *testing.T) {
-
 	boss := map[string]interface{}{
 		"firstname": "Hubert",
 		"surname":   "Farnsworth",
@@ -1074,22 +1073,22 @@ func TestUnmarshalNestedStruct(t *testing.T) {
 				"name":       "Planet Express",
 				"boss":       boss,
 				"founded-at": "2016-08-17T08:27:12Z",
-				"teams": []Team{
-					Team{
-						Name: "Dev",
-						Members: []Employee{
-							Employee{Firstname: "Sean"},
-							Employee{Firstname: "Iz"},
+				"teams": []map[string]interface{}{
+					map[string]interface{}{
+						"name": "Dev",
+						"members": []map[string]interface{}{
+							map[string]interface{}{"firstname": "Sean"},
+							map[string]interface{}{"firstname": "Iz"},
 						},
-						Leader: &Employee{Firstname: "Iz"},
+						"leader": map[string]interface{}{"firstname": "Iz"},
 					},
-					Team{
-						Name: "DxE",
-						Members: []Employee{
-							Employee{Firstname: "Akshay"},
-							Employee{Firstname: "Peri"},
+					map[string]interface{}{
+						"name": "DxE",
+						"members": []map[string]interface{}{
+							map[string]interface{}{"firstname": "Akshay"},
+							map[string]interface{}{"firstname": "Peri"},
 						},
-						Leader: &Employee{Firstname: "Peri"},
+						"leader": map[string]interface{}{"firstname": "Peri"},
 					},
 				},
 			},
