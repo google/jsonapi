@@ -301,7 +301,10 @@ func TestUnmarshalSetsID(t *testing.T) {
 func TestUnmarshal_nonNumericID(t *testing.T) {
 	data := samplePayloadWithoutIncluded()
 	data["data"].(map[string]interface{})["id"] = "non-numeric-id"
-	payload, _ := payload(data)
+	payload, err := json.Marshal(data)
+	if err != nil {
+		t.Fatal(err)
+	}
 	in := bytes.NewReader(payload)
 	out := new(Post)
 
@@ -402,7 +405,10 @@ func TestUnmarshalInvalidISO8601(t *testing.T) {
 }
 
 func TestUnmarshalRelationshipsWithoutIncluded(t *testing.T) {
-	data, _ := payload(samplePayloadWithoutIncluded())
+	data, err := json.Marshal(samplePayloadWithoutIncluded())
+	if err != nil {
+		t.Fatal(err)
+	}
 	in := bytes.NewReader(data)
 	out := new(Post)
 
@@ -787,7 +793,7 @@ func TestUnmarshalCustomTypeAttributes(t *testing.T) {
 			},
 		},
 	}
-	payload, err := payload(data)
+	payload, err := json.Marshal(data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -847,11 +853,6 @@ func samplePayloadWithoutIncluded() map[string]interface{} {
 			},
 		},
 	}
-}
-
-func payload(data map[string]interface{}) (result []byte, err error) {
-	result, err = json.Marshal(data)
-	return
 }
 
 func samplePayload() io.Reader {
