@@ -181,7 +181,7 @@ to-many from being serialized.
 **All `Marshal` and `Unmarshal` methods expect pointers to struct
 instance or slices of the same contained with the `interface{}`s**
 
-Now you have your structs prepared to be seralized or materialized, What
+Now you have your structs prepared to be serialized or materialized, What
 about the rest?
 
 ### Create Record Example
