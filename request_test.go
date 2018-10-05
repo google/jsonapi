@@ -822,6 +822,38 @@ func TestUnmarshalCustomTypeAttributes(t *testing.T) {
 	}
 }
 
+func TestUnmarshalCustomTypeAttributes_ErrInvalidType(t *testing.T) {
+	data := map[string]interface{}{
+		"data": map[string]interface{}{
+			"type": "customtypes",
+			"id":   "1",
+			"attributes": map[string]interface{}{
+				"int":        "bad",
+				"intptr":     5,
+				"intptrnull": nil,
+
+				"float":  1.5,
+				"string": "Test",
+			},
+		},
+	}
+	payload, err := json.Marshal(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Parse JSON API payload
+	customAttributeTypes := new(CustomAttributeTypes)
+	err = UnmarshalPayload(bytes.NewReader(payload), customAttributeTypes)
+	if err == nil {
+		t.Fatal("Expected an error unmarshalling the payload due to type mismatch, got none")
+	}
+
+	if err != ErrInvalidType {
+		t.Fatalf("Expected error to be %v, was %v", ErrInvalidType, err)
+	}
+}
+
 func samplePayloadWithoutIncluded() map[string]interface{} {
 	return map[string]interface{}{
 		"data": map[string]interface{}{

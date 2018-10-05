@@ -253,11 +253,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				break
 			}
 
-			// As a final catch-all, ensure types line up to avoid a runtime panic.
-			if fieldValue.Kind() != value.Kind() {
-				return ErrInvalidType
-			}
-			assignValue(fieldValue, value)
+			assign(fieldValue, value)
 		} else if annotation == annotationRelation {
 			isSlice := fieldValue.Type().Kind() == reflect.Slice
 
@@ -355,10 +351,11 @@ func assign(field, value reflect.Value) {
 		// initialize pointer so it's value
 		// can be set by assignValue
 		field.Set(reflect.New(field.Type().Elem()))
-		assignValue(field.Elem(), value)
-	} else {
-		assignValue(field, value)
+		field = field.Elem()
+
 	}
+
+	assignValue(field, value)
 }
 
 // assign assigns the specified value to the field,
