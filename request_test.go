@@ -778,12 +778,12 @@ func TestUnmarshalCustomTypeAttributes(t *testing.T) {
 			"type": "customtypes",
 			"id":   "1",
 			"attributes": map[string]interface{}{
-				"int":        customInt,
-				"intptr":     &customInt,
+				"int":        5,
+				"intptr":     5,
 				"intptrnull": nil,
 
-				"float":  customFloat,
-				"string": customString,
+				"float":  1.5,
+				"string": "Test",
 			},
 		},
 	}
