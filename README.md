@@ -343,6 +343,23 @@ func (post Post) JSONAPIRelationshipMeta(relation string) *Meta {
 }
 ```
 
+### Custom types
+
+Custom types are supported for primitive types, only, as attributes.  Examples,
+
+```go
+type CustomIntType int
+type CustomFloatType float64
+type CustomStringType string
+```
+
+Types like following are not supported, but may be in the future:
+
+```go
+type CustomMapType map[string]interface{}
+type CustomSliceMapType []map[string]interface{}
+```
+
 ### Errors
 This package also implements support for JSON API compatible `errors` payloads using the following types.
 
