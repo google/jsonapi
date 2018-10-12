@@ -166,7 +166,7 @@ type Company struct {
 
 type Team struct {
 	Name    string     `jsonapi:"attr,name"`
-	Leader  *Employee  `jsonapi:"attr,leader"`
+	Leader   Employee  `jsonapi:"attr,leader"`
 	Members []Employee `jsonapi:"attr,members"`
 }
 

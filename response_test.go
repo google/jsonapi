@@ -902,6 +902,33 @@ func TestMarshal_InvalidIntefaceArgument(t *testing.T) {
 	}
 }
 
+func TestMarshalNestedStruct(t *testing.T) {
+	team := Team{
+		Name: "Awesome team",
+		Leader: Employee{
+			Firstname: "John",
+			Surname: "Mota",
+			Age: 35,
+		},
+		Members: []Employee{
+			{
+				Firstname: "Henrique",
+				Surname:  "Doe",
+			},
+		},
+	}
+
+	buffer := bytes.NewBuffer(nil)
+	MarshalOnePayloadEmbedded(buffer, &team)
+	reader := bytes.NewReader(buffer.Bytes())
+	var finalTeam Team
+	UnmarshalPayload(reader, &finalTeam)
+
+	if !reflect.DeepEqual(team, finalTeam) {
+		t.Error("final unmarshal payload should be equal to the original one.")
+	}
+}
+
 func testBlog() *Blog {
 	return &Blog{
 		ID:        5,
