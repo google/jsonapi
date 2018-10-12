@@ -247,15 +247,27 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			}
 
 			structField := fieldType
-			value, err := unmarshalAttribute(attribute, args, structField, fieldValue)
-			if err != nil {
-				er = err
-				break
+
+			if structField.Type.Kind() != reflect.Struct ||
+				fieldValue.Type() == reflect.TypeOf(new(time.Time)) ||
+				fieldValue.Type() == reflect.TypeOf(time.Time{})  {
+				value, err := unmarshalAttribute(attribute, args, structField, fieldValue)
+				if err != nil {
+					er = err
+					break
+				}
+				assign(fieldValue, value)
+				continue
+
+			} else {
+				structModel, err := unmarshalFromAttribute(attribute, fieldValue)
+				if err != nil {
+					er = err
+					break
+				}
+				fieldValue.Set((*structModel).Elem())
+				continue
 			}
-
-			assign(fieldValue, value)
-			continue
-
 		} else if annotation == annotationRelation {
 			isSlice := fieldValue.Type().Kind() == reflect.Slice
 
@@ -334,6 +346,23 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 	return er
 }
 
+func unmarshalFromAttribute(attribute interface{}, fieldValue reflect.Value) (*reflect.Value, error) {
+	structData, err := json.Marshal(attribute)
+	if err != nil {
+		return nil, err
+	}
+	structNode := new(Node)
+	if err := json.Unmarshal(structData, &structNode.Attributes); err != nil {
+		return nil, err
+	}
+	structModel := reflect.New(fieldValue.Type())
+	if err := unmarshalNode(structNode, structModel, nil); err != nil {
+		return nil, err
+	}
+
+	return &structModel, nil
+}
+
 func fullNode(n *Node, included *map[string]*Node) *Node {
 	includedKey := fmt.Sprintf("%s,%s", n.Type, n.ID)
 
@@ -347,7 +376,7 @@ func fullNode(n *Node, included *map[string]*Node) *Node {
 // assign will take the value specified and assign it to the field; if
 // field is expecting a ptr assign will assign a ptr.
 func assign(field, value reflect.Value) {
-	if field.Kind() == reflect.Ptr {
+	if field.Kind() == reflect.Ptr || field.Kind() == reflect.Struct{
 		field.Set(value)
 	} else {
 		field.Set(reflect.Indirect(value))
@@ -361,6 +390,7 @@ func unmarshalAttribute(
 	fieldValue reflect.Value) (value reflect.Value, err error) {
 	value = reflect.ValueOf(attribute)
 	fieldType := structField.Type
+
 
 	// Handle field of type []string
 	if fieldValue.Type() == reflect.TypeOf([]string{}) {
@@ -566,7 +596,6 @@ func handlePointer(
 func handleStruct(
 	attribute interface{},
 	fieldValue reflect.Value) (reflect.Value, error) {
-
 	data, err := json.Marshal(attribute)
 	if err != nil {
 		return reflect.Value{}, err
