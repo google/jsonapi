@@ -309,6 +309,38 @@ func TestMarshalIDPtr(t *testing.T) {
 	}
 }
 
+func TestMarshalIDTypeOfString(t *testing.T) {
+	type (
+		IBSN string
+
+		Book struct {
+			ID IBSN `jsonapi:"primary,books"`
+		}
+	)
+
+	book := &Book{ID: IBSN("978-3-16-148410-0")}
+
+	out := &bytes.Buffer{}
+	if err := MarshalPayload(out, book); err != nil {
+		t.Fatal(err)
+	}
+
+	var payload map[string]interface{}
+	if err := json.Unmarshal(out.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+
+	data := payload["data"].(map[string]interface{})
+	id, ok := data["id"]
+	if !ok {
+		t.Fatal("Was expecting the data.id value to exist")
+	}
+
+	if id != "978-3-16-148410-0" {
+		t.Fatalf("Was expecting the data.id value to be %s but got %s", "978-3-16-148410-0", id)
+	}
+}
+
 func TestMarshalOnePayload_omitIDString(t *testing.T) {
 	type Foo struct {
 		ID    string `jsonapi:"primary,foo"`

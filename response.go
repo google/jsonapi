@@ -255,7 +255,7 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 			// Handle allowed types
 			switch kind {
 			case reflect.String:
-				node.ID = v.Interface().(string)
+				node.ID = v.String()
 			case reflect.Int:
 				node.ID = strconv.FormatInt(int64(v.Interface().(int)), 10)
 			case reflect.Int8:
