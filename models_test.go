@@ -159,7 +159,7 @@ func (bc *BadComment) JSONAPILinks() *Links {
 type Company struct {
 	ID        string    `jsonapi:"primary,companies"`
 	Name      string    `jsonapi:"attr,name"`
-	Boss      Employee  `jsonapi:"attr,boss"`
+	Boss      *Employee  `jsonapi:"attr,boss"`
 	Teams     []Team    `jsonapi:"attr,teams"`
 	FoundedAt time.Time `jsonapi:"attr,founded-at,iso8601"`
 }

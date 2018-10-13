@@ -359,8 +359,12 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 					newSlice[i] = nested.Attributes
 				}
 				node.Attributes[args[1]] = newSlice
-			} else if fieldValue.Kind() == reflect.Struct {
+			} else if fieldValue.Kind() == reflect.Struct ||
+				(fieldValue.Kind() == reflect.Ptr && fieldValue.Elem().Kind() == reflect.Struct) {
 				included := make(map[string]*Node)
+				if fieldValue.Kind() == reflect.Ptr {
+					fieldValue = fieldValue.Elem()
+				}
 				nested, err := visitModelNode(fieldValue, &included, true)
 				if err != nil {
 					er = err
