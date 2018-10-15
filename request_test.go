@@ -301,7 +301,10 @@ func TestUnmarshalSetsID(t *testing.T) {
 func TestUnmarshal_nonNumericID(t *testing.T) {
 	data := samplePayloadWithoutIncluded()
 	data["data"].(map[string]interface{})["id"] = "non-numeric-id"
-	payload, _ := payload(data)
+	payload, err := json.Marshal(data)
+	if err != nil {
+		t.Fatal(err)
+	}
 	in := bytes.NewReader(payload)
 	out := new(Post)
 
@@ -402,7 +405,10 @@ func TestUnmarshalInvalidISO8601(t *testing.T) {
 }
 
 func TestUnmarshalRelationshipsWithoutIncluded(t *testing.T) {
-	data, _ := payload(samplePayloadWithoutIncluded())
+	data, err := json.Marshal(samplePayloadWithoutIncluded())
+	if err != nil {
+		t.Fatal(err)
+	}
 	in := bytes.NewReader(data)
 	out := new(Post)
 
@@ -768,6 +774,86 @@ func TestManyPayload_withLinks(t *testing.T) {
 	}
 }
 
+func TestUnmarshalCustomTypeAttributes(t *testing.T) {
+	customInt := CustomIntType(5)
+	customFloat := CustomFloatType(1.5)
+	customString := CustomStringType("Test")
+
+	data := map[string]interface{}{
+		"data": map[string]interface{}{
+			"type": "customtypes",
+			"id":   "1",
+			"attributes": map[string]interface{}{
+				"int":        5,
+				"intptr":     5,
+				"intptrnull": nil,
+
+				"float":  1.5,
+				"string": "Test",
+			},
+		},
+	}
+	payload, err := json.Marshal(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Parse JSON API payload
+	customAttributeTypes := new(CustomAttributeTypes)
+	if err := UnmarshalPayload(bytes.NewReader(payload), customAttributeTypes); err != nil {
+		t.Fatal(err)
+	}
+
+	if expected, actual := customInt, customAttributeTypes.Int; expected != actual {
+		t.Fatalf("Was expecting custom int to be `%d`, got `%d`", expected, actual)
+	}
+	if expected, actual := customInt, *customAttributeTypes.IntPtr; expected != actual {
+		t.Fatalf("Was expecting custom int pointer to be `%d`, got `%d`", expected, actual)
+	}
+	if customAttributeTypes.IntPtrNull != nil {
+		t.Fatalf("Was expecting custom int pointer to be <nil>, got `%d`", customAttributeTypes.IntPtrNull)
+	}
+
+	if expected, actual := customFloat, customAttributeTypes.Float; expected != actual {
+		t.Fatalf("Was expecting custom float to be `%f`, got `%f`", expected, actual)
+	}
+	if expected, actual := customString, customAttributeTypes.String; expected != actual {
+		t.Fatalf("Was expecting custom string to be `%s`, got `%s`", expected, actual)
+	}
+}
+
+func TestUnmarshalCustomTypeAttributes_ErrInvalidType(t *testing.T) {
+	data := map[string]interface{}{
+		"data": map[string]interface{}{
+			"type": "customtypes",
+			"id":   "1",
+			"attributes": map[string]interface{}{
+				"int":        "bad",
+				"intptr":     5,
+				"intptrnull": nil,
+
+				"float":  1.5,
+				"string": "Test",
+			},
+		},
+	}
+	payload, err := json.Marshal(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Parse JSON API payload
+	customAttributeTypes := new(CustomAttributeTypes)
+	err = UnmarshalPayload(bytes.NewReader(payload), customAttributeTypes)
+	if err == nil {
+		t.Fatal("Expected an error unmarshalling the payload due to type mismatch, got none")
+	}
+
+	if err != ErrInvalidType {
+		t.Fatalf("Expected error to be %v, was %v", ErrInvalidType, err)
+	}
+}
+
 func samplePayloadWithoutIncluded() map[string]interface{} {
 	return map[string]interface{}{
 		"data": map[string]interface{}{
@@ -799,11 +885,6 @@ func samplePayloadWithoutIncluded() map[string]interface{} {
 			},
 		},
 	}
-}
-
-func payload(data map[string]interface{}) (result []byte, err error) {
-	result, err = json.Marshal(data)
-	return
 }
 
 func samplePayload() io.Reader {

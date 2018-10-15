@@ -254,8 +254,6 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			}
 
 			assign(fieldValue, value)
-			continue
-
 		} else if annotation == annotationRelation {
 			isSlice := fieldValue.Type().Kind() == reflect.Slice
 
@@ -347,10 +345,37 @@ func fullNode(n *Node, included *map[string]*Node) *Node {
 // assign will take the value specified and assign it to the field; if
 // field is expecting a ptr assign will assign a ptr.
 func assign(field, value reflect.Value) {
+	value = reflect.Indirect(value)
+
 	if field.Kind() == reflect.Ptr {
+		// initialize pointer so it's value
+		// can be set by assignValue
+		field.Set(reflect.New(field.Type().Elem()))
+		field = field.Elem()
+
+	}
+
+	assignValue(field, value)
+}
+
+// assign assigns the specified value to the field,
+// expecting both values not to be pointer types.
+func assignValue(field, value reflect.Value) {
+	switch field.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16,
+		reflect.Int32, reflect.Int64:
+		field.SetInt(value.Int())
+	case reflect.Uint, reflect.Uint8, reflect.Uint16,
+		reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		field.SetUint(value.Uint())
+	case reflect.Float32, reflect.Float64:
+		field.SetFloat(value.Float())
+	case reflect.String:
+		field.SetString(value.String())
+	case reflect.Bool:
+		field.SetBool(value.Bool())
+	default:
 		field.Set(value)
-	} else {
-		field.Set(reflect.Indirect(value))
 	}
 }
 
@@ -587,7 +612,6 @@ func handleStruct(
 	if err := unmarshalNode(node, model, nil); err != nil {
 		return reflect.Value{}, err
 	}
-
 
 	return model, nil
 }
