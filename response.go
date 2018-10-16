@@ -68,10 +68,7 @@ func MarshalPayload(w io.Writer, models interface{}) error {
 		return err
 	}
 
-	if err := json.NewEncoder(w).Encode(payload); err != nil {
-		return err
-	}
-	return nil
+	return json.NewEncoder(w).Encode(payload)
 }
 
 // Marshal does the same as MarshalPayload except it just returns the payload
@@ -128,10 +125,7 @@ func MarshalPayloadWithoutIncluded(w io.Writer, model interface{}) error {
 	}
 	payload.clearIncluded()
 
-	if err := json.NewEncoder(w).Encode(payload); err != nil {
-		return err
-	}
-	return nil
+	return json.NewEncoder(w).Encode(payload)
 }
 
 // marshalOne does the same as MarshalOnePayload except it just returns the
@@ -195,11 +189,7 @@ func MarshalOnePayloadEmbedded(w io.Writer, model interface{}) error {
 
 	payload := &OnePayload{Data: rootNode}
 
-	if err := json.NewEncoder(w).Encode(payload); err != nil {
-		return err
-	}
-
-	return nil
+	return json.NewEncoder(w).Encode(payload)
 }
 
 func visitModelNode(model interface{}, included *map[string]*Node,
