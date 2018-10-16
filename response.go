@@ -347,6 +347,10 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 					}
 				}
 			} else if fieldValue.Kind() == reflect.Slice && fieldValue.Type().Elem().Kind() == reflect.Struct {
+				if omitEmpty && fieldValue.Len() == 0 {
+					continue
+				}
+
 				newSlice := make([]map[string]interface{}, fieldValue.Len())
 				for i:=0; i < fieldValue.Len(); i++ {
 					included := make(map[string]*Node)
@@ -361,6 +365,15 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 				node.Attributes[args[1]] = newSlice
 			} else if fieldValue.Kind() == reflect.Struct ||
 				(fieldValue.Kind() == reflect.Ptr && fieldValue.Elem().Kind() == reflect.Struct) {
+
+				// Dealing with a fieldValue that is not a time
+				emptyValue := reflect.Zero(fieldValue.Type())
+
+				// See if we need to omit this field
+				if omitEmpty && reflect.DeepEqual(fieldValue.Interface(), emptyValue.Interface()) {
+					continue
+				}
+
 				included := make(map[string]*Node)
 				if fieldValue.Kind() == reflect.Ptr {
 					fieldValue = fieldValue.Elem()
