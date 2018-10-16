@@ -39,9 +39,8 @@ func TestMarshalPayload(t *testing.T) {
 
 func TestMarshalPayloadWithNulls(t *testing.T) {
 
-	books := []*Book{nil, {ID:101}, nil}
+	books := []*Book{nil, {ID: 101}, nil}
 	var jsonData map[string]interface{}
-
 
 	out := bytes.NewBuffer(nil)
 	if err := MarshalPayload(out, books); err != nil {
