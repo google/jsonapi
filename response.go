@@ -270,6 +270,9 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 				// We had a JSON float (numeric), but our field was not one of the
 				// allowed numeric types
 				er = ErrBadJSONAPIID
+			}
+
+			if er != nil {
 				break
 			}
 
