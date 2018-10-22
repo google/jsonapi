@@ -703,6 +703,97 @@ func TestManyPayload_withLinks(t *testing.T) {
 	}
 }
 
+func TestEmbeddedStructs_nonNilStructPtr(t *testing.T) {
+	originalVehicle := &Vehicle{
+		Make:  "VW",
+		Model: "R32",
+		Year:  2008,
+		Engine: Engine{
+			NumberOfCylinders: 6,
+			HorsePower:        250,
+		},
+		BlockHeater: &BlockHeater{
+			Watts: 150,
+		},
+	}
+
+	// Serialize as JSON
+	jsonVehicle, err := json.Marshal(originalVehicle)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	jsonUnmarshalledVehicle := &Vehicle{}
+	json.Unmarshal(jsonVehicle, jsonUnmarshalledVehicle)
+
+	// Proves that the JSON standard lib will allocate a BlockHeater
+	if jsonUnmarshalledVehicle.BlockHeater == nil {
+		t.Fatal("was expecting a non nil Block Heater ptr")
+	}
+	if e, a := originalVehicle.BlockHeater.Watts, jsonUnmarshalledVehicle.BlockHeater.Watts; e != a {
+		t.Fatalf("was expecting watts to be %v, got %v", e, a)
+	}
+
+	// Serialize as JSONAPI
+	jsonAPIVehicle := new(bytes.Buffer)
+	if err = MarshalPayload(jsonAPIVehicle, originalVehicle); err != nil {
+		t.Fatal(err)
+	}
+
+	jsonAPIUnmarshalledVehicle := &Vehicle{}
+	if err = UnmarshalPayload(jsonAPIVehicle, jsonAPIUnmarshalledVehicle); err != nil {
+		t.Fatal(err)
+	}
+
+	if jsonAPIUnmarshalledVehicle.BlockHeater == nil {
+		t.Fatal("was expecting a non nil Block Heater ptr")
+	}
+	if e, a := originalVehicle.BlockHeater.Watts, jsonAPIUnmarshalledVehicle.BlockHeater.Watts; e != a {
+		t.Fatalf("was expecting watts to be %v, got %v", e, a)
+	}
+}
+
+func TestEmbeddedStructs_nilStructPtr(t *testing.T) {
+	originalVehicle := &Vehicle{
+		Make:  "VW",
+		Model: "R32",
+		Year:  2008,
+		Engine: Engine{
+			NumberOfCylinders: 6,
+			HorsePower:        250,
+		},
+	}
+
+	// Serialize as JSON
+	jsonVehicle, err := json.Marshal(originalVehicle)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	jsonUnmarshalledVehicle := &Vehicle{}
+	json.Unmarshal(jsonVehicle, jsonUnmarshalledVehicle)
+
+	// Proves that the JSON standard lib will NOT allocate a BlockHeater
+	if e, a := originalVehicle.BlockHeater, jsonUnmarshalledVehicle.BlockHeater; e != a {
+		t.Fatalf("was expecting BlockHeater to be %v, got %v", e, a)
+	}
+
+	// Serialize as JSONAPI
+	jsonAPIVehicle := new(bytes.Buffer)
+	if err = MarshalPayload(jsonAPIVehicle, originalVehicle); err != nil {
+		t.Fatal(err)
+	}
+
+	jsonAPIUnmarshalledVehicle := &Vehicle{}
+	if err = UnmarshalPayload(jsonAPIVehicle, jsonAPIUnmarshalledVehicle); err != nil {
+		t.Fatal(err)
+	}
+
+	if e, a := originalVehicle.BlockHeater, jsonAPIUnmarshalledVehicle.BlockHeater; e != a {
+		t.Fatalf("was expecting BlockHeater to be %v, got %v", e, a)
+	}
+}
+
 func samplePayloadWithoutIncluded() map[string]interface{} {
 	return map[string]interface{}{
 		"data": map[string]interface{}{

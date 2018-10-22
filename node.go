@@ -44,6 +44,38 @@ type Node struct {
 	Meta          *Meta                  `json:"meta,omitempty"`
 }
 
+func (n *Node) merge(node *Node) {
+	if node.Type != "" {
+		n.Type = node.Type
+	}
+
+	if node.ID != "" {
+		n.ID = node.ID
+	}
+
+	if node.ClientID != "" {
+		n.ClientID = node.ClientID
+	}
+
+	if n.Attributes == nil && node.Attributes != nil {
+		n.Attributes = make(map[string]interface{})
+	}
+	for k, v := range node.Attributes {
+		n.Attributes[k] = v
+	}
+
+	if n.Relationships == nil && node.Relationships != nil {
+		n.Relationships = make(map[string]interface{})
+	}
+	for k, v := range node.Relationships {
+		n.Relationships[k] = v
+	}
+
+	if node.Links != nil {
+		n.Links = node.Links
+	}
+}
+
 // RelationshipOneNode is used to represent a generic has one JSON API relation
 type RelationshipOneNode struct {
 	Data  *Node  `json:"data"`
@@ -118,4 +150,36 @@ type Metable interface {
 type RelationshipMetable interface {
 	// JSONRelationshipMeta will be invoked for each relationship with the corresponding relation name (e.g. `comments`)
 	JSONAPIRelationshipMeta(relation string) *Meta
+}
+
+// derefs the arg, and clones the map-type attributes
+// note: maps are reference types, so they need an explicit copy.
+func deepCopyNode(n *Node) *Node {
+	if n == nil {
+		return n
+	}
+
+	copyMap := func(m map[string]interface{}) map[string]interface{} {
+		if m == nil {
+			return m
+		}
+		cp := make(map[string]interface{})
+		for k, v := range m {
+			cp[k] = v
+		}
+		return cp
+	}
+
+	copy := *n
+	copy.Attributes = copyMap(copy.Attributes)
+	copy.Relationships = copyMap(copy.Relationships)
+	if copy.Links != nil {
+		tmp := Links(copyMap(map[string]interface{}(*copy.Links)))
+		copy.Links = &tmp
+	}
+	if copy.Meta != nil {
+		tmp := Meta(copyMap(map[string]interface{}(*copy.Meta)))
+		copy.Meta = &tmp
+	}
+	return &copy
 }
