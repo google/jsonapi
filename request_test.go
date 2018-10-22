@@ -844,7 +844,7 @@ func samplePayload() io.Reader {
 			Relationships: map[string]interface{}{
 				"posts": &RelationshipManyNode{
 					Data: []*Node{
-						&Node{
+						{
 							Type: "posts",
 							Attributes: map[string]interface{}{
 								"title": "Foo",
@@ -852,7 +852,7 @@ func samplePayload() io.Reader {
 							},
 							ClientID: "1",
 						},
-						&Node{
+						{
 							Type: "posts",
 							Attributes: map[string]interface{}{
 								"title": "X",
@@ -873,14 +873,14 @@ func samplePayload() io.Reader {
 						Relationships: map[string]interface{}{
 							"comments": &RelationshipManyNode{
 								Data: []*Node{
-									&Node{
+									{
 										Type: "comments",
 										Attributes: map[string]interface{}{
 											"body": "Great post!",
 										},
 										ClientID: "4",
 									},
-									&Node{
+									{
 										Type: "comments",
 										Attributes: map[string]interface{}{
 											"body": "Needs some work!",
@@ -957,16 +957,16 @@ func testModel() *Blog {
 		Title:     "Title 1",
 		CreatedAt: time.Now(),
 		Posts: []*Post{
-			&Post{
+			{
 				ID:    1,
 				Title: "Foo",
 				Body:  "Bar",
 				Comments: []*Comment{
-					&Comment{
+					{
 						ID:   1,
 						Body: "foo",
 					},
-					&Comment{
+					{
 						ID:   2,
 						Body: "bar",
 					},
@@ -976,16 +976,16 @@ func testModel() *Blog {
 					Body: "foo",
 				},
 			},
-			&Post{
+			{
 				ID:    2,
 				Title: "Fuubar",
 				Body:  "Bas",
 				Comments: []*Comment{
-					&Comment{
+					{
 						ID:   1,
 						Body: "foo",
 					},
-					&Comment{
+					{
 						ID:   3,
 						Body: "bas",
 					},
@@ -1001,11 +1001,11 @@ func testModel() *Blog {
 			Title: "Foo",
 			Body:  "Bar",
 			Comments: []*Comment{
-				&Comment{
+				{
 					ID:   1,
 					Body: "foo",
 				},
-				&Comment{
+				{
 					ID:   2,
 					Body: "bar",
 				},

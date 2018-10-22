@@ -11,7 +11,7 @@ import (
 
 func TestMarshalPayload(t *testing.T) {
 	book := &Book{ID: 1}
-	books := []*Book{book, &Book{ID: 2}}
+	books := []*Book{book, {ID: 2}}
 	var jsonData map[string]interface{}
 
 	// One
@@ -194,6 +194,61 @@ func TestWithOmitsEmptyAnnotationOnRelation_MixedData(t *testing.T) {
 	}
 }
 
+func TestWithOmitsEmptyAnnotationOnAttribute(t *testing.T) {
+	type Phone struct {
+		Number string `json:"number"`
+	}
+
+	type Address struct {
+		City   string `json:"city"`
+		Street string `json:"street"`
+	}
+
+	type Tags map[string]int
+
+	type Author struct {
+		ID      int      `jsonapi:"primary,authors"`
+		Name    string   `jsonapi:"attr,title"`
+		Phones  []*Phone `jsonapi:"attr,phones,omitempty"`
+		Address *Address `jsonapi:"attr,address,omitempty"`
+		Tags    Tags     `jsonapi:"attr,tags,omitempty"`
+	}
+
+	author := &Author{
+		ID:      999,
+		Name:    "Igor",
+		Phones:  nil,                        // should be omitted
+		Address: nil,                        // should be omitted
+		Tags:    Tags{"dogs": 1, "cats": 2}, // should not be omitted
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalPayload(out, author); err != nil {
+		t.Fatal(err)
+	}
+
+	var jsonData map[string]interface{}
+	if err := json.Unmarshal(out.Bytes(), &jsonData); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify that there is no field "phones" in attributes
+	payload := jsonData["data"].(map[string]interface{})
+	attributes := payload["attributes"].(map[string]interface{})
+	if _, ok := attributes["title"]; !ok {
+		t.Fatal("Was expecting the data.attributes.title to have NOT been omitted")
+	}
+	if _, ok := attributes["phones"]; ok {
+		t.Fatal("Was expecting the data.attributes.phones to have been omitted")
+	}
+	if _, ok := attributes["address"]; ok {
+		t.Fatal("Was expecting the data.attributes.phones to have been omitted")
+	}
+	if _, ok := attributes["tags"]; !ok {
+		t.Fatal("Was expecting the data.attributes.tags to have NOT been omitted")
+	}
+}
+
 func TestMarshalIDPtr(t *testing.T) {
 	id, make, model := "123e4567-e89b-12d3-a456-426655440000", "Ford", "Mustang"
 	car := &Car{
@@ -290,9 +345,9 @@ func TestOmitsEmptyAnnotation(t *testing.T) {
 		t.Fatalf("Was expecting the data.attributes.pages key/value to have been omitted - it was not and had a value of %v", val)
 	}
 
-	// Verify the implicity omitted fields were omitted
+	// Verify the implicitly omitted fields were omitted
 	if val, exists := attributes["PublishedAt"]; exists {
-		t.Fatalf("Was expecting the data.attributes.PublishedAt key/value to have been implicity omitted - it was not and had a value of %v", val)
+		t.Fatalf("Was expecting the data.attributes.PublishedAt key/value to have been implicitly omitted - it was not and had a value of %v", val)
 	}
 
 	// Verify the unset fields were not omitted
@@ -326,7 +381,7 @@ func TestHasPrimaryAnnotation(t *testing.T) {
 	}
 
 	if data.ID != "5" {
-		t.Fatalf("ID not transfered")
+		t.Fatalf("ID not transferred")
 	}
 }
 
@@ -623,11 +678,11 @@ func TestMarshalPayloadWithoutIncluded(t *testing.T) {
 		Title:    "Foo",
 		Body:     "Bar",
 		Comments: []*Comment{
-			&Comment{
+			{
 				ID:   20,
 				Body: "First",
 			},
-			&Comment{
+			{
 				ID:   21,
 				Body: "Hello World",
 			},
@@ -660,12 +715,12 @@ func TestMarshalPayload_many(t *testing.T) {
 			Title:     "Title 1",
 			CreatedAt: time.Now(),
 			Posts: []*Post{
-				&Post{
+				{
 					ID:    1,
 					Title: "Foo",
 					Body:  "Bar",
 				},
-				&Post{
+				{
 					ID:    2,
 					Title: "Fuubar",
 					Body:  "Bas",
@@ -682,12 +737,12 @@ func TestMarshalPayload_many(t *testing.T) {
 			Title:     "Title 2",
 			CreatedAt: time.Now(),
 			Posts: []*Post{
-				&Post{
+				{
 					ID:    3,
 					Title: "Foo",
 					Body:  "Bar",
 				},
-				&Post{
+				{
 					ID:    4,
 					Title: "Fuubar",
 					Body:  "Bas",
@@ -770,8 +825,8 @@ func TestMarshalManyWithoutIncluded(t *testing.T) {
 
 func TestMarshalMany_SliceOfInterfaceAndSliceOfStructsSameJSON(t *testing.T) {
 	structs := []*Book{
-		&Book{ID: 1, Author: "aren55555", ISBN: "abc"},
-		&Book{ID: 2, Author: "shwoodard", ISBN: "xyz"},
+		{ID: 1, Author: "aren55555", ISBN: "abc"},
+		{ID: 2, Author: "shwoodard", ISBN: "xyz"},
 	}
 	interfaces := []interface{}{}
 	for _, s := range structs {
@@ -814,5 +869,72 @@ func TestMarshal_InvalidIntefaceArgument(t *testing.T) {
 	}
 	if err := MarshalPayload(out, Book{}); err != ErrUnexpectedType {
 		t.Fatal("Was expecting an error")
+	}
+}
+
+func testBlog() *Blog {
+	return &Blog{
+		ID:        5,
+		Title:     "Title 1",
+		CreatedAt: time.Now(),
+		Posts: []*Post{
+			{
+				ID:    1,
+				Title: "Foo",
+				Body:  "Bar",
+				Comments: []*Comment{
+					{
+						ID:   1,
+						Body: "foo",
+					},
+					{
+						ID:   2,
+						Body: "bar",
+					},
+				},
+				LatestComment: &Comment{
+					ID:   1,
+					Body: "foo",
+				},
+			},
+			{
+				ID:    2,
+				Title: "Fuubar",
+				Body:  "Bas",
+				Comments: []*Comment{
+					{
+						ID:   1,
+						Body: "foo",
+					},
+					{
+						ID:   3,
+						Body: "bas",
+					},
+				},
+				LatestComment: &Comment{
+					ID:   1,
+					Body: "foo",
+				},
+			},
+		},
+		CurrentPost: &Post{
+			ID:    1,
+			Title: "Foo",
+			Body:  "Bar",
+			Comments: []*Comment{
+				{
+					ID:   1,
+					Body: "foo",
+				},
+				{
+					ID:   2,
+					Body: "bar",
+				},
+			},
+			LatestComment: &Comment{
+				ID:   1,
+				Body: "foo",
+			},
+		},
 	}
 }
