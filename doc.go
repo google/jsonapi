@@ -2,7 +2,7 @@
 Package jsonapi provides a serializer and deserializer for jsonapi.org spec payloads.
 
 You can keep your model structs as is and use struct field tags to indicate to jsonapi
-how you want your response built or your request deserialzied. What about my relationships?
+how you want your response built or your request deserialized. What about my relationships?
 jsonapi supports relationships out of the box and will even side load them in your response
 into an "included" array--that contains associated objects.
 
