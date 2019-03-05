@@ -591,7 +591,19 @@ func handlePointer(
 func handleStruct(
 	attribute interface{},
 	fieldValue reflect.Value) (reflect.Value, error) {
-
+	if fieldValue.CanAddr() {
+		interf := fieldValue.Addr().Interface()
+		if _, ok := interf.(json.Unmarshaler); ok {
+			var tmp []byte
+			tmp, err := json.Marshal(attribute)
+			if err == nil {
+				err = json.Unmarshal(tmp, interf)
+				if err == nil {
+					return reflect.ValueOf(interf), nil
+				}
+			}
+		}
+	}
 	data, err := json.Marshal(attribute)
 	if err != nil {
 		return reflect.Value{}, err
