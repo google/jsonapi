@@ -146,14 +146,26 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 		}
 	}()
 
-	modelValue := model.Elem()
+	modelValue := model
+	if modelValue.Kind() == reflect.Ptr || modelValue.Kind() == reflect.Interface {
+		modelValue = model.Elem()
+	}
 	modelType := modelValue.Type()
 
 	var er error
 
 	for i := 0; i < modelValue.NumField(); i++ {
 		fieldType := modelType.Field(i)
-		tag := fieldType.Tag.Get("jsonapi")
+
+		if fieldType.Anonymous {
+			er = unmarshalNode(data, modelValue.Field(i), nil)
+			if er != nil {
+				break
+			}
+			continue
+		}
+
+		tag := fieldType.Tag.Get(annotationJSONAPI)
 		if tag == "" {
 			continue
 		}
@@ -174,7 +186,8 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			break
 		}
 
-		if annotation == annotationPrimary {
+		switch annotation {
+		case annotationPrimary:
 			if data.ID == "" {
 				continue
 			}
@@ -226,13 +239,13 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			}
 
 			assign(fieldValue, idValue)
-		} else if annotation == annotationClientID {
+		case annotationClientID:
 			if data.ClientID == "" {
 				continue
 			}
 
 			fieldValue.Set(reflect.ValueOf(data.ClientID))
-		} else if annotation == annotationAttribute {
+		case annotationAttribute:
 			attributes := data.Attributes
 
 			if attributes == nil || len(data.Attributes) == 0 {
@@ -254,7 +267,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			}
 
 			assign(fieldValue, value)
-		} else if annotation == annotationRelation {
+		case annotationRelation:
 			isSlice := fieldValue.Type().Kind() == reflect.Slice
 
 			if data.Relationships == nil || data.Relationships[args[1]] == nil {
@@ -324,7 +337,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 
 			}
 
-		} else {
+		default:
 			er = fmt.Errorf(unsupportedStructTagMsg, annotation)
 		}
 	}
@@ -379,59 +392,65 @@ func assignValue(field, value reflect.Value) {
 	}
 }
 
-func unmarshalAttribute(
-	attribute interface{},
-	args []string,
-	structField reflect.StructField,
-	fieldValue reflect.Value) (value reflect.Value, err error) {
-	value = reflect.ValueOf(attribute)
+func unmarshalAttribute(attribute interface{}, args []string, structField reflect.StructField, fieldValue reflect.Value) (reflect.Value, error) {
+	attrValue := reflect.ValueOf(attribute)
 	fieldType := structField.Type
 
+	// type-based switches
+	switch fieldType := fieldValue.Type(); fieldType {
+
 	// Handle field of type []string
-	if fieldValue.Type() == reflect.TypeOf([]string{}) {
-		value, err = handleStringSlice(attribute)
-		return
-	}
+	case reflect.TypeOf([]string{}):
+		return handleStringSlice(attribute)
 
-	// Handle field of type time.Time
-	if fieldValue.Type() == reflect.TypeOf(time.Time{}) ||
-		fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
-		value, err = handleTime(attribute, args, fieldValue)
-		return
-	}
-
-	// Handle field of type struct
-	if fieldValue.Type().Kind() == reflect.Struct {
-		value, err = handleStruct(attribute, fieldValue)
-		return
-	}
-
-	// Handle field containing slice of structs
-	if fieldValue.Type().Kind() == reflect.Slice &&
-		reflect.TypeOf(fieldValue.Interface()).Elem().Kind() == reflect.Struct {
-		value, err = handleStructSlice(attribute, fieldValue)
-		return
+		// Handle field of type time.Time
+	case reflect.TypeOf(time.Time{}), reflect.TypeOf(new(time.Time)):
+		return handleTime(attribute, args, fieldValue)
 	}
 
 	// JSON value was a float (numeric)
-	if value.Kind() == reflect.Float64 {
-		value, err = handleNumeric(attribute, fieldType, fieldValue)
-		return
+	if attrValue.Kind() == reflect.Float64 {
+		return handleNumeric(attribute, fieldType, fieldValue)
 	}
 
-	// Field was a Pointer type
-	if fieldValue.Kind() == reflect.Ptr {
-		value, err = handlePointer(attribute, args, fieldType, fieldValue, structField)
-		return
+	// Kind-based switches
+	switch fieldKind := fieldValue.Kind(); fieldKind {
+
+	// Handle field of type struct
+	case reflect.Struct:
+		return handleStruct(attribute, fieldValue)
+
+		// Handle field containing slice of structs
+	case reflect.Slice:
+		if fieldType.Elem().Kind() == reflect.Struct {
+			return handleStructSlice(attribute, fieldValue)
+		}
+
+		// Field was a Pointer type
+	case reflect.Ptr:
+		return handlePointer(attribute, args, fieldType, fieldValue, structField)
+
+		// Field is map type
+	case reflect.Map:
+		if fieldType == reflect.TypeOf(map[string]interface{}{}) {
+			return handleStringInterfaceMap(attribute, fieldValue, structField)
+		}
 	}
 
 	// As a final catch-all, ensure types line up to avoid a runtime panic.
-	if fieldValue.Kind() != value.Kind() {
-		err = ErrInvalidType
-		return
+	if fieldValue.Kind() != attrValue.Kind() {
+		return reflect.Value{}, ErrInvalidType
 	}
 
-	return
+	return attrValue, nil
+}
+
+func handleStringInterfaceMap(attribute interface{}, fieldValue reflect.Value, structField reflect.StructField) (reflect.Value, error) {
+	out, ok := attribute.(map[string]interface{})
+	if !ok {
+		return reflect.Value{}, ErrInvalidType
+	}
+	return reflect.ValueOf(out), nil
 }
 
 func handleStringSlice(attribute interface{}) (reflect.Value, error) {

@@ -45,6 +45,39 @@ func TestUnmarshall_attrStringSlice(t *testing.T) {
 	}
 }
 
+func TestUnmarshalToStringInterfaceMap(t *testing.T) {
+	out := &Permission{}
+	perms := map[string]interface{}{
+		"valid":  true,
+		"number": 7,
+	}
+	data := map[string]interface{}{
+		"data": map[string]interface{}{
+			"type": "permissions",
+			"id":   "1",
+			"attributes": map[string]interface{}{
+				"title": "the permission",
+				"perms": perms,
+			},
+		},
+	}
+	b, err := json.Marshal(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := UnmarshalPayload(bytes.NewReader(b), out); err != nil {
+		t.Fatal(err)
+	}
+
+	valid, ok := out.Perms["valid"]
+	if !ok {
+		t.Fatal("valid key not present")
+	}
+	if valid.(bool) != true {
+		t.Fatalf("valid should be %v but it is %v", true, valid.(bool))
+	}
+}
+
 func TestUnmarshalToStructWithPointerAttr(t *testing.T) {
 	out := new(WithPointer)
 	in := map[string]interface{}{
@@ -1000,7 +1033,10 @@ func sampleWithPointerPayload(m map[string]interface{}) io.Reader {
 	}
 
 	out := bytes.NewBuffer(nil)
-	json.NewEncoder(out).Encode(payload)
+	err := json.NewEncoder(out).Encode(payload)
+	if err != nil {
+		panic(err)
+	}
 
 	return out
 }

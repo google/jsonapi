@@ -134,11 +134,12 @@ func MarshalPayloadWithoutIncluded(w io.Writer, model interface{}) error {
 func marshalOne(model interface{}) (*OnePayload, error) {
 	included := make(map[string]*Node)
 
-	rootNode, err := visitModelNode(model, &included, true)
+	node := new(Node)
+	node, err := visitModelNode(model, node, &included, true)
 	if err != nil {
 		return nil, err
 	}
-	payload := &OnePayload{Data: rootNode}
+	payload := &OnePayload{Data: node}
 
 	payload.Included = nodeMapValues(&included)
 
@@ -155,7 +156,8 @@ func marshalMany(models []interface{}) (*ManyPayload, error) {
 	included := map[string]*Node{}
 
 	for _, model := range models {
-		node, err := visitModelNode(model, &included, true)
+		node := new(Node)
+		node, err := visitModelNode(model, node, &included, true)
 		if err != nil {
 			return nil, err
 		}
@@ -182,46 +184,58 @@ func marshalMany(models []interface{}) (*ManyPayload, error) {
 //
 // model interface{} should be a pointer to a struct.
 func MarshalOnePayloadEmbedded(w io.Writer, model interface{}) error {
-	rootNode, err := visitModelNode(model, nil, false)
+	rootNode := new(Node)
+	node, err := visitModelNode(model, rootNode, nil, false)
 	if err != nil {
 		return err
 	}
 
-	payload := &OnePayload{Data: rootNode}
+	payload := &OnePayload{Data: node}
 
 	return json.NewEncoder(w).Encode(payload)
 }
 
-func visitModelNode(model interface{}, included *map[string]*Node,
-	sideload bool) (*Node, error) {
-	node := new(Node)
+func visitModelNode(model interface{}, node *Node, included *map[string]*Node, sideload bool) (*Node, error) {
+	modelValue := reflect.ValueOf(model)
 
-	var er error
-	value := reflect.ValueOf(model)
-	if value.IsNil() {
+	kind := modelValue.Kind()
+	if (kind == reflect.Interface || kind == reflect.Ptr) && modelValue.IsNil() {
 		return nil, nil
 	}
 
-	modelValue := value.Elem()
-	modelType := value.Type().Elem()
+	switch kind {
+	case reflect.Interface:
+		modelValue = modelValue.Elem()
+	case reflect.Ptr:
+		modelValue = reflect.Indirect(modelValue)
+	}
+
+	modelType := modelValue.Type()
+
+	var er error
 
 	for i := 0; i < modelValue.NumField(); i++ {
-		structField := modelValue.Type().Field(i)
-		tag := structField.Tag.Get(annotationJSONAPI)
+		fieldType := modelType.Field(i)
+		fieldValue := modelValue.Field(i)
+
+		if fieldType.Anonymous {
+			node, er = visitModelNode(fieldValue.Interface(), node, included, sideload)
+			if er != nil {
+				break
+			}
+			continue
+		}
+
+		tag := fieldType.Tag.Get(annotationJSONAPI)
 		if tag == "" {
 			continue
 		}
 
-		fieldValue := modelValue.Field(i)
-		fieldType := modelType.Field(i)
-
 		args := strings.Split(tag, annotationSeperator)
-
 		if len(args) < 1 {
 			er = ErrBadJSONAPIStructTag
 			break
 		}
-
 		annotation := args[0]
 
 		if (annotation == annotationClientID && len(args) != 1) ||
@@ -230,10 +244,11 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 			break
 		}
 
-		if annotation == annotationPrimary {
+		switch annotation {
+		case annotationPrimary:
 			v := fieldValue
 
-			// Deal with PTRS
+			// Deal with pointers
 			var kind reflect.Kind
 			if fieldValue.Kind() == reflect.Ptr {
 				kind = fieldType.Type.Elem().Kind()
@@ -242,30 +257,31 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 				kind = fieldType.Type.Kind()
 			}
 
+			vi := v.Interface()
 			// Handle allowed types
 			switch kind {
 			case reflect.String:
-				node.ID = v.Interface().(string)
+				node.ID = vi.(string)
 			case reflect.Int:
-				node.ID = strconv.FormatInt(int64(v.Interface().(int)), 10)
+				node.ID = strconv.FormatInt(int64(vi.(int)), 10)
 			case reflect.Int8:
-				node.ID = strconv.FormatInt(int64(v.Interface().(int8)), 10)
+				node.ID = strconv.FormatInt(int64(vi.(int8)), 10)
 			case reflect.Int16:
-				node.ID = strconv.FormatInt(int64(v.Interface().(int16)), 10)
+				node.ID = strconv.FormatInt(int64(vi.(int16)), 10)
 			case reflect.Int32:
-				node.ID = strconv.FormatInt(int64(v.Interface().(int32)), 10)
+				node.ID = strconv.FormatInt(int64(vi.(int32)), 10)
 			case reflect.Int64:
-				node.ID = strconv.FormatInt(v.Interface().(int64), 10)
+				node.ID = strconv.FormatInt(vi.(int64), 10)
 			case reflect.Uint:
-				node.ID = strconv.FormatUint(uint64(v.Interface().(uint)), 10)
+				node.ID = strconv.FormatUint(uint64(vi.(uint)), 10)
 			case reflect.Uint8:
-				node.ID = strconv.FormatUint(uint64(v.Interface().(uint8)), 10)
+				node.ID = strconv.FormatUint(uint64(vi.(uint8)), 10)
 			case reflect.Uint16:
-				node.ID = strconv.FormatUint(uint64(v.Interface().(uint16)), 10)
+				node.ID = strconv.FormatUint(uint64(vi.(uint16)), 10)
 			case reflect.Uint32:
-				node.ID = strconv.FormatUint(uint64(v.Interface().(uint32)), 10)
+				node.ID = strconv.FormatUint(uint64(vi.(uint32)), 10)
 			case reflect.Uint64:
-				node.ID = strconv.FormatUint(v.Interface().(uint64), 10)
+				node.ID = strconv.FormatUint(vi.(uint64), 10)
 			default:
 				// We had a JSON float (numeric), but our field was not one of the
 				// allowed numeric types
@@ -277,12 +293,12 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 			}
 
 			node.Type = args[1]
-		} else if annotation == annotationClientID {
+		case annotationClientID:
 			clientID := fieldValue.String()
 			if clientID != "" {
 				node.ClientID = clientID
 			}
-		} else if annotation == annotationAttribute {
+		case annotationAttribute:
 			var omitEmpty, iso8601 bool
 
 			if len(args) > 2 {
@@ -349,7 +365,7 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 					node.Attributes[args[1]] = fieldValue.Interface()
 				}
 			}
-		} else if annotation == annotationRelation {
+		case annotationRelation:
 			var omitEmpty bool
 
 			//add support for 'omitempty' struct tag for marshaling as absent
@@ -416,11 +432,8 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 					continue
 				}
 
-				relationship, err := visitModelNode(
-					fieldValue.Interface(),
-					included,
-					sideload,
-				)
+				relationship := new(Node)
+				relationship, err := visitModelNode(fieldValue.Interface(), relationship, included, sideload)
 				if err != nil {
 					er = err
 					break
@@ -442,7 +455,7 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 				}
 			}
 
-		} else {
+		default:
 			er = ErrBadJSONAPIStructTag
 			break
 		}
@@ -481,7 +494,8 @@ func visitModelNodeRelationships(models reflect.Value, included *map[string]*Nod
 	for i := 0; i < models.Len(); i++ {
 		n := models.Index(i).Interface()
 
-		node, err := visitModelNode(n, included, sideload)
+		node := new(Node)
+		node, err := visitModelNode(n, node, included, sideload)
 		if err != nil {
 			return nil, err
 		}

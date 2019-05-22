@@ -61,6 +61,8 @@ func TestMarshalPayloadWithNulls(t *testing.T) {
 	for i := 0; i < len(arr); i++ {
 		if books[i] == nil && arr[i] != nil ||
 			books[i] != nil && arr[i] == nil {
+			t.Log(string(out.Bytes()))
+			t.Logf("book: %v arr: %v\n", books[i], arr[i])
 			t.Fatalf("restored data is not equal to source")
 		}
 	}

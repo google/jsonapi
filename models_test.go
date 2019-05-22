@@ -39,7 +39,6 @@ type Car struct {
 }
 
 type Post struct {
-	Blog
 	ID            uint64     `jsonapi:"primary,posts"`
 	BlogID        int        `jsonapi:"attr,blog_id"`
 	ClientID      string     `jsonapi:"client-id"`
@@ -76,6 +75,12 @@ type Blog struct {
 	CurrentPostID int       `jsonapi:"attr,current_post_id"`
 	CreatedAt     time.Time `jsonapi:"attr,created_at"`
 	ViewCount     int       `jsonapi:"attr,view_count"`
+}
+
+type Permission struct {
+	ID    int                    `jsonapi:"primary,permissions"`
+	Title string                 `jsonapi:"attr,title"`
+	Perms map[string]interface{} `jsonapi:"attr,perms"`
 }
 
 func (b *Blog) JSONAPILinks() *Links {
