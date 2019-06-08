@@ -129,7 +129,7 @@ func exerciseHandler() {
 	out := bytes.NewBuffer(nil)
 	json.NewEncoder(out).Encode(responseBlog)
 
-	fmt.Println("================ Viola! Converted back our Blog struct =================")
+	fmt.Println("================ Voila! Converted back our Blog struct =================")
 	fmt.Println(string(out.Bytes()))
 	fmt.Println("================ end marshal materialized Blog struct =================")
 }
