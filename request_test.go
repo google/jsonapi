@@ -1306,3 +1306,75 @@ func TestUnmarshalNestedStructSlice(t *testing.T) {
 			out.Teams[0].Members[0].Firstname)
 	}
 }
+
+type MyCustomAttribute struct {
+	Field string
+}
+
+func (mca MyCustomAttribute) MarshalJSON() ([]byte, error) {
+	return json.Marshal(mca.Field)
+}
+func (mca *MyCustomAttribute) UnmarshalJSON(bts []byte) error {
+	return json.Unmarshal(bts, &mca.Field)
+}
+
+type StructForTest struct {
+	ID     string            `jsonapi:"primary,tests"`
+	Custom MyCustomAttribute `jsonapi:"attr,custom,omitempty"`
+	Raw    json.RawMessage   `jsonapi:"attr,raw,omitempty"`
+}
+
+func TestUnmarshalWithCustomType(t *testing.T) {
+	sft := &StructForTest{
+		ID: "my-id",
+		Custom: MyCustomAttribute{
+			Field: "a-string",
+		},
+	}
+	buf := new(bytes.Buffer)
+	err := MarshalPayload(buf, sft)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newSft := &StructForTest{}
+	err = UnmarshalPayload(buf, newSft)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if sft.Custom.Field != newSft.Custom.Field {
+		t.Fatalf("Custom type wasn't properly unmarshalled: Expected to have `%s` but got `%s`",
+			sft.Custom.Field, newSft.Custom.Field)
+	}
+}
+
+func TestUnmarshalWithJSONRawMessage(t *testing.T) {
+	tests := [][]byte{
+		[]byte(`{"really":{"deep":true},"test":"toast"}`),
+		[]byte(`"just a string"`),
+		[]byte(`123`),
+	}
+	for _, v := range tests {
+		sft := &StructForTest{
+			ID:  "my-id",
+			Raw: v,
+		}
+		buf := new(bytes.Buffer)
+		err := MarshalPayload(buf, sft)
+		if err != nil {
+			t.Fatal(err)
+		}
+		newSft := &StructForTest{}
+		err = UnmarshalPayload(buf, newSft)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if bytes.Compare(sft.Raw, newSft.Raw) != 0 {
+			t.Fatalf("json.RawMessage wasn't properly unmarshalled: Expected to have `%s` but got `%s`",
+				string(sft.Raw), string(newSft.Raw))
+		}
+	}
+}

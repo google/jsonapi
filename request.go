@@ -393,6 +393,11 @@ func unmarshalAttribute(
 		return
 	}
 
+	// Handle field of type json.RawMessage
+	if fieldValue.Type() == reflect.TypeOf(json.RawMessage{}) {
+		value, err = handleJSONRawMessage(attribute)
+	}
+
 	// Handle field of type time.Time
 	if fieldValue.Type() == reflect.TypeOf(time.Time{}) ||
 		fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
@@ -442,6 +447,14 @@ func handleStringSlice(attribute interface{}) (reflect.Value, error) {
 	}
 
 	return reflect.ValueOf(values), nil
+}
+
+func handleJSONRawMessage(attribute interface{}) (reflect.Value, error) {
+	tmp, err := json.Marshal(attribute)
+	if err != nil {
+		return reflect.Value{}, err
+	}
+	return reflect.ValueOf(json.RawMessage(tmp)), nil
 }
 
 func handleTime(attribute interface{}, args []string, fieldValue reflect.Value) (reflect.Value, error) {
@@ -591,7 +604,19 @@ func handlePointer(
 func handleStruct(
 	attribute interface{},
 	fieldValue reflect.Value) (reflect.Value, error) {
-
+	if fieldValue.CanAddr() {
+		interf := fieldValue.Addr().Interface()
+		if _, ok := interf.(json.Unmarshaler); ok {
+			var tmp []byte
+			tmp, err := json.Marshal(attribute)
+			if err == nil {
+				err = json.Unmarshal(tmp, interf)
+				if err == nil {
+					return reflect.ValueOf(interf), nil
+				}
+			}
+		}
+	}
 	data, err := json.Marshal(attribute)
 	if err != nil {
 		return reflect.Value{}, err
