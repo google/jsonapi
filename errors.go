@@ -42,8 +42,22 @@ type ErrorObject struct {
 	// Code is an application-specific error code, expressed as a string value.
 	Code string `json:"code,omitempty"`
 
+	// Source is used to indicate which part of the request document caused the error.
+	Source *ErrorSource  `json:"source,omitempty"`
+
 	// Meta is an object containing non-standard meta-information about the error.
 	Meta *map[string]interface{} `json:"meta,omitempty"`
+}
+
+// ErrorSource is a structure containing references to the source of the error, optionally including any of the following members:
+//
+// For more information on the JSON API spec's error objects, see: http://jsonapi.org/format/#error-objects
+type ErrorSource struct {
+	// Pointer is a JSON Pointer [RFC6901] to the associated entity in the request document [e.g. "/data" for a primary data object, or "/data/attributes/title" for a specific attribute].
+	Pointer string `json:"pointer,omitempty"`
+
+	// Parameter is a string indicating which URI query parameter caused the error.
+	Parameter string `json:"parameter,omitempty"`
 }
 
 // Error implements the `Error` interface.
