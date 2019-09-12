@@ -385,11 +385,12 @@ func unmarshalAttribute(
 	structField reflect.StructField,
 	fieldValue reflect.Value) (value reflect.Value, err error) {
 	value = reflect.ValueOf(attribute)
-	fieldType := structField.Type
+	fieldType := fieldValue.Type()
 
 	// Handle interface of
 	//fmt.Println("--------")
 	//fmt.Println(fieldValue.Type())
+	//fmt.Println(fieldType)
 	//fmt.Println(value.Type())
 	//fmt.Println(value.Type().Kind())
 	//fmt.Println("========")
@@ -464,7 +465,7 @@ func unmarshalAttribute(
 func handleMap(attribute interface{}, fieldType reflect.Type, fieldValue reflect.Value) (reflect.Value, error) {
 	models := reflect.MakeMap(fieldType)
 	v := reflect.ValueOf(attribute)
-
+	//
 	//fmt.Println("New Map:")
 	//fmt.Println(models.Type())
 	//fmt.Println(models.Type().Elem())
