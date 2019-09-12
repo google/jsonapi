@@ -385,46 +385,66 @@ func unmarshalAttribute(
 	structField reflect.StructField,
 	fieldValue reflect.Value) (value reflect.Value, err error) {
 	value = reflect.ValueOf(attribute)
-	fieldType := fieldValue.Type()
+	fieldType := structField.Type
 
-	// Handle interface of
-	//fmt.Println("--------")
-	//fmt.Println(fieldValue.Type())
-	//fmt.Println(fieldType)
+	//fmt.Println("==========================")
+	//fmt.Println("Source:")
+	//fmt.Println(attribute)
+	//fmt.Print("Type: ")
 	//fmt.Println(value.Type())
-	//fmt.Println(value.Type().Kind())
-	//fmt.Println("========")
+	//fmt.Print("Kind: ")
+	//fmt.Println(value.Kind())
+	//fmt.Println("Destination:")
+	//fmt.Print("Type: ")
+	//fmt.Println(fieldValue.Type())
+	//fmt.Print("Kind: ")
+	//fmt.Println(fieldValue.Kind())
+	//fmt.Print("Field Type:")
+	//fmt.Println(fieldType)
+	//fmt.Println("VVVVVVVVVVVVVVVVVVVVVVVVVV")
+
 	//if fieldValue.Kind() == reflect.Interface && value.Type().Kind() == reflect.Map {
 	//	fmt.Println("Map in interface")
 	//	return reflect.Value{}, nil
 	//}
 
+	// Handle destination of type interface - nothing needs to be done for this
+	if fieldType.Kind() == reflect.Interface {
+		//fmt.Println("Processor: interface (no transformation)")
+		return
+	}
+
 	// Handle field of type []string
 	if fieldValue.Type() == reflect.TypeOf([]string{}) {
+		//fmt.Println("Processor: []string")
 		value, err = handleStringSlice(attribute)
 		return
 	}
 
 	// Handle field of type []int
 	if fieldValue.Type() == reflect.TypeOf([]int{}) {
+		//fmt.Println("Processor: []int")
 		value, err = handleIntSlice(attribute, fieldType, fieldValue)
 		return
 	}
 
 	// Handle field of type json.RawMessage
 	if fieldValue.Type() == reflect.TypeOf(json.RawMessage{}) {
+		//fmt.Println("Processor: jsonRawmessage")
 		value, err = handleJSONRawMessage(attribute)
 	}
 
 	// Handle field of type time.Time
 	if fieldValue.Type() == reflect.TypeOf(time.Time{}) ||
 		fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
+		//fmt.Println("Processor: time")
 		value, err = handleTime(attribute, args, fieldValue)
 		return
 	}
 
 	// Handle field of type struct
 	if fieldValue.Type().Kind() == reflect.Struct {
+		//fmt.Println("Processor: struct")
 		value, err = handleStruct(attribute, fieldValue)
 		return
 	}
@@ -432,29 +452,39 @@ func unmarshalAttribute(
 	// Handle field containing slice of structs
 	if fieldValue.Type().Kind() == reflect.Slice &&
 		reflect.TypeOf(fieldValue.Interface()).Elem().Kind() == reflect.Struct {
+		//fmt.Println("Processor: slice of struct")
 		value, err = handleStructSlice(attribute, fieldValue)
 		return
 	}
 
 	// JSON value was a float (numeric)
 	if value.Kind() == reflect.Float64 {
+		//fmt.Println("Processor: float64")
 		value, err = handleNumeric(attribute, fieldType, fieldValue)
+		return
+	}
+
+	if value.Kind() == reflect.String {
+		//fmt.Println("Processor: string")
 		return
 	}
 
 	// Field was a Pointer type
 	if fieldValue.Kind() == reflect.Ptr {
+		//fmt.Println("Processor: pointer")
 		value, err = handlePointer(attribute, args, fieldType, fieldValue, structField)
 		return
 	}
 
 	// Handle maps of something
 	if fieldValue.Type().Kind() == reflect.Map {
+		//fmt.Println("Processor: map")
 		value, err = handleMap(attribute, fieldType, fieldValue)
 		return
 	}
 	// As a final catch-all, ensure types line up to avoid a runtime panic.
 	if fieldValue.Kind() != value.Kind() {
+		//fmt.Println("Processor: INVALID")
 		err = ErrInvalidType
 		return
 	}
@@ -468,15 +498,27 @@ func handleMap(attribute interface{}, fieldType reflect.Type, fieldValue reflect
 	//
 	//fmt.Println("New Map:")
 	//fmt.Println(models.Type())
+	//fmt.Println(models.Kind())
 	//fmt.Println(models.Type().Elem())
+	//fmt.Println()
 
 	for _, key := range v.MapKeys() {
 		originalValue := v.MapIndex(key)
 		//fmt.Println("Orig:")
 		//fmt.Println(originalValue.Type())
+		//fmt.Println(originalValue.Kind())
 		//fmt.Println(originalValue.Interface())
+		//
+		//fmt.Println("Field:")
+		//fmt.Println(fieldValue)
+		//fmt.Println(fieldValue.Type())
+		//fmt.Println(fieldType.Elem())
 
-		newValue, err := unmarshalAttribute(originalValue.Interface(), nil, reflect.StructField{Type: fieldType.Elem()}, originalValue.Elem())
+		newValue, err := unmarshalAttribute(
+			originalValue.Interface(), nil,
+			reflect.StructField{Type: fieldType.Elem()},
+			reflect.New(models.Type().Elem()).Elem(), // Set the receiver type
+		)
 
 		if err != nil {
 			return reflect.Value{}, err
@@ -647,6 +689,8 @@ func handleNumeric(
 	case reflect.Float64:
 		n := floatValue
 		numericValue = reflect.ValueOf(&n)
+	case reflect.Interface:
+		numericValue = reflect.ValueOf(floatValue)
 	default:
 		return reflect.Value{}, ErrUnknownFieldNumberType
 	}
