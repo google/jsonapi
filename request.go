@@ -387,9 +387,26 @@ func unmarshalAttribute(
 	value = reflect.ValueOf(attribute)
 	fieldType := structField.Type
 
+	// Handle interface of
+	//fmt.Println("--------")
+	//fmt.Println(fieldValue.Type())
+	//fmt.Println(value.Type())
+	//fmt.Println(value.Type().Kind())
+	//fmt.Println("========")
+	//if fieldValue.Kind() == reflect.Interface && value.Type().Kind() == reflect.Map {
+	//	fmt.Println("Map in interface")
+	//	return reflect.Value{}, nil
+	//}
+
 	// Handle field of type []string
 	if fieldValue.Type() == reflect.TypeOf([]string{}) {
 		value, err = handleStringSlice(attribute)
+		return
+	}
+
+	// Handle field of type []int
+	if fieldValue.Type() == reflect.TypeOf([]int{}) {
+		value, err = handleIntSlice(attribute, fieldType, fieldValue)
 		return
 	}
 
@@ -430,6 +447,11 @@ func unmarshalAttribute(
 		return
 	}
 
+	// Handle maps of something
+	if fieldValue.Type().Kind() == reflect.Map {
+		value, err = handleMap(attribute, fieldType, fieldValue)
+		return
+	}
 	// As a final catch-all, ensure types line up to avoid a runtime panic.
 	if fieldValue.Kind() != value.Kind() {
 		err = ErrInvalidType
@@ -437,6 +459,47 @@ func unmarshalAttribute(
 	}
 
 	return
+}
+
+func handleMap(attribute interface{}, fieldType reflect.Type, fieldValue reflect.Value) (reflect.Value, error) {
+	models := reflect.MakeMap(fieldType)
+	v := reflect.ValueOf(attribute)
+
+	//fmt.Println("New Map:")
+	//fmt.Println(models.Type())
+	//fmt.Println(models.Type().Elem())
+
+	for _, key := range v.MapKeys() {
+		originalValue := v.MapIndex(key)
+		//fmt.Println("Orig:")
+		//fmt.Println(originalValue.Type())
+		//fmt.Println(originalValue.Interface())
+
+		newValue, err := unmarshalAttribute(originalValue.Interface(), nil, reflect.StructField{Type: fieldType.Elem()}, originalValue.Elem())
+
+		if err != nil {
+			return reflect.Value{}, err
+		}
+		//
+		//fmt.Println("New:")
+		//fmt.Println(err)
+		//fmt.Println(newValue.Type())
+
+		// Deal with PTRS
+		var outValue reflect.Value
+		if newValue.Kind() == reflect.Ptr {
+			outValue = newValue.Elem()
+		} else {
+			outValue = newValue
+		}
+
+		//fmt.Println(outValue.Type())
+		//fmt.Println(outValue.Interface())
+
+		models.SetMapIndex(key, outValue)
+	}
+
+	return models, nil
 }
 
 func handleStringSlice(attribute interface{}) (reflect.Value, error) {
@@ -447,6 +510,22 @@ func handleStringSlice(attribute interface{}) (reflect.Value, error) {
 	}
 
 	return reflect.ValueOf(values), nil
+}
+
+func handleIntSlice(attribute interface{}, fieldType reflect.Type, fieldValue reflect.Value) (reflect.Value, error) {
+	models := reflect.New(fieldValue.Type()).Elem()
+	dataMap := reflect.ValueOf(attribute).Interface().([]interface{})
+	for _, data := range dataMap {
+		value, err := handleNumeric(data, fieldType, fieldValue)
+
+		if err != nil {
+			continue
+		}
+
+		models = reflect.Append(models, reflect.Indirect(value))
+	}
+
+	return models, nil
 }
 
 func handleJSONRawMessage(attribute interface{}) (reflect.Value, error) {
@@ -511,12 +590,22 @@ func handleNumeric(
 	v := reflect.ValueOf(attribute)
 	floatValue := v.Interface().(float64)
 
+	//fmt.Println("Num:")
+	//fmt.Println(fieldType)
+	//fmt.Println(fieldValue.Type())
+	//fmt.Println(fieldValue.Kind())
+	//fmt.Println(fieldValue.Interface())
+
 	var kind reflect.Kind
-	if fieldValue.Kind() == reflect.Ptr {
+	if fieldValue.Kind() == reflect.Ptr || fieldValue.Kind() == reflect.Slice {
 		kind = fieldType.Elem().Kind()
+	} else if fieldType.Kind() == reflect.Interface {
+		kind = fieldValue.Kind()
 	} else {
 		kind = fieldType.Kind()
 	}
+
+	//fmt.Println(kind)
 
 	var numericValue reflect.Value
 
