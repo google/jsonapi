@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/charm-jp/null"
 	"io"
 	"reflect"
 	"strconv"
@@ -298,6 +299,34 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 
 			if node.Attributes == nil {
 				node.Attributes = make(map[string]interface{})
+			}
+
+			if fieldValue.Type() == reflect.TypeOf(null.String{}) {
+				t := fieldValue.Interface().(null.String)
+
+				if t.String == "" && !t.Valid {
+					// Skip this undefined string
+					continue
+				}
+
+				if t.String != "" && !t.Valid {
+					// This is a "NULLED" string. Set it to nothing and continue
+					fieldValue.Set(reflect.ValueOf(null.String{}))
+				}
+			}
+
+			if fieldValue.Type() == reflect.TypeOf(null.Int{}) {
+				t := fieldValue.Interface().(null.Int)
+
+				if t.Int64 == 0 && !t.Valid {
+					// Skip this undefined string
+					continue
+				}
+
+				if t.Int64 != 0 && !t.Valid {
+					// This is a "NULLED" string. Set it to nothing and continue
+					fieldValue.Set(reflect.ValueOf(null.Int{}))
+				}
 			}
 
 			if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
