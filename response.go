@@ -329,6 +329,12 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 				}
 			}
 
+			if fieldValue.Kind() == reflect.Map {
+				if len(fieldValue.MapKeys()) == 0 {
+					continue
+				}
+			}
+
 			if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
 				t := fieldValue.Interface().(time.Time)
 
@@ -428,10 +434,12 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 						shallowNodes = append(shallowNodes, toShallowNode(n))
 					}
 
-					node.Relationships[args[1]] = &RelationshipManyNode{
-						Data:  shallowNodes,
-						Links: relationship.Links,
-						Meta:  relationship.Meta,
+					if len(shallowNodes) > 0 {
+						node.Relationships[args[1]] = &RelationshipManyNode{
+							Data:  shallowNodes,
+							Links: relationship.Links,
+							Meta:  relationship.Meta,
+						}
 					}
 				} else {
 					node.Relationships[args[1]] = relationship
@@ -441,7 +449,7 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 
 				// Handle null relationship case
 				if fieldValue.IsNil() {
-					node.Relationships[args[1]] = &RelationshipOneNode{Data: nil}
+					// node.Relationships[args[1]] = &RelationshipOneNode{Data: nil}
 					continue
 				}
 
