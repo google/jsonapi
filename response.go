@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/charm-jp/null"
+	"gitlab.dev.charm.internal/charm/charmtypes"
 	"io"
 	"reflect"
 	"strconv"
@@ -207,6 +208,19 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 	modelType := value.Type().Elem()
 
 	for i := 0; i < modelValue.NumField(); i++ {
+		// Handle any embedded (anon) structs
+		if modelValue.Field(i).Kind() == reflect.Struct && modelType.Field(i).Anonymous {
+			result, err := visitModelNode(modelValue.Field(i).Addr().Interface(), &map[string]*Node{}, false)
+
+			if err != nil {
+				return nil, err
+			}
+
+			for key, data := range result.Attributes {
+				node.Attributes[key] = data
+			}
+		}
+
 		structField := modelValue.Type().Field(i)
 		tag := structField.Tag.Get(annotationJSONAPI)
 		if tag == "" {
@@ -317,6 +331,43 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 
 			if fieldValue.Type() == reflect.TypeOf(null.Int{}) {
 				t := fieldValue.Interface().(null.Int)
+
+				if t.Int64 == 0 && !t.Valid {
+					// Skip this undefined string
+					continue
+				}
+
+				if t.Int64 != 0 && !t.Valid {
+					// This is a "NULLED" string. Set it to nothing and continue
+					fieldValue.Set(reflect.ValueOf(null.Int{}))
+				}
+			}
+
+			if fieldValue.Type() == reflect.TypeOf(null.Bool{}) {
+				t := fieldValue.Interface().(null.Bool)
+
+				if !t.Bool && !t.Valid {
+					// Skip this undefined bool
+					continue
+				}
+
+				if t.Bool && !t.Valid {
+					// This is a "NULLED" string. Set it to nothing and continue
+					fieldValue.Set(reflect.ValueOf(null.Bool{}))
+				}
+			}
+
+			if fieldValue.Type() == reflect.TypeOf(charmtypes.MYUUID{}) {
+				t := fieldValue.Interface().(charmtypes.MYUUID)
+
+				if t.IsNil() {
+					continue
+				}
+			}
+
+			if fieldValue.Type() == reflect.TypeOf(charmtypes.UnixTime{}) {
+				s := fieldValue.Interface().(charmtypes.UnixTime)
+				t := null.NewInt(s.Int64, s.Valid)
 
 				if t.Int64 == 0 && !t.Valid {
 					// Skip this undefined string
