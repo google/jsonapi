@@ -497,6 +497,11 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 				}
 			} else {
 				// to-one relationships
+				// Handle null relationship case
+				if fieldValue.IsNil() {
+					// node.Relationships[args[1]] = &RelationshipOneNode{Data: nil}
+					continue
+				}
 
 				// Polymorphic relationships
 				if fieldValue.Elem().Type() == reflect.TypeOf(PolymorphicOwner{}) {
@@ -509,12 +514,6 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 						},
 					}
 
-					continue
-				}
-
-				// Handle null relationship case
-				if fieldValue.IsNil() {
-					// node.Relationships[args[1]] = &RelationshipOneNode{Data: nil}
 					continue
 				}
 
