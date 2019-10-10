@@ -7,6 +7,12 @@ type Payloader interface {
 	clearIncluded()
 }
 
+//
+type PolymorphicOwner struct {
+	Type string `json:"type"`
+	ID   string `json:"id"`
+}
+
 // OnePayload is used to represent a generic JSON API payload where a single
 // resource (Node) was included as an {} in the "data" key
 type OnePayload struct {
