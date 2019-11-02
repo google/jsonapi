@@ -393,6 +393,13 @@ func unmarshalAttribute(
 		return
 	}
 
+	// Handle field of type []int
+	if fieldValue.Type() == reflect.TypeOf([]int{}) {
+		value, err = handleIntSlice(attribute, fieldType, fieldValue)
+		fmt.Printf("value : %+v", value)
+		return
+	}
+
 	// Handle field of type time.Time
 	if fieldValue.Type() == reflect.TypeOf(time.Time{}) ||
 		fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
@@ -442,6 +449,22 @@ func handleStringSlice(attribute interface{}) (reflect.Value, error) {
 	}
 
 	return reflect.ValueOf(values), nil
+}
+
+func handleIntSlice(attribute interface{}, fieldType reflect.Type, fieldValue reflect.Value) (reflect.Value, error) {
+	models := reflect.New(fieldValue.Type()).Elem()
+	dataMap := reflect.ValueOf(attribute).Interface().([]interface{})
+	for _, data := range dataMap {
+		value, err := handleNumeric(data, fieldType, fieldValue)
+
+		if err != nil {
+			continue
+		}
+
+		models = reflect.Append(models, reflect.Indirect(value))
+	}
+
+	return models, nil
 }
 
 func handleTime(attribute interface{}, args []string, fieldValue reflect.Value) (reflect.Value, error) {
@@ -499,7 +522,7 @@ func handleNumeric(
 	floatValue := v.Interface().(float64)
 
 	var kind reflect.Kind
-	if fieldValue.Kind() == reflect.Ptr {
+	if fieldValue.Kind() == reflect.Ptr || fieldValue.Kind() == reflect.Slice {
 		kind = fieldType.Elem().Kind()
 	} else {
 		kind = fieldType.Kind()

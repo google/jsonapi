@@ -12,6 +12,39 @@ import (
 	"time"
 )
 
+func TestUnmarshall_attrFloatSlice(t *testing.T) {
+	out := &Book{}
+	seasons := []int{1, 2, 3}
+	data := map[string]interface{}{
+		"data": map[string]interface{}{
+			"type":       "books",
+			"id":         "1",
+			"attributes": map[string]interface{}{"seasons": seasons},
+		},
+	}
+	b, err := json.Marshal(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := UnmarshalPayload(bytes.NewReader(b), out); err != nil {
+		t.Fatal(err)
+	}
+
+	if e, a := len(seasons), len(out.Seasons); e != a {
+		t.Fatalf("Was expecting %d seasons, got %d", e, a)
+	}
+
+	sort.Ints(seasons)
+	sort.Ints(out.Seasons)
+
+	for i, season := range seasons {
+		if e, a := season, out.Seasons[i]; e != a {
+			t.Fatalf("At index %d, was expecting %d got %d", i, e, a)
+		}
+	}
+}
+
 func TestUnmarshall_attrStringSlice(t *testing.T) {
 	out := &Book{}
 	tags := []string{"fiction", "sale"}
