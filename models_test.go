@@ -65,6 +65,7 @@ type Book struct {
 	Pages       *uint   `jsonapi:"attr,pages,omitempty"`
 	PublishedAt time.Time
 	Tags        []string `jsonapi:"attr,tags"`
+	Seasons     []int    `jsonapi:"attr,seasons"`
 }
 
 type Blog struct {
