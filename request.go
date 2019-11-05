@@ -180,14 +180,15 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			}
 
 			// Check the JSON API Type
-			if data.Type != args[1] {
-				er = fmt.Errorf(
-					"Trying to Unmarshal an object of type %#v, but %#v does not match",
-					data.Type,
-					args[1],
-				)
-				break
-			}
+			// TODO: Reinstate this in some form
+			//if data.Type != args[1] {
+			//	er = fmt.Errorf(
+			//		"Trying to Unmarshal an object of type %#v, but %#v does not match",
+			//		data.Type,
+			//		args[1],
+			//	)
+			//	break
+			//}
 
 			// ID will have to be transmitted as astring per the JSON API spec
 			v := reflect.ValueOf(data.ID)
