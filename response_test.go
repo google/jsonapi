@@ -442,6 +442,40 @@ func TestSupportsAttributes(t *testing.T) {
 	}
 }
 
+func TestSupportsMetaAnnotation(t *testing.T) {
+	modifiedAt, err := time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testModel := &Blog{
+		ID:         5,
+		Title:      "Title 1",
+		CreatedAt:  time.Now(),
+		ModifiedAt: modifiedAt,
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalPayload(out, testModel); err != nil {
+		t.Fatal(err)
+	}
+
+	resp := new(OnePayload)
+	if err := json.NewDecoder(out).Decode(resp); err != nil {
+		t.Fatal(err)
+	}
+
+	data := resp.Data
+
+	if data.Meta == nil {
+		t.Fatalf("Expected meta")
+	}
+
+	if (*data.Meta)["modified_at"] != "2006-01-02T15:04:05Z" {
+		t.Fatalf("Meta hash not populated using tags correctly %#v", *data.Meta)
+	}
+}
+
 func TestOmitsZeroTimes(t *testing.T) {
 	testModel := &Blog{
 		ID:        5,

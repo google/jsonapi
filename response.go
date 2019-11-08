@@ -442,6 +442,32 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 				}
 			}
 
+		} else if annotation == annotationMeta {
+			var omitEmpty bool
+
+			//add support for 'omitempty' struct tag for marshaling as absent
+			if len(args) > 2 {
+				omitEmpty = args[2] == annotationOmitEmpty
+			}
+
+			if node.Meta == nil {
+				node.Meta = &Meta{}
+			}
+
+			// Dealing with a fieldValue that is not a time
+			emptyValue := reflect.Zero(fieldValue.Type())
+
+			// See if we need to omit this field
+			if omitEmpty && reflect.DeepEqual(fieldValue.Interface(), emptyValue.Interface()) {
+				continue
+			}
+
+			strAttr, ok := fieldValue.Interface().(string)
+			if ok {
+				(*node.Meta)[args[1]] = strAttr
+			} else {
+				(*node.Meta)[args[1]] = fieldValue.Interface()
+			}
 		} else {
 			er = ErrBadJSONAPIStructTag
 			break
@@ -461,7 +487,13 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 	}
 
 	if metableModel, ok := model.(Metable); ok {
-		node.Meta = metableModel.JSONAPIMeta()
+		meta := metableModel.JSONAPIMeta()
+		if meta != nil && node.Meta == nil {
+			node.Meta = &Meta{}
+		}
+		for k, v := range *meta {
+			(*node.Meta)[k] = v
+		}
 	}
 
 	return node, nil

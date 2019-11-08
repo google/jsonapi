@@ -235,7 +235,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 		} else if annotation == annotationAttribute {
 			attributes := data.Attributes
 
-			if attributes == nil || len(data.Attributes) == 0 {
+			if attributes == nil || len(attributes) == 0 {
 				continue
 			}
 
@@ -324,6 +324,28 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 
 			}
 
+		} else if annotation == annotationMeta {
+			meta := data.Meta
+
+			if meta == nil || len(*meta) == 0 {
+				continue
+			}
+
+			m := (*meta)[args[1]]
+
+			// continue if the m was not included in the request
+			if m == nil {
+				continue
+			}
+
+			structField := fieldType
+			value, err := unmarshalAttribute(m, args, structField, fieldValue)
+			if err != nil {
+				er = err
+				break
+			}
+
+			assign(fieldValue, value)
 		} else {
 			er = fmt.Errorf(unsupportedStructTagMsg, annotation)
 		}

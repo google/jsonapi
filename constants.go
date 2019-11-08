@@ -7,6 +7,7 @@ const (
 	annotationClientID  = "client-id"
 	annotationAttribute = "attr"
 	annotationRelation  = "relation"
+	annotationMeta      = "meta"
 	annotationOmitEmpty = "omitempty"
 	annotationISO8601   = "iso8601"
 	annotationSeperator = ","
