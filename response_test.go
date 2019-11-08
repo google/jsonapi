@@ -449,10 +449,11 @@ func TestSupportsMetaAnnotation(t *testing.T) {
 	}
 
 	testModel := &Blog{
-		ID:         5,
-		Title:      "Title 1",
-		CreatedAt:  time.Now(),
-		ModifiedAt: modifiedAt,
+		ID:              5,
+		Title:           "Title 1",
+		CreatedAt:       time.Now(),
+		ModifiedAt:      modifiedAt,
+		ResourceVersion: "etag987abc",
 	}
 
 	out := bytes.NewBuffer(nil)
@@ -471,8 +472,12 @@ func TestSupportsMetaAnnotation(t *testing.T) {
 		t.Fatalf("Expected meta")
 	}
 
-	if (*data.Meta)["modified_at"] != "2006-01-02T15:04:05Z" {
-		t.Fatalf("Meta hash not populated using tags correctly %#v", *data.Meta)
+	if (*data.Meta)["resource_version"] != "etag987abc" {
+		t.Fatalf("Meta hash not populating time fields correctly %#v", *data.Meta)
+	}
+
+	if (*data.Meta)["modified_at"] != modifiedAt.Format(time.RFC3339) {
+		t.Fatalf("Meta hash not populating time fields correctly %#v", *data.Meta)
 	}
 }
 

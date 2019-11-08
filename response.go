@@ -283,59 +283,21 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 				node.ClientID = clientID
 			}
 		} else if annotation == annotationAttribute {
-			var omitEmpty, iso8601 bool
-
-			if len(args) > 2 {
-				for _, arg := range args[2:] {
-					switch arg {
-					case annotationOmitEmpty:
-						omitEmpty = true
-					case annotationISO8601:
-						iso8601 = true
-					}
-				}
-			}
-
 			if node.Attributes == nil {
 				node.Attributes = make(map[string]interface{})
 			}
 
-			if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
-				t := fieldValue.Interface().(time.Time)
-
-				if t.IsZero() {
-					continue
-				}
-
-				if iso8601 {
-					node.Attributes[args[1]] = t.UTC().Format(iso8601TimeFormat)
-				} else {
-					node.Attributes[args[1]] = t.Unix()
-				}
-			} else if fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
-				// A time pointer may be nil
-				if fieldValue.IsNil() {
-					if omitEmpty {
-						continue
-					}
-
-					node.Attributes[args[1]] = nil
-				} else {
-					tm := fieldValue.Interface().(*time.Time)
-
-					if tm.IsZero() && omitEmpty {
-						continue
-					}
-
-					if iso8601 {
-						node.Attributes[args[1]] = tm.UTC().Format(iso8601TimeFormat)
-					} else {
-						node.Attributes[args[1]] = tm.Unix()
-					}
+			if fieldValue.Type() == reflect.TypeOf(time.Time{}) ||
+				fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
+				val, include := marshalTime(args, fieldValue)
+				if include {
+					node.Attributes[args[1]] = val
 				}
 			} else {
 				// Dealing with a fieldValue that is not a time
 				emptyValue := reflect.Zero(fieldValue.Type())
+
+				omitEmpty := contains(annotationOmitEmpty, args)
 
 				// See if we need to omit this field
 				if omitEmpty && reflect.DeepEqual(fieldValue.Interface(), emptyValue.Interface()) {
@@ -443,30 +405,33 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 			}
 
 		} else if annotation == annotationMeta {
-			var omitEmpty bool
-
-			//add support for 'omitempty' struct tag for marshaling as absent
-			if len(args) > 2 {
-				omitEmpty = args[2] == annotationOmitEmpty
-			}
-
 			if node.Meta == nil {
 				node.Meta = &Meta{}
 			}
 
-			// Dealing with a fieldValue that is not a time
-			emptyValue := reflect.Zero(fieldValue.Type())
-
-			// See if we need to omit this field
-			if omitEmpty && reflect.DeepEqual(fieldValue.Interface(), emptyValue.Interface()) {
-				continue
-			}
-
-			strAttr, ok := fieldValue.Interface().(string)
-			if ok {
-				(*node.Meta)[args[1]] = strAttr
+			if fieldValue.Type() == reflect.TypeOf(time.Time{}) ||
+				fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
+				val, include := marshalTime(args, fieldValue)
+				if include {
+					(*node.Meta)[args[1]] = val
+				}
 			} else {
-				(*node.Meta)[args[1]] = fieldValue.Interface()
+				// Dealing with a fieldValue that is not a time
+				emptyValue := reflect.Zero(fieldValue.Type())
+
+				omitEmpty := contains(annotationOmitEmpty, args)
+
+				// See if we need to omit this field
+				if omitEmpty && reflect.DeepEqual(fieldValue.Interface(), emptyValue.Interface()) {
+					continue
+				}
+
+				strAttr, ok := fieldValue.Interface().(string)
+				if ok {
+					(*node.Meta)[args[1]] = strAttr
+				} else {
+					(*node.Meta)[args[1]] = fieldValue.Interface()
+				}
 			}
 		} else {
 			er = ErrBadJSONAPIStructTag
@@ -497,6 +462,69 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 	}
 
 	return node, nil
+}
+
+func marshalTime(args []string, fieldValue reflect.Value) (interface{}, bool) {
+	var omitEmpty, iso8601 bool
+
+	if len(args) > 2 {
+		for _, arg := range args[2:] {
+			switch arg {
+			case annotationOmitEmpty:
+				omitEmpty = true
+			case annotationISO8601:
+				iso8601 = true
+			}
+		}
+	}
+
+	if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
+		t := fieldValue.Interface().(time.Time)
+
+		if t.IsZero() {
+			return nil, false
+		}
+
+		if iso8601 {
+			return t.UTC().Format(iso8601TimeFormat), true
+		} else {
+			return t.Unix(), true
+		}
+	}
+
+	if fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
+		// A time pointer may be nil
+		if fieldValue.IsNil() {
+			if omitEmpty {
+				return nil, false
+			}
+
+			return nil, true
+		} else {
+			tm := fieldValue.Interface().(*time.Time)
+
+			if tm.IsZero() && omitEmpty {
+				return nil, false
+			}
+
+			if iso8601 {
+				return tm.UTC().Format(iso8601TimeFormat), true
+			} else {
+				return tm.Unix(), true
+			}
+		}
+	}
+
+	return nil, false
+}
+
+func contains(s string, list []string) bool {
+	for _, l := range list {
+		if s == l {
+			return true
+		}
+	}
+	return false
 }
 
 func toShallowNode(node *Node) *Node {
