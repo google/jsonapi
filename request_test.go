@@ -863,7 +863,7 @@ func TestUnmarshalPayloadMeta(t *testing.T) {
 		Data: &Node{
 			Type: "heavymeta",
 			Meta: &Meta{
-				"modified_at": modifiedAt,
+				"modified_at": modifiedAt.Unix(), // timezone is lost here
 			},
 		},
 	}
@@ -879,10 +879,10 @@ func TestUnmarshalPayloadMeta(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	actual := out.ModifiedAt
+	actual := out.ModifiedAt.In(time.UTC) // have to re-add the timezone here
 
 	if actual != modifiedAt {
-		t.Fatal("Reading the meta failed")
+		t.Fatalf("Reading the meta failed %#v != %#v", actual, modifiedAt)
 	}
 }
 

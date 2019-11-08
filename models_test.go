@@ -75,7 +75,8 @@ type Blog struct {
 	CurrentPost     *Post     `jsonapi:"relation,current_post"`
 	CurrentPostID   int       `jsonapi:"attr,current_post_id"`
 	CreatedAt       time.Time `jsonapi:"attr,created_at"`
-	ModifiedAt      time.Time `jsonapi:"meta,modified_at,iso8601"`
+	ModifiedAt      time.Time `jsonapi:"meta,modified_at"` // not iso 8601, serialize as epoch time
+	DeletedAt       time.Time `jsonapi:"meta,deleted_at,iso8601"`
 	ViewCount       int       `jsonapi:"attr,view_count"`
 	ResourceVersion string    `jsonapi:"meta,resource_version"`
 }

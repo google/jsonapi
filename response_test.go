@@ -453,6 +453,7 @@ func TestSupportsMetaAnnotation(t *testing.T) {
 		Title:           "Title 1",
 		CreatedAt:       time.Now(),
 		ModifiedAt:      modifiedAt,
+		DeletedAt:       modifiedAt,
 		ResourceVersion: "etag987abc",
 	}
 
@@ -476,8 +477,18 @@ func TestSupportsMetaAnnotation(t *testing.T) {
 		t.Fatalf("Meta hash not populating time fields correctly %#v", *data.Meta)
 	}
 
-	if (*data.Meta)["modified_at"] != modifiedAt.Format(time.RFC3339) {
-		t.Fatalf("Meta hash not populating time fields correctly %#v", *data.Meta)
+	// encoding/json automatically makes this a float64 because json just specifies "number"
+	mod, ok := (*data.Meta)["modified_at"].(float64)
+	if !ok {
+		t.Fatal("Epoch time is not accessible as a float64")
+	}
+	actualModified := int64(mod)
+	if actualModified != modifiedAt.Unix() {
+		t.Fatalf("Meta hash not populating epoch time fields correctly %T: %T", modifiedAt.Unix(), actualModified)
+	}
+
+	if (*data.Meta)["deleted_at"] != modifiedAt.Format(time.RFC3339) {
+		t.Fatalf("Meta hash not populating iso8601 time fields correctly %#v %#v", modifiedAt.Format(time.RFC3339), (*data.Meta)["deleted_at"])
 	}
 }
 
