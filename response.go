@@ -301,38 +301,9 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 			}
 
 			if fieldValue.Type() == reflect.TypeOf(time.Time{}) {
-				t := fieldValue.Interface().(time.Time)
-
-				if t.IsZero() {
-					continue
-				}
-
-				if iso8601 {
-					node.Attributes[args[1]] = t.UTC().Format(iso8601TimeFormat)
-				} else {
-					node.Attributes[args[1]] = t.Unix()
-				}
+				timeToAttribute(node.Attributes, args[1], fieldValue, iso8601, omitEmpty)
 			} else if fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
-				// A time pointer may be nil
-				if fieldValue.IsNil() {
-					if omitEmpty {
-						continue
-					}
-
-					node.Attributes[args[1]] = nil
-				} else {
-					tm := fieldValue.Interface().(*time.Time)
-
-					if tm.IsZero() && omitEmpty {
-						continue
-					}
-
-					if iso8601 {
-						node.Attributes[args[1]] = tm.UTC().Format(iso8601TimeFormat)
-					} else {
-						node.Attributes[args[1]] = tm.Unix()
-					}
-				}
+				timePtrToAttribute(node.Attributes, args[1], fieldValue, iso8601, omitEmpty)
 			} else {
 				// Dealing with a fieldValue that is not a time
 				emptyValue := reflect.Zero(fieldValue.Type())
@@ -342,11 +313,25 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 					continue
 				}
 
+				// Check if this can be a string
 				strAttr, ok := fieldValue.Interface().(string)
 				if ok {
 					node.Attributes[args[1]] = strAttr
 				} else {
-					node.Attributes[args[1]] = fieldValue.Interface()
+					switch fieldValue.Kind() {
+					case reflect.Struct:
+						structToAttributes(node.Attributes, args[1], fieldValue)
+					case reflect.Ptr:
+						if !fieldValue.IsNil() {
+							ptrToAttributes(node.Attributes, args[1], fieldValue)
+						} else {
+							node.Attributes[args[1]] = nil
+						}
+					case reflect.Slice:
+						sliceToAttribtues(node.Attributes, args[1], fieldValue)
+					default:
+						node.Attributes[args[1]] = fieldValue.Interface()
+					}
 				}
 			}
 		} else if annotation == annotationRelation {
@@ -465,6 +450,114 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 	}
 
 	return node, nil
+}
+
+func timeToAttribute(node map[string]interface{}, fieldName string, fieldValue reflect.Value, iso8601, omitEmpty bool) {
+	t := fieldValue.Interface().(time.Time)
+
+	if t.IsZero() {
+		return
+	}
+
+	if iso8601 {
+		node[fieldName] = t.UTC().Format(iso8601TimeFormat)
+	} else {
+		node[fieldName] = t.Unix()
+	}
+}
+
+func timePtrToAttribute(node map[string]interface{}, fieldName string, fieldValue reflect.Value, iso8601, omitEmpty bool) {
+	// A time pointer may be nil
+	if fieldValue.IsNil() {
+		if omitEmpty {
+			return
+		}
+
+		node[fieldName] = nil
+		return
+	}
+	tm := fieldValue.Interface().(*time.Time)
+
+	if tm.IsZero() && omitEmpty {
+		return
+	}
+
+	if iso8601 {
+		node[fieldName] = tm.UTC().Format(iso8601TimeFormat)
+	} else {
+		node[fieldName] = tm.Unix()
+	}
+}
+
+func structToAttributes(node map[string]interface{}, fieldName string, fieldValue reflect.Value) {
+	node[fieldName] = structToInterfaceMap(fieldValue)
+}
+
+func structToInterfaceMap(fieldValue reflect.Value) map[string]interface{} {
+	var subNode = make(map[string]interface{})
+	for i := 0; i < fieldValue.NumField(); i++ {
+		var (
+			omitEmpty bool
+			iso8601   bool
+		)
+		subField := fieldValue.Field(i)
+		tag := fieldValue.Type().Field(i).Tag.Get(annotationJSONAPI)
+		args := strings.Split(tag, annotationSeperator)
+
+		if len(args) > 2 {
+			for _, arg := range args[2:] {
+				switch arg {
+				case annotationOmitEmpty:
+					omitEmpty = true
+				case annotationISO8601:
+					iso8601 = true
+				}
+			}
+		}
+
+		switch subField.Type() {
+		case reflect.TypeOf(time.Time{}):
+			timeToAttribute(subNode, args[1], subField, iso8601, omitEmpty)
+		case reflect.TypeOf(new(time.Time)):
+			timePtrToAttribute(subNode, args[1], subField, iso8601, omitEmpty)
+		default:
+			switch subField.Kind() {
+			case reflect.String:
+				subNode[args[1]] = subField.String()
+			case reflect.Ptr:
+				ptrToAttributes(subNode, args[1], subField)
+			case reflect.Struct:
+				structToAttributes(subNode, args[1], subField)
+			default:
+				subNode[args[1]] = subField.Interface()
+			}
+		}
+	}
+	return subNode
+}
+
+func ptrToAttributes(node map[string]interface{}, fieldName string, fieldValue reflect.Value) {
+	switch fieldValue.Elem().Kind() {
+	case reflect.Struct:
+		structToAttributes(node, fieldName, fieldValue.Elem())
+	default:
+		node[fieldName] = fieldValue.Elem().Interface()
+	}
+}
+
+func sliceToAttribtues(node map[string]interface{}, fieldName string, fieldValue reflect.Value) {
+	switch fieldValue.Type().Elem().Kind() {
+	case reflect.Ptr:
+		//TODO implement ptr slice creation
+	case reflect.Struct:
+		newSlice := make([]interface{}, fieldValue.Len())
+		for i := 0; i < fieldValue.Len(); i++ {
+			newSlice[i] = structToInterfaceMap(fieldValue.Index(i))
+		}
+		node[fieldName] = newSlice
+	default:
+		node[fieldName] = fieldValue.Interface()
+	}
 }
 
 func toShallowNode(node *Node) *Node {
