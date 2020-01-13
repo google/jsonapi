@@ -80,6 +80,8 @@ func TestMarshal_attrStringSlice(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	t.Logf("%+v \n", jsonData)
+
 	jsonTags := jsonData["data"].(map[string]interface{})["attributes"].(map[string]interface{})["tags"].([]interface{})
 	if e, a := len(tags), len(jsonTags); e != a {
 		t.Fatalf("Was expecting tags of length %d got %d", e, a)
@@ -965,5 +967,149 @@ func testBlog() *Blog {
 				Body: "foo",
 			},
 		},
+	}
+}
+
+func TestMarshalNestedStruct(t *testing.T) {
+	hiredAt := time.Now()
+	company := &Company{
+		ID:   "1",
+		Name: "Planet Express",
+		Boss: Employee{
+			Firstname: "Sean",
+			Surname:   "Farnsworth",
+			Age:       176,
+			HiredAt:   &hiredAt,
+		},
+		Director: &Employee{
+			Firstname: "Evan",
+			Surname:   "MacTavish",
+			Age:       139,
+			HiredAt:   &hiredAt,
+		},
+		Teams: []Team{
+			Team{
+				Name: "dev",
+				Leader: &Employee{
+					Firstname: "Peter",
+					Surname:   "Parker",
+					Age:       16,
+					HiredAt:   &hiredAt,
+				},
+				Members: []Employee{
+					Employee{
+						Firstname: "Lincoln",
+						Surname:   "Burrows",
+						Age:       32,
+						HiredAt:   &hiredAt,
+					},
+					Employee{
+						Firstname: "Teador",
+						Surname:   "Bagwells",
+						Age:       42,
+						HiredAt:   &hiredAt,
+					},
+				},
+			},
+			Team{
+				Name: "hr",
+				Leader: &Employee{
+					Firstname: "Kim",
+					Surname:   "Hwan",
+					Age:       99,
+					HiredAt:   &hiredAt,
+				},
+				Members: []Employee{
+					Employee{
+						Firstname: "Sara",
+						Surname:   "Benda",
+						Age:       32,
+						HiredAt:   &hiredAt,
+					},
+				},
+			},
+		},
+		FoundedAt: time.Now(),
+	}
+
+	var jsonData map[string]interface{}
+
+	// One
+	out1 := bytes.NewBuffer(nil)
+	MarshalPayload(out1, company)
+
+	if err := json.Unmarshal(out1.Bytes(), &jsonData); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, ok := jsonData["data"].(map[string]interface{}); !ok {
+		t.Fatalf("data key did not contain an Hash/Dict/Map")
+	}
+
+	attributes, ok := jsonData["data"].(map[string]interface{})["attributes"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("date map didn't contain attributes")
+	}
+
+	t.Logf("response : %+v", attributes)
+
+	boss, ok := attributes["boss"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("attributes map didn't contain boss")
+	}
+
+	if _, ok := boss["hired-at"].(string); !ok {
+		t.Fatalf("boss didn't contain hired-at : %+v", boss)
+	}
+
+	teams, ok := attributes["teams"].([]interface{})
+	if !ok {
+		t.Fatalf("attributes didn't contain teams")
+	}
+
+	if len(teams) != 2 {
+		t.Fatalf("expected 2 teams got %d", len(teams))
+	}
+
+	team1, ok := teams[0].(map[string]interface{})
+	if !ok {
+		t.Fatalf("failure on unmarshaling team1")
+	}
+
+	//t.Logf("team : %+v", team1)
+
+	name, ok := team1["name"].(string)
+	if !ok {
+		t.Fatalf("teams name not set")
+	}
+	if name != "dev" {
+		t.Fatalf("expected teams name to be 'dev' but got '%s'", name)
+	}
+
+	leader, ok := team1["leader"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("team leader not set")
+	}
+
+	if _, ok := leader["firstname"].(string); !ok {
+		t.Fatalf("leaders firstanme not set: %+v", leader)
+	}
+
+	members, ok := team1["members"].([]interface{})
+	if !ok {
+		t.Fatalf("members not set")
+	}
+
+	if len(members) != 2 {
+		t.Fatalf("expected `len(members)` to be 2, but got `%d`", len(members))
+	}
+
+	director, ok := attributes["director"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("director not set")
+	}
+
+	if _, ok := director["firstname"].(string); !ok {
+		t.Fatalf("directors names not set")
 	}
 }
