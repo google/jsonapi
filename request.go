@@ -580,7 +580,7 @@ func handlePointer(
 			reflect.ValueOf(attribute), fieldType, structField)
 	}
 
-	if t != concreteVal.Type() {
+	if !t.ConvertibleTo(concreteVal.Type()) {
 		return reflect.Value{}, newErrUnsupportedPtrType(
 			reflect.ValueOf(attribute), fieldType, structField)
 	}

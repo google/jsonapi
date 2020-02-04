@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+type StringType string
+
 type BadModel struct {
 	ID int `jsonapi:"primary"`
 }
@@ -18,11 +20,12 @@ type ModelBadTypes struct {
 }
 
 type WithPointer struct {
-	ID       *uint64  `jsonapi:"primary,with-pointers"`
-	Name     *string  `jsonapi:"attr,name"`
-	IsActive *bool    `jsonapi:"attr,is-active"`
-	IntVal   *int     `jsonapi:"attr,int-val"`
-	FloatVal *float32 `jsonapi:"attr,float-val"`
+	ID        *uint64     `jsonapi:"primary,with-pointers"`
+	Name      *string     `jsonapi:"attr,name"`
+	IsActive  *bool       `jsonapi:"attr,is-active"`
+	IntVal    *int        `jsonapi:"attr,int-val"`
+	FloatVal  *float32    `jsonapi:"attr,float-val"`
+	StringVal *StringType `jsonapi:"attr,string-val"`
 }
 
 type Timestamp struct {
