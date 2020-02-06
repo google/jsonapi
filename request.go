@@ -89,11 +89,11 @@ func newErrUnsupportedPtrType(rf reflect.Value, t reflect.Type, structField refl
 // Visit https://github.com/google/jsonapi#create for more info.
 //
 // model interface{} should be a pointer to a struct.
-func UnmarshalPayload(in io.Reader, model interface{}) error {
+func UnmarshalPayload(in io.Reader, model interface{}) (*Links, *Meta, error) {
 	payload := new(OnePayload)
 
 	if err := json.NewDecoder(in).Decode(payload); err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	if payload.Included != nil {
@@ -103,18 +103,18 @@ func UnmarshalPayload(in io.Reader, model interface{}) error {
 			includedMap[key] = included
 		}
 
-		return unmarshalNode(payload.Data, reflect.ValueOf(model), &includedMap)
+		return payload.Links, payload.Meta, unmarshalNode(payload.Data, reflect.ValueOf(model), &includedMap)
 	}
-	return unmarshalNode(payload.Data, reflect.ValueOf(model), nil)
+	return payload.Links, payload.Meta, unmarshalNode(payload.Data, reflect.ValueOf(model), nil)
 }
 
 // UnmarshalManyPayload converts an io into a set of struct instances using
 // jsonapi tags on the type's struct fields.
-func UnmarshalManyPayload(in io.Reader, t reflect.Type) ([]interface{}, error) {
+func UnmarshalManyPayload(in io.Reader, t reflect.Type) ([]interface{}, *Links, *Meta, error) {
 	payload := new(ManyPayload)
 
 	if err := json.NewDecoder(in).Decode(payload); err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 
 	models := []interface{}{}         // will be populated from the "data"
@@ -131,12 +131,12 @@ func UnmarshalManyPayload(in io.Reader, t reflect.Type) ([]interface{}, error) {
 		model := reflect.New(t.Elem())
 		err := unmarshalNode(data, model, &includedMap)
 		if err != nil {
-			return nil, err
+			return nil, nil, nil, err
 		}
 		models = append(models, model.Interface())
 	}
 
-	return models, nil
+	return models, payload.Links, payload.Meta, nil
 }
 
 func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) (err error) {
