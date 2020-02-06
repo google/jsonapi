@@ -71,14 +71,15 @@ func (r *Runtime) shouldInstrument() bool {
 // UnmarshalPayload has docs in request.go for UnmarshalPayload.
 func (r *Runtime) UnmarshalPayload(reader io.Reader, model interface{}) error {
 	return r.instrumentCall(UnmarshalStart, UnmarshalStop, func() error {
-		return UnmarshalPayload(reader, model)
+		_, _, err := UnmarshalPayload(reader, model)
+		return err
 	})
 }
 
 // UnmarshalManyPayload has docs in request.go for UnmarshalManyPayload.
 func (r *Runtime) UnmarshalManyPayload(reader io.Reader, kind reflect.Type) (elems []interface{}, err error) {
 	r.instrumentCall(UnmarshalStart, UnmarshalStop, func() error {
-		elems, err = UnmarshalManyPayload(reader, kind)
+		elems, _, _, err = UnmarshalManyPayload(reader, kind)
 		return err
 	})
 
