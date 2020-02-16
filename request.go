@@ -425,6 +425,11 @@ func unmarshalAttribute(
 		return
 	}
 
+	// Field was a json.RawMessage
+	if fieldValue.Type() == reflect.TypeOf(json.RawMessage{}) {
+		value, err = handleRawMessage(attribute)
+	}
+
 	// As a final catch-all, ensure types line up to avoid a runtime panic.
 	if fieldValue.Kind() != value.Kind() {
 		err = ErrInvalidType
@@ -432,6 +437,11 @@ func unmarshalAttribute(
 	}
 
 	return
+}
+
+func handleRawMessage(attribute interface{}) (reflect.Value, error) {
+	raw, _ := json.Marshal(attribute)
+	return reflect.ValueOf(raw), nil
 }
 
 func handleStringSlice(attribute interface{}) (reflect.Value, error) {
