@@ -440,7 +440,10 @@ func unmarshalAttribute(
 }
 
 func handleRawMessage(attribute interface{}) (reflect.Value, error) {
-	raw, _ := json.Marshal(attribute)
+	raw, err := json.Marshal(attribute)
+	if err != nil {
+		return reflect.Value{}, err
+	}
 	return reflect.ValueOf(raw), nil
 }
 
