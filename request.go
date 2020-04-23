@@ -378,7 +378,11 @@ func assignValue(field, value reflect.Value) {
 	case reflect.Slice:
 		newSlice := reflect.MakeSlice(field.Type(), value.Len(), value.Cap())
 		for i := 0; i < value.Len(); i++ {
-			newSlice.Index(i).Set(value.Index(i).Elem())
+			if value.Index(i).Kind() == reflect.Interface {
+				newSlice.Index(i).Set(value.Index(i).Elem())
+			} else {
+				newSlice.Index(i).Set(value.Index(i))
+			}
 		}
 		field.Set(newSlice)
 	default:
