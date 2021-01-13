@@ -46,7 +46,7 @@ type Node struct {
 
 // RelationshipOneNode is used to represent a generic has one JSON API relation
 type RelationshipOneNode struct {
-	Data  *Node  `json:"data"`
+	Data  *Node  `json:"data,omitempty"`
 	Links *Links `json:"links,omitempty"`
 	Meta  *Meta  `json:"meta,omitempty"`
 }
@@ -54,7 +54,7 @@ type RelationshipOneNode struct {
 // RelationshipManyNode is used to represent a generic has many JSON API
 // relation
 type RelationshipManyNode struct {
-	Data  []*Node `json:"data"`
+	Data  []*Node `json:"data,omitempty"`
 	Links *Links  `json:"links,omitempty"`
 	Meta  *Meta   `json:"meta,omitempty"`
 }
