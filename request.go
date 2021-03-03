@@ -175,10 +175,6 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 		}
 
 		if annotation == annotationPrimary {
-			if data.ID == "" {
-				continue
-			}
-
 			// Check the JSON API Type
 			if data.Type != args[1] {
 				er = fmt.Errorf(
@@ -187,6 +183,10 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 					args[1],
 				)
 				break
+			}
+
+			if data.ID == "" {
+				continue
 			}
 
 			// ID will have to be transmitted as astring per the JSON API spec
