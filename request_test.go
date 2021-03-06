@@ -70,11 +70,20 @@ func TestUnmarshalToStructWithPointerAttr(t *testing.T) {
 	}
 }
 
+func TestUnmarshalPayload_missingTypeFieldShouldError(t *testing.T) {
+	if err := UnmarshalPayload(
+		strings.NewReader(`{"data":{"body":"hello world"}}`),
+		&Post{},
+	); err == nil {
+		t.Fatalf("Expected an error but did not get one")
+	}
+}
+
 func TestUnmarshalPayload_ptrsAllNil(t *testing.T) {
 	out := new(WithPointer)
 	if err := UnmarshalPayload(
-		strings.NewReader(`{"data": {}}`), out); err != nil {
-		t.Fatalf("Error unmarshalling to Foo")
+		strings.NewReader(`{"data":{"type":"with-pointers"}}`), out); err != nil {
+		t.Fatalf("Error unmarshalling to Foo: %v", err)
 	}
 
 	if out.ID != nil {
