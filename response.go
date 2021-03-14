@@ -1,6 +1,7 @@
 package jsonapi
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -307,6 +308,23 @@ func resolveNodeID(node *Node, fieldValue reflect.Value, fieldType reflect.Struc
 		node.ID = strconv.FormatUint(uint64(v.Interface().(uint32)), 10)
 	case reflect.Uint64:
 		node.ID = strconv.FormatUint(v.Interface().(uint64), 10)
+	case reflect.Struct:
+		if nStr, ok := v.Interface().(sql.NullString); ok {
+			node.ID = nStr.String
+			break
+		}
+
+		if nI32, ok := v.Interface().(sql.NullInt32); ok {
+			node.ID = strconv.FormatInt(int64(nI32.Int32), 10)
+			break
+		}
+
+		if nI64, ok := v.Interface().(sql.NullInt64); ok {
+			node.ID = strconv.FormatInt(nI64.Int64, 10)
+			break
+		}
+
+		fallthrough
 	default:
 		// We had a JSON float (numeric), but our field was not one of the
 		// allowed numeric types
