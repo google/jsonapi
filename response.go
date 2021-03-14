@@ -416,6 +416,33 @@ func resolveNodeAttribute(node *Node, fieldValue reflect.Value, args []string) *
 			return node
 		}
 
+		// Deal with database/sql null types
+		if nBool, ok := fieldValue.Interface().(sql.NullBool); ok {
+			node.Attributes[args[1]] = nBool.Bool
+			break
+		}
+
+		if nStr, ok := fieldValue.Interface().(sql.NullString); ok {
+			node.Attributes[args[1]] = nStr.String
+			break
+		}
+
+		if nF64, ok := fieldValue.Interface().(sql.NullFloat64); ok {
+			node.Attributes[args[1]] = nF64.Float64
+			break
+		}
+
+		if nI32, ok := fieldValue.Interface().(sql.NullInt32); ok {
+			node.Attributes[args[1]] = nI32.Int32
+			break
+		}
+
+		if nI64, ok := fieldValue.Interface().(sql.NullInt64); ok {
+			node.Attributes[args[1]] = nI64.Int64
+			break
+		}
+
+		// Handle string and remaining types
 		if str, ok := fieldValue.Interface().(string); ok {
 			node.Attributes[args[1]] = str
 		} else {
