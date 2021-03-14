@@ -386,6 +386,27 @@ func resolveNodeAttribute(node *Node, fieldValue reflect.Value, args []string) *
 				node.Attributes[args[1]] = t.Unix()
 			}
 		}
+	case reflect.TypeOf(sql.NullTime{}):
+		nt := fieldValue.Interface().(sql.NullTime)
+
+		// Time is NULL
+		if !nt.Valid {
+			if omitEmpty {
+				return node
+			}
+
+			node.Attributes[args[1]] = nil
+		} else {
+			if nt.Time.IsZero() && omitEmpty {
+				return node
+			}
+
+			if iso8601 {
+				node.Attributes[args[1]] = nt.Time.UTC().Format(iso8601TimeFormat)
+			} else {
+				node.Attributes[args[1]] = nt.Time.Unix()
+			}
+		}
 	default:
 		// Dealing with a fieldValue that is not a time
 		emptyValue := reflect.Zero(fieldValue.Type())
