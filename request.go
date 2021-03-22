@@ -23,6 +23,9 @@ var (
 	// ErrInvalidISO8601 is returned when a struct has a time.Time type field and includes
 	// "iso8601" in the tag spec, but the JSON value was not an ISO8601 timestamp string.
 	ErrInvalidISO8601 = errors.New("Only strings can be parsed as dates, ISO8601 timestamps")
+	// ErrInvalidRFC3339 is returned when a struct has a time.Time type field and includes
+	// "rfc3339" in the tag spec, but the JSON value was not an RFC3339 timestamp string.
+	ErrInvalidRFC3339 = errors.New("Only strings can be parsed as dates, RFC3339 timestamps")
 	// ErrUnknownFieldNumberType is returned when the JSON value was a float
 	// (numeric) but the Struct field was a non numeric type (i.e. not int, uint,
 	// float, etc)
@@ -446,12 +449,15 @@ func handleStringSlice(attribute interface{}) (reflect.Value, error) {
 
 func handleTime(attribute interface{}, args []string, fieldValue reflect.Value) (reflect.Value, error) {
 	var isIso8601 bool
+	var isRFC3339 bool
 	v := reflect.ValueOf(attribute)
 
 	if len(args) > 2 {
 		for _, arg := range args[2:] {
 			if arg == annotationISO8601 {
 				isIso8601 = true
+			} else if arg == annotationRFC3339 {
+				isRFC3339 = true
 			}
 		}
 	}
@@ -467,6 +473,26 @@ func handleTime(attribute interface{}, args []string, fieldValue reflect.Value) 
 		t, err := time.Parse(iso8601TimeFormat, tm)
 		if err != nil {
 			return reflect.ValueOf(time.Now()), ErrInvalidISO8601
+		}
+
+		if fieldValue.Kind() == reflect.Ptr {
+			return reflect.ValueOf(&t), nil
+		}
+
+		return reflect.ValueOf(t), nil
+	}
+
+	if isRFC3339 {
+		var tm string
+		if v.Kind() == reflect.String {
+			tm = v.Interface().(string)
+		} else {
+			return reflect.ValueOf(time.Now()), ErrInvalidRFC3339
+		}
+
+		t, err := time.Parse(time.RFC3339, tm)
+		if err != nil {
+			return reflect.ValueOf(time.Now()), ErrInvalidRFC3339
 		}
 
 		if fieldValue.Kind() == reflect.Ptr {
