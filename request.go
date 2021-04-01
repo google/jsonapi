@@ -149,8 +149,6 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 	modelValue := model.Elem()
 	modelType := modelValue.Type()
 
-	var er error
-
 	for i := 0; i < modelValue.NumField(); i++ {
 		fieldType := modelType.Field(i)
 		tag := fieldType.Tag.Get("jsonapi")
@@ -163,27 +161,25 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 		args := strings.Split(tag, annotationSeparator)
 
 		if len(args) < 1 {
-			er = ErrBadJSONAPIStructTag
-			break
+			return ErrBadJSONAPIStructTag
 		}
 
 		annotation := args[0]
 
 		if (annotation == annotationClientID && len(args) != 1) ||
 			(annotation != annotationClientID && len(args) < 2) {
-			er = ErrBadJSONAPIStructTag
-			break
+			return ErrBadJSONAPIStructTag
 		}
 
-		if annotation == annotationPrimary {
+		switch annotation {
+		case annotationPrimary:
 			// Check the JSON API Type
 			if data.Type != args[1] {
-				er = fmt.Errorf(
+				return fmt.Errorf(
 					"Trying to Unmarshal an object of type %#v, but %#v does not match",
 					data.Type,
 					args[1],
 				)
-				break
 			}
 
 			if data.ID == "" {
@@ -212,8 +208,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			floatValue, err := strconv.ParseFloat(data.ID, 64)
 			if err != nil {
 				// Could not convert the value in the "id" attr to a float
-				er = ErrBadJSONAPIID
-				break
+				return ErrBadJSONAPIID
 			}
 
 			// Convert the numeric float to one of the supported ID numeric types
@@ -222,18 +217,19 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			if err != nil {
 				// We had a JSON float (numeric), but our field was not one of the
 				// allowed numeric types
-				er = ErrBadJSONAPIID
-				break
+				return ErrBadJSONAPIID
 			}
 
 			assign(fieldValue, idValue)
-		} else if annotation == annotationClientID {
+
+		case annotationClientID:
 			if data.ClientID == "" {
 				continue
 			}
 
 			fieldValue.Set(reflect.ValueOf(data.ClientID))
-		} else if annotation == annotationAttribute {
+
+		case annotationAttribute:
 			attributes := data.Attributes
 
 			if attributes == nil || len(data.Attributes) == 0 {
@@ -250,12 +246,12 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			structField := fieldType
 			value, err := unmarshalAttribute(attribute, args, structField, fieldValue)
 			if err != nil {
-				er = err
-				break
+				return err
 			}
 
 			assign(fieldValue, value)
-		} else if annotation == annotationRelation {
+
+		case annotationRelation:
 			isSlice := fieldValue.Type().Kind() == reflect.Slice
 
 			if data.Relationships == nil || data.Relationships[args[1]] == nil {
@@ -282,8 +278,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 						m,
 						included,
 					); err != nil {
-						er = err
-						break
+						return err
 					}
 
 					models = reflect.Append(models, m)
@@ -317,20 +312,19 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 					m,
 					included,
 				); err != nil {
-					er = err
-					break
+					return err
 				}
 
 				fieldValue.Set(m)
 
 			}
 
-		} else {
-			er = fmt.Errorf(unsupportedStructTagMsg, annotation)
+		default:
+			return fmt.Errorf(unsupportedStructTagMsg, annotation)
 		}
 	}
 
-	return er
+	return nil
 }
 
 func fullNode(n *Node, included *map[string]*Node) *Node {
