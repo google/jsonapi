@@ -182,45 +182,11 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				)
 			}
 
-			if data.ID == "" {
-				continue
-			}
+			data, err = unmarshallID(data, fieldValue, fieldType)
 
-			// ID will have to be transmitted as astring per the JSON API spec
-			v := reflect.ValueOf(data.ID)
-
-			// Deal with PTRS
-			var kind reflect.Kind
-			if fieldValue.Kind() == reflect.Ptr {
-				kind = fieldType.Type.Elem().Kind()
-			} else {
-				kind = fieldType.Type.Kind()
-			}
-
-			// Handle String case
-			if kind == reflect.String {
-				assign(fieldValue, v)
-				continue
-			}
-
-			// Value was not a string... only other supported type was a numeric,
-			// which would have been sent as a float value.
-			floatValue, err := strconv.ParseFloat(data.ID, 64)
 			if err != nil {
-				// Could not convert the value in the "id" attr to a float
-				return ErrBadJSONAPIID
+				return
 			}
-
-			// Convert the numeric float to one of the supported ID numeric types
-			// (int[8,16,32,64] or uint[8,16,32,64])
-			idValue, err := handleNumeric(floatValue, fieldType.Type, fieldValue)
-			if err != nil {
-				// We had a JSON float (numeric), but our field was not one of the
-				// allowed numeric types
-				return ErrBadJSONAPIID
-			}
-
-			assign(fieldValue, idValue)
 
 		case annotationClientID:
 			if data.ClientID == "" {
@@ -252,71 +218,10 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			assign(fieldValue, value)
 
 		case annotationRelation:
-			isSlice := fieldValue.Type().Kind() == reflect.Slice
+			data, err = unmarshallRelation(data, fieldValue, included, args)
 
-			if data.Relationships == nil || data.Relationships[args[1]] == nil {
-				continue
-			}
-
-			if isSlice {
-				// to-many relationship
-				relationship := new(RelationshipManyNode)
-
-				buf := bytes.NewBuffer(nil)
-
-				json.NewEncoder(buf).Encode(data.Relationships[args[1]])
-				json.NewDecoder(buf).Decode(relationship)
-
-				data := relationship.Data
-				models := reflect.New(fieldValue.Type()).Elem()
-
-				for _, n := range data {
-					m := reflect.New(fieldValue.Type().Elem().Elem())
-
-					if err := unmarshalNode(
-						fullNode(n, included),
-						m,
-						included,
-					); err != nil {
-						return err
-					}
-
-					models = reflect.Append(models, m)
-				}
-
-				fieldValue.Set(models)
-			} else {
-				// to-one relationships
-				relationship := new(RelationshipOneNode)
-
-				buf := bytes.NewBuffer(nil)
-
-				json.NewEncoder(buf).Encode(
-					data.Relationships[args[1]],
-				)
-				json.NewDecoder(buf).Decode(relationship)
-
-				/*
-					http://jsonapi.org/format/#document-resource-object-relationships
-					http://jsonapi.org/format/#document-resource-object-linkage
-					relationship can have a data node set to null (e.g. to disassociate the relationship)
-					so unmarshal and set fieldValue only if data obj is not null
-				*/
-				if relationship.Data == nil {
-					continue
-				}
-
-				m := reflect.New(fieldValue.Type().Elem())
-				if err := unmarshalNode(
-					fullNode(relationship.Data, included),
-					m,
-					included,
-				); err != nil {
-					return err
-				}
-
-				fieldValue.Set(m)
-
+			if err != nil {
+				return
 			}
 
 		default:
@@ -325,6 +230,121 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 	}
 
 	return nil
+}
+
+func unmarshallID(node *Node, fieldValue reflect.Value, fieldType reflect.StructField) (*Node, error) {
+	if node.ID == "" {
+		return node, nil
+	}
+
+	// ID will have to be transmitted as a string per the JSON API spec
+	v := reflect.ValueOf(node.ID)
+
+	// Deal with PTRS
+	var kind reflect.Kind
+	if fieldValue.Kind() == reflect.Ptr {
+		kind = fieldType.Type.Elem().Kind()
+	} else {
+		kind = fieldType.Type.Kind()
+	}
+
+	// Handle String case
+	if kind == reflect.String {
+		assign(fieldValue, v)
+
+		return node, nil
+	}
+
+	// Value was not a string... only other supported type was a numeric,
+	// which would have been sent as a float value.
+	floatValue, err := strconv.ParseFloat(node.ID, 64)
+	if err != nil {
+		// Could not convert the value in the "id" attr to a float
+		return nil, ErrBadJSONAPIID
+	}
+
+	// Convert the numeric float to one of the supported ID numeric types
+	// (int[8,16,32,64] or uint[8,16,32,64])
+	idValue, err := handleNumeric(floatValue, fieldType.Type, fieldValue)
+	if err != nil {
+		// We had a JSON float (numeric), but our field was not one of the
+		// allowed numeric types
+		return nil, ErrBadJSONAPIID
+	}
+
+	assign(fieldValue, idValue)
+
+	return node, nil
+}
+
+func unmarshallRelation(node *Node, fieldValue reflect.Value, included *map[string]*Node, args []string) (*Node, error) {
+	isSlice := fieldValue.Type().Kind() == reflect.Slice
+
+	if node.Relationships == nil || node.Relationships[args[1]] == nil {
+		return node, nil
+	}
+
+	if isSlice {
+		// to-many relationship
+		relationship := new(RelationshipManyNode)
+
+		buf := bytes.NewBuffer(nil)
+
+		json.NewEncoder(buf).Encode(node.Relationships[args[1]])
+		json.NewDecoder(buf).Decode(relationship)
+
+		data := relationship.Data
+		models := reflect.New(fieldValue.Type()).Elem()
+
+		for _, n := range data {
+			m := reflect.New(fieldValue.Type().Elem().Elem())
+
+			if err := unmarshalNode(
+				fullNode(n, included),
+				m,
+				included,
+			); err != nil {
+				return nil, err
+			}
+
+			models = reflect.Append(models, m)
+		}
+
+		fieldValue.Set(models)
+	} else {
+		// to-one relationships
+		relationship := new(RelationshipOneNode)
+
+		buf := bytes.NewBuffer(nil)
+
+		json.NewEncoder(buf).Encode(
+			node.Relationships[args[1]],
+		)
+		json.NewDecoder(buf).Decode(relationship)
+
+		/*
+			http://jsonapi.org/format/#document-resource-object-relationships
+			http://jsonapi.org/format/#document-resource-object-linkage
+			relationship can have a data node set to null (e.g. to disassociate the relationship)
+			so unmarshal and set fieldValue only if data obj is not null
+		*/
+		if relationship.Data == nil {
+			return node, nil
+		}
+
+		m := reflect.New(fieldValue.Type().Elem())
+		if err := unmarshalNode(
+			fullNode(relationship.Data, included),
+			m,
+			included,
+		); err != nil {
+			return nil, err
+		}
+
+		fieldValue.Set(m)
+	}
+
+	return node, nil
 }
 
 func fullNode(n *Node, included *map[string]*Node) *Node {
