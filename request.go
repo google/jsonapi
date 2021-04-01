@@ -151,7 +151,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 
 	for i := 0; i < modelValue.NumField(); i++ {
 		fieldType := modelType.Field(i)
-		tag := fieldType.Tag.Get("jsonapi")
+		tag := fieldType.Tag.Get(annotationJSONAPI)
 		if tag == "" {
 			continue
 		}
