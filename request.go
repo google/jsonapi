@@ -160,7 +160,8 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 
 		fieldValue := modelValue.Field(i)
 
-		args := strings.Split(tag, ",")
+		args := strings.Split(tag, annotationSeparator)
+
 		if len(args) < 1 {
 			er = ErrBadJSONAPIStructTag
 			break
