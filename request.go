@@ -488,17 +488,15 @@ func handleTime(attribute interface{}, args []string, fieldValue reflect.Value) 
 		return reflect.ValueOf(t), nil
 	}
 
-	var at int64
+	var t time.Time
 
 	if v.Kind() == reflect.Float64 {
-		at = int64(v.Interface().(float64))
+		t = time.Unix(int64(v.Float()), 0)
 	} else if v.Kind() == reflect.Int {
-		at = v.Int()
+		t = time.Unix(v.Int(), 0)
 	} else {
 		return reflect.ValueOf(time.Now()), ErrInvalidTime
 	}
-
-	t := time.Unix(at, 0)
 
 	return reflect.ValueOf(t), nil
 }
