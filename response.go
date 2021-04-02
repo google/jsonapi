@@ -272,16 +272,16 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 	return node, nil
 }
 
-func resolveNodeID(node *Node, fieldValue reflect.Value, fieldType reflect.StructField) (*Node, error) {
+func resolveNodeID(node *Node, fieldValue reflect.Value, structField reflect.StructField) (*Node, error) {
 	v := fieldValue
 
 	// Deal with PTRS
 	var kind reflect.Kind
 	if fieldValue.Kind() == reflect.Ptr {
-		kind = fieldType.Type.Elem().Kind()
+		kind = structField.Type.Elem().Kind()
 		v = reflect.Indirect(fieldValue)
 	} else {
-		kind = fieldType.Type.Kind()
+		kind = structField.Type.Kind()
 	}
 
 	// Handle allowed types
