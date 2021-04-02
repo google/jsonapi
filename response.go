@@ -174,7 +174,7 @@ func marshalMany(models []interface{}) (*ManyPayload, error) {
 // related records. This method will serialize a single struct
 // pointer into an embedded json response. In other words, there
 // will be no, "included", array in the json all relationships will
-// be serailized inline in the data.
+// be serialized inline in the data.
 //
 // However, in tests, you may want to construct payloads to post
 // to create methods that are embedded to most closely resemble
