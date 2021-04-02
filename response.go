@@ -19,7 +19,7 @@ var (
 	// ErrBadJSONAPIID is returned when the Struct JSON API annotated "id" field
 	// was not a valid numeric type.
 	ErrBadJSONAPIID = errors.New(
-		"id should be either string, int(8,16,32,64) or uint(8,16,32,64)")
+		"id should be either string, int(8,16,32,64), uint(8,16,32,64) or sql.Null(Int32, Int64, Float64)")
 	// ErrExpectedSlice is returned when a variable or argument was expected to
 	// be a slice of *Structs; MarshalMany will return this error when its
 	// interface{} argument is invalid.

@@ -2,6 +2,7 @@ package jsonapi
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -264,7 +265,7 @@ func unmarshallID(node *Node, fieldValue reflect.Value, structField reflect.Stru
 	}
 
 	// Convert the numeric float to one of the supported ID numeric types
-	// (int[8,16,32,64] or uint[8,16,32,64])
+	// (int[8,16,32,64], uint[8,16,32,64] or sql.Null[Int32, Int64, Float64])
 	idValue, err := handleNumeric(floatValue, structField.Type, fieldValue)
 	if err != nil {
 		// We had a JSON float (numeric), but our field was not one of the
@@ -554,6 +555,23 @@ func handleNumeric(
 	case reflect.Float64:
 		n := floatValue
 		numericValue = reflect.ValueOf(&n)
+	case reflect.Struct:
+		if _, ok := fieldValue.Interface().(sql.NullInt32); ok {
+			numericValue = reflect.ValueOf(sql.NullInt32{Int32: int32(floatValue), Valid: true})
+			break
+		}
+
+		if _, ok := fieldValue.Interface().(sql.NullInt64); ok {
+			numericValue = reflect.ValueOf(sql.NullInt64{Int64: int64(floatValue), Valid: true})
+			break
+		}
+
+		if _, ok := fieldValue.Interface().(sql.NullFloat64); ok {
+			numericValue = reflect.ValueOf(sql.NullFloat64{Float64: floatValue, Valid: true})
+			break
+		}
+
+		fallthrough
 	default:
 		return reflect.Value{}, ErrUnknownFieldNumberType
 	}
