@@ -55,6 +55,16 @@ type NullFloat64ID struct {
 	ID sql.NullFloat64 `jsonapi:"primary,null-float64-id"`
 }
 
+type Float struct {
+	ID         sql.NullString  `jsonapi:"primary,float"`
+	Periodic   sql.NullBool    `jsonapi:"attr,periodic"`
+	Name       sql.NullString  `jsonapi:"attr,name"`
+	Value      sql.NullFloat64 `jsonapi:"attr,value"`
+	Decimal    sql.NullInt32   `jsonapi:"attr,decimal"`
+	Fractional sql.NullInt64   `jsonapi:"attr,fractional"`
+	ComputedAt sql.NullTime    `jsonapi:"attr,computed_at"`
+}
+
 type Car struct {
 	ID    *string `jsonapi:"primary,cars"`
 	Make  *string `jsonapi:"attr,make,omitempty"`
