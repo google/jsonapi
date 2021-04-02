@@ -309,18 +309,23 @@ func resolveNodeID(node *Node, fieldValue reflect.Value, fieldType reflect.Struc
 	case reflect.Uint64:
 		node.ID = strconv.FormatUint(v.Interface().(uint64), 10)
 	case reflect.Struct:
-		if nStr, ok := v.Interface().(sql.NullString); ok {
-			node.ID = nStr.String
+		if str, ok := v.Interface().(sql.NullString); ok {
+			node.ID = str.String
 			break
 		}
 
-		if nI32, ok := v.Interface().(sql.NullInt32); ok {
-			node.ID = strconv.FormatInt(int64(nI32.Int32), 10)
+		if i32, ok := v.Interface().(sql.NullInt32); ok {
+			node.ID = strconv.FormatInt(int64(i32.Int32), 10)
 			break
 		}
 
-		if nI64, ok := v.Interface().(sql.NullInt64); ok {
-			node.ID = strconv.FormatInt(nI64.Int64, 10)
+		if i64, ok := v.Interface().(sql.NullInt64); ok {
+			node.ID = strconv.FormatInt(i64.Int64, 10)
+			break
+		}
+
+		if f64, ok := v.Interface().(sql.NullFloat64); ok {
+			node.ID = strconv.FormatFloat(f64.Float64, 'f', -1, 64)
 			break
 		}
 
