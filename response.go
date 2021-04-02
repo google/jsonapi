@@ -422,28 +422,48 @@ func resolveNodeAttribute(node *Node, fieldValue reflect.Value, args []string) *
 		}
 
 		// Handle remaining sql.Null* types
-		if nBool, ok := fieldValue.Interface().(sql.NullBool); ok {
-			node.Attributes[args[1]] = nBool.Bool
+		if boo, ok := fieldValue.Interface().(sql.NullBool); ok {
+			if boo.Valid {
+				node.Attributes[args[1]] = boo.Bool
+			} else {
+				node.Attributes[args[1]] = nil
+			}
 			break
 		}
 
 		if str, ok := fieldValue.Interface().(sql.NullString); ok {
-			node.Attributes[args[1]] = str.String
+			if str.Valid {
+				node.Attributes[args[1]] = str.String
+			} else {
+				node.Attributes[args[1]] = nil
+			}
 			break
 		}
 
 		if f64, ok := fieldValue.Interface().(sql.NullFloat64); ok {
-			node.Attributes[args[1]] = f64.Float64
+			if f64.Valid {
+				node.Attributes[args[1]] = f64.Float64
+			} else {
+				node.Attributes[args[1]] = nil
+			}
 			break
 		}
 
 		if i32, ok := fieldValue.Interface().(sql.NullInt32); ok {
-			node.Attributes[args[1]] = i32.Int32
+			if i32.Valid {
+				node.Attributes[args[1]] = i32.Int32
+			} else {
+				node.Attributes[args[1]] = nil
+			}
 			break
 		}
 
 		if i64, ok := fieldValue.Interface().(sql.NullInt64); ok {
-			node.Attributes[args[1]] = i64.Int64
+			if i64.Valid {
+				node.Attributes[args[1]] = i64.Int64
+			} else {
+				node.Attributes[args[1]] = nil
+			}
 			break
 		}
 
