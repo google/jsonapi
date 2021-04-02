@@ -256,6 +256,15 @@ func unmarshallID(node *Node, fieldValue reflect.Value, structField reflect.Stru
 		return node, nil
 	}
 
+	// Handle sql.NullString case
+	if structField.Type == reflect.TypeOf(sql.NullString{}) {
+		if str, ok := v.Interface().(string); ok {
+			assign(fieldValue, reflect.ValueOf(sql.NullString{String: str, Valid: true}))
+
+			return node, nil
+		}
+	}
+
 	// Value was not a string... only other supported type was a numeric,
 	// which would have been sent as a float value.
 	floatValue, err := strconv.ParseFloat(node.ID, 64)
