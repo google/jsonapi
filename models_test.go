@@ -1,6 +1,7 @@
 package jsonapi
 
 import (
+	"database/sql"
 	"fmt"
 	"time"
 )
@@ -26,9 +27,33 @@ type WithPointer struct {
 }
 
 type Timestamp struct {
-	ID   int        `jsonapi:"primary,timestamps"`
-	Time time.Time  `jsonapi:"attr,timestamp,iso8601"`
-	Next *time.Time `jsonapi:"attr,next,iso8601"`
+	ID   int          `jsonapi:"primary,timestamps"`
+	Time time.Time    `jsonapi:"attr,timestamp,iso8601"`
+	Next *time.Time   `jsonapi:"attr,next,iso8601"`
+	Null sql.NullTime `jsonapi:"attr,null,iso8601"`
+}
+
+type NullStringID struct {
+	ID            sql.NullString  `jsonapi:"primary,null-string-id"`
+	Periodic      sql.NullBool    `jsonapi:"attr,periodic,omitempty"`
+	Name          sql.NullString  `jsonapi:"attr,name,omitempty"`
+	Value         sql.NullFloat64 `jsonapi:"attr,value,omitempty"`
+	Decimal       sql.NullInt32   `jsonapi:"attr,decimal,omitempty"`
+	Fractional    sql.NullInt64   `jsonapi:"attr,fractional,omitempty"`
+	ComputedAt    sql.NullTime    `jsonapi:"attr,computed_at,omitempty"`
+	ComputedAtISO sql.NullTime    `jsonapi:"attr,computed_at_iso,iso8601,omitempty"`
+}
+
+type NullInt32ID struct {
+	ID sql.NullInt32 `jsonapi:"primary,null-int32-id"`
+}
+
+type NullInt64ID struct {
+	ID sql.NullInt64 `jsonapi:"primary,null-int64-id"`
+}
+
+type NullFloat64ID struct {
+	ID sql.NullFloat64 `jsonapi:"primary,null-float64-id"`
 }
 
 type Car struct {
