@@ -418,72 +418,32 @@ func resolveNodeAttribute(node *Node, fieldValue reflect.Value, args []string) *
 
 		// See if we need to omit this field
 		if omitEmpty && reflect.DeepEqual(fieldValue.Interface(), emptyValue.Interface()) {
-			return node
+			break
 		}
 
-		// Deal with database/sql null types
+		// Handle remaining sql.Null* types
 		if nBool, ok := fieldValue.Interface().(sql.NullBool); ok {
-			if !nBool.Valid && omitEmpty {
-				return node
-			}
-
-			if nBool.Valid {
-				node.Attributes[args[1]] = nBool.Bool
-			} else {
-				node.Attributes[args[1]] = nil
-			}
+			node.Attributes[args[1]] = nBool.Bool
 			break
 		}
 
-		if nStr, ok := fieldValue.Interface().(sql.NullString); ok {
-			if !nStr.Valid && omitEmpty {
-				return node
-			}
-
-			if nStr.Valid {
-				node.Attributes[args[1]] = nStr.String
-			} else {
-				node.Attributes[args[1]] = nil
-			}
+		if str, ok := fieldValue.Interface().(sql.NullString); ok {
+			node.Attributes[args[1]] = str.String
 			break
 		}
 
-		if nF64, ok := fieldValue.Interface().(sql.NullFloat64); ok {
-			if !nF64.Valid && omitEmpty {
-				return node
-			}
-
-			if nF64.Valid {
-				node.Attributes[args[1]] = nF64.Float64
-			} else {
-				node.Attributes[args[1]] = nil
-			}
+		if f64, ok := fieldValue.Interface().(sql.NullFloat64); ok {
+			node.Attributes[args[1]] = f64.Float64
 			break
 		}
 
-		if nI32, ok := fieldValue.Interface().(sql.NullInt32); ok {
-			if !nI32.Valid && omitEmpty {
-				return node
-			}
-
-			if nI32.Valid {
-				node.Attributes[args[1]] = nI32.Int32
-			} else {
-				node.Attributes[args[1]] = nil
-			}
+		if i32, ok := fieldValue.Interface().(sql.NullInt32); ok {
+			node.Attributes[args[1]] = i32.Int32
 			break
 		}
 
-		if nI64, ok := fieldValue.Interface().(sql.NullInt64); ok {
-			if !nI64.Valid && omitEmpty {
-				return node
-			}
-
-			if nI64.Valid {
-				node.Attributes[args[1]] = nI64.Int64
-			} else {
-				node.Attributes[args[1]] = nil
-			}
+		if i64, ok := fieldValue.Interface().(sql.NullInt64); ok {
+			node.Attributes[args[1]] = i64.Int64
 			break
 		}
 
