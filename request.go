@@ -409,6 +409,12 @@ func unmarshalAttribute(
 		return
 	}
 
+	// Handle field of sql.Null* type
+	if isSQLNullType(fieldType) {
+		value, err = handleSQLNullType(attribute, args, fieldType, fieldValue)
+		return
+	}
+
 	// Handle field of type time.Time
 	if fieldValue.Type() == reflect.TypeOf(time.Time{}) ||
 		fieldValue.Type() == reflect.TypeOf(new(time.Time)) {
@@ -622,6 +628,45 @@ func handlePointer(
 	}
 
 	return concreteVal, nil
+}
+
+func isSQLNullType(fieldType reflect.Type) bool {
+	switch fieldType {
+	case reflect.TypeOf(sql.NullString{}):
+		fallthrough
+	case reflect.TypeOf(sql.NullBool{}):
+		fallthrough
+	case reflect.TypeOf(sql.NullInt32{}):
+		fallthrough
+	case reflect.TypeOf(sql.NullInt64{}):
+		fallthrough
+	case reflect.TypeOf(sql.NullFloat64{}):
+		fallthrough
+	case reflect.TypeOf(sql.NullTime{}):
+		return true
+	}
+
+	return false
+}
+
+func handleSQLNullType(attribute interface{}, args []string, fieldType reflect.Type,
+	fieldValue reflect.Value) (reflect.Value, error) {
+	switch fieldType {
+	case reflect.TypeOf(sql.NullString{}):
+		return reflect.ValueOf(sql.NullString{String: attribute.(string), Valid: true}), nil
+	case reflect.TypeOf(sql.NullBool{}):
+		return reflect.ValueOf(sql.NullBool{Bool: attribute.(bool), Valid: true}), nil
+	case reflect.TypeOf(sql.NullInt32{}):
+		fallthrough
+	case reflect.TypeOf(sql.NullInt64{}):
+		fallthrough
+	case reflect.TypeOf(sql.NullFloat64{}):
+		return handleNumeric(attribute, fieldType, fieldValue)
+	case reflect.TypeOf(sql.NullTime{}):
+		return handleTime(attribute, args, fieldValue)
+	}
+
+	return reflect.Value{}, fmt.Errorf("expected sql.Null* type, got: %v", fieldType)
 }
 
 func handleStruct(
