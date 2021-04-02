@@ -641,17 +641,8 @@ func handlePointer(
 
 func isSQLNullType(fieldType reflect.Type) bool {
 	switch fieldType {
-	case reflect.TypeOf(sql.NullString{}):
-		fallthrough
-	case reflect.TypeOf(sql.NullBool{}):
-		fallthrough
-	case reflect.TypeOf(sql.NullInt32{}):
-		fallthrough
-	case reflect.TypeOf(sql.NullInt64{}):
-		fallthrough
-	case reflect.TypeOf(sql.NullFloat64{}):
-		fallthrough
-	case reflect.TypeOf(sql.NullTime{}):
+	case reflect.TypeOf(sql.NullString{}), reflect.TypeOf(sql.NullBool{}), reflect.TypeOf(sql.NullInt32{}),
+		reflect.TypeOf(sql.NullInt64{}), reflect.TypeOf(sql.NullFloat64{}), reflect.TypeOf(sql.NullTime{}):
 		return true
 	}
 
@@ -665,11 +656,7 @@ func handleSQLNullType(attribute interface{}, args []string, fieldType reflect.T
 		return reflect.ValueOf(sql.NullString{String: attribute.(string), Valid: true}), nil
 	case reflect.TypeOf(sql.NullBool{}):
 		return reflect.ValueOf(sql.NullBool{Bool: attribute.(bool), Valid: true}), nil
-	case reflect.TypeOf(sql.NullInt32{}):
-		fallthrough
-	case reflect.TypeOf(sql.NullInt64{}):
-		fallthrough
-	case reflect.TypeOf(sql.NullFloat64{}):
+	case reflect.TypeOf(sql.NullInt32{}), reflect.TypeOf(sql.NullInt64{}), reflect.TypeOf(sql.NullFloat64{}):
 		return handleNumeric(attribute, fieldType, fieldValue)
 	case reflect.TypeOf(sql.NullTime{}):
 		return handleTime(attribute, args, fieldValue)
