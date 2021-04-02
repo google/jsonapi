@@ -397,7 +397,7 @@ func resolveNodeAttribute(node *Node, fieldValue reflect.Value, args []string) *
 
 			node.Attributes[args[1]] = nil
 		} else {
-			if nt.Time.IsZero() && omitEmpty {
+			if nt.Time.IsZero() {
 				return node
 			}
 
