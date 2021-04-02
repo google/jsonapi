@@ -232,7 +232,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 	return nil
 }
 
-func unmarshallID(node *Node, fieldValue reflect.Value, fieldType reflect.StructField) (*Node, error) {
+func unmarshallID(node *Node, fieldValue reflect.Value, structField reflect.StructField) (*Node, error) {
 	if node.ID == "" {
 		return node, nil
 	}
@@ -243,9 +243,9 @@ func unmarshallID(node *Node, fieldValue reflect.Value, fieldType reflect.Struct
 	// Deal with PTRS
 	var kind reflect.Kind
 	if fieldValue.Kind() == reflect.Ptr {
-		kind = fieldType.Type.Elem().Kind()
+		kind = structField.Type.Elem().Kind()
 	} else {
-		kind = fieldType.Type.Kind()
+		kind = structField.Type.Kind()
 	}
 
 	// Handle String case
@@ -265,7 +265,7 @@ func unmarshallID(node *Node, fieldValue reflect.Value, fieldType reflect.Struct
 
 	// Convert the numeric float to one of the supported ID numeric types
 	// (int[8,16,32,64] or uint[8,16,32,64])
-	idValue, err := handleNumeric(floatValue, fieldType.Type, fieldValue)
+	idValue, err := handleNumeric(floatValue, structField.Type, fieldValue)
 	if err != nil {
 		// We had a JSON float (numeric), but our field was not one of the
 		// allowed numeric types
