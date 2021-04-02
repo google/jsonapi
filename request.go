@@ -482,6 +482,10 @@ func handleTime(attribute interface{}, args []string, fieldValue reflect.Value) 
 			return reflect.ValueOf(time.Now()), ErrInvalidISO8601
 		}
 
+		if _, ok := fieldValue.Interface().(sql.NullTime); ok {
+			return reflect.ValueOf(sql.NullTime{Time: t, Valid: true}), nil
+		}
+
 		if fieldValue.Kind() == reflect.Ptr {
 			return reflect.ValueOf(&t), nil
 		}
@@ -497,6 +501,10 @@ func handleTime(attribute interface{}, args []string, fieldValue reflect.Value) 
 		t = time.Unix(v.Int(), 0)
 	} else {
 		return reflect.ValueOf(time.Now()), ErrInvalidTime
+	}
+
+	if _, ok := fieldValue.Interface().(sql.NullTime); ok {
+		return reflect.ValueOf(sql.NullTime{Time: t, Valid: true}), nil
 	}
 
 	return reflect.ValueOf(t), nil
