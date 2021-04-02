@@ -34,14 +34,13 @@ type Timestamp struct {
 }
 
 type NullStringID struct {
-	ID            sql.NullString  `jsonapi:"primary,null-string-id"`
-	Periodic      sql.NullBool    `jsonapi:"attr,periodic,omitempty"`
-	Name          sql.NullString  `jsonapi:"attr,name,omitempty"`
-	Value         sql.NullFloat64 `jsonapi:"attr,value,omitempty"`
-	Decimal       sql.NullInt32   `jsonapi:"attr,decimal,omitempty"`
-	Fractional    sql.NullInt64   `jsonapi:"attr,fractional,omitempty"`
-	ComputedAt    sql.NullTime    `jsonapi:"attr,computed_at,omitempty"`
-	ComputedAtISO sql.NullTime    `jsonapi:"attr,computed_at_iso,iso8601,omitempty"`
+	ID         sql.NullString  `jsonapi:"primary,null-string-id"`
+	Periodic   sql.NullBool    `jsonapi:"attr,periodic,omitempty"`
+	Name       sql.NullString  `jsonapi:"attr,name,omitempty"`
+	Value      sql.NullFloat64 `jsonapi:"attr,value,omitempty"`
+	Decimal    sql.NullInt32   `jsonapi:"attr,decimal,omitempty"`
+	Fractional sql.NullInt64   `jsonapi:"attr,fractional,omitempty"`
+	ComputedAt sql.NullTime    `jsonapi:"attr,computed_at,omitempty,iso8601"`
 }
 
 type NullInt32ID struct {

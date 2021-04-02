@@ -218,13 +218,12 @@ func TestUnmarshalToStructNullStringID(t *testing.T) {
 			"type": "null-string-id",
 			"id":   "314",
 			"attributes": map[string]interface{}{
-				"periodic":        false,
-				"name":            "Pi",
-				"value":           3.1415926535897932,
-				"decimal":         3,
-				"fractional":      1415926535897932,
-				"computed_at":     1615734000,
-				"computed_at_iso": "2021-03-14T15:00:00Z",
+				"periodic":    false,
+				"name":        "Pi",
+				"value":       3.1415926535897932,
+				"decimal":     3,
+				"fractional":  1415926535897932,
+				"computed_at": "2021-03-14T15:00:00Z",
 			},
 		},
 	}
@@ -257,9 +256,6 @@ func TestUnmarshalToStructNullStringID(t *testing.T) {
 		t.Fatalf("Error unmarshalling to sql.NullInt64")
 	}
 	if !pi.ComputedAt.Time.Equal(time.Unix(1615734000, 0)) {
-		t.Fatalf("Error unmarshalling to sql.NullTime")
-	}
-	if !pi.ComputedAtISO.Time.Equal(time.Unix(1615734000, 0)) {
 		t.Fatalf("Error unmarshalling to sql.NullTime")
 	}
 }

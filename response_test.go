@@ -609,14 +609,13 @@ func TestMarshalStructNullStringID_Zero_Invalid(t *testing.T) {
 
 func TestMarshalStructNullStringID_Zero_Valid(t *testing.T) {
 	pi := &NullStringID{
-		ID:            sql.NullString{Valid: true},
-		Periodic:      sql.NullBool{Valid: true},
-		Name:          sql.NullString{Valid: true},
-		Value:         sql.NullFloat64{Valid: true},
-		Decimal:       sql.NullInt32{Valid: true},
-		Fractional:    sql.NullInt64{Valid: true},
-		ComputedAt:    sql.NullTime{Valid: true},
-		ComputedAtISO: sql.NullTime{Valid: true},
+		ID:         sql.NullString{Valid: true},
+		Periodic:   sql.NullBool{Valid: true},
+		Name:       sql.NullString{Valid: true},
+		Value:      sql.NullFloat64{Valid: true},
+		Decimal:    sql.NullInt32{Valid: true},
+		Fractional: sql.NullInt64{Valid: true},
+		ComputedAt: sql.NullTime{Valid: true},
 	}
 
 	out := bytes.NewBuffer(nil)
@@ -664,10 +663,6 @@ func TestMarshalStructNullStringID_Zero_Valid(t *testing.T) {
 	if _, ok := attributes["computed_at"]; ok {
 		t.Fatal("Was expecting data.attributes.computed_at to be omitted")
 	}
-
-	if _, ok := attributes["computed_at_iso"]; ok {
-		t.Fatal("Was expecting data.attributes.computed_at_iso to be omitted")
-	}
 }
 
 func TestMarshalStructNullStringID(t *testing.T) {
@@ -697,10 +692,6 @@ func TestMarshalStructNullStringID(t *testing.T) {
 			Valid: true,
 		},
 		ComputedAt: sql.NullTime{
-			Time:  time.Date(2021, 3, 14, 15, 0, 0, 0, time.UTC),
-			Valid: true,
-		},
-		ComputedAtISO: sql.NullTime{
 			Time:  time.Date(2021, 3, 14, 15, 0, 0, 0, time.UTC),
 			Valid: true,
 		},
@@ -742,7 +733,7 @@ func TestMarshalStructNullStringID(t *testing.T) {
 		t.Fatalf("Error marshalling to sql.NullInt32")
 	}
 
-	if data.Attributes["computed_at_iso"] != "2021-03-14T15:00:00Z" {
+	if data.Attributes["computed_at"] != "2021-03-14T15:00:00Z" {
 		t.Fatalf("Error marshalling to sql.NullTime")
 	}
 }
