@@ -31,12 +31,6 @@ type Timestamp struct {
 	Next *time.Time `jsonapi:"attr,next,iso8601"`
 }
 
-type TimestampRFC3339 struct {
-	ID   int        `jsonapi:"primary,timestamps"`
-	Time time.Time  `jsonapi:"attr,timestamp,rfc3339"`
-	Next *time.Time `jsonapi:"attr,next,rfc3339"`
-}
-
 type Car struct {
 	ID    *string `jsonapi:"primary,cars"`
 	Make  *string `jsonapi:"attr,make,omitempty"`
