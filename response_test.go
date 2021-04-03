@@ -2,6 +2,7 @@ package jsonapi
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"reflect"
 	"sort"
@@ -116,7 +117,7 @@ func TestWithoutOmitsEmptyAnnotationOnRelation(t *testing.T) {
 	}
 	relationships := jsonData["data"].(map[string]interface{})["relationships"].(map[string]interface{})
 
-	// Verifiy the "posts" relation was an empty array
+	// Verify the "posts" relation was an empty array
 	posts, ok := relationships["posts"]
 	if !ok {
 		t.Fatal("Was expecting the data.relationships.posts key/value to have been present")
@@ -137,7 +138,7 @@ func TestWithoutOmitsEmptyAnnotationOnRelation(t *testing.T) {
 		t.Fatal("Was expecting the data.relationships.posts.data value to have been an empty array []")
 	}
 
-	// Verifiy the "current_post" was a null
+	// Verify the "current_post" was a null
 	currentPost, postExists := relationships["current_post"]
 	if !postExists {
 		t.Fatal("Was expecting the data.relationships.current_post key/value to have NOT been omitted")
@@ -522,6 +523,456 @@ func TestMarshalISO8601TimePointer(t *testing.T) {
 
 	if data.Attributes["next"] != "2016-08-17T08:27:12Z" {
 		t.Fatal("Next was not serialised into ISO8601 correctly")
+	}
+}
+
+func TestMarshalISO8601NullTime(t *testing.T) {
+	testModel := &Timestamp{
+		ID: 5,
+		Null: sql.NullTime{
+			Time:  time.Date(2016, 8, 17, 8, 27, 12, 23849, time.UTC),
+			Valid: true,
+		},
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalPayload(out, testModel); err != nil {
+		t.Fatal(err)
+	}
+
+	resp := new(OnePayload)
+	if err := json.NewDecoder(out).Decode(resp); err != nil {
+		t.Fatal(err)
+	}
+
+	data := resp.Data
+
+	if data.Attributes == nil {
+		t.Fatalf("Expected attributes")
+	}
+
+	if data.Attributes["null"] != "2016-08-17T08:27:12Z" {
+		t.Fatal("Null was not serialised into ISO8601 correctly")
+	}
+}
+
+func TestMarshalISO8601NullTime_Zero(t *testing.T) {
+	testModel := &Timestamp{
+		ID:   5,
+		Null: sql.NullTime{Valid: true},
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalPayload(out, testModel); err != nil {
+		t.Fatal(err)
+	}
+
+	resp := new(OnePayload)
+	if err := json.NewDecoder(out).Decode(resp); err != nil {
+		t.Fatal(err)
+	}
+
+	data := resp.Data
+
+	if data.Attributes == nil {
+		t.Fatal("Expected attributes")
+	}
+
+	if data.Attributes["null"] != nil {
+		t.Fatalf("Null should not have been serialised")
+	}
+}
+
+func TestMarshalStructNullStringID_Zero_Invalid(t *testing.T) {
+	pi := new(NullStringID)
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalPayload(out, pi); err != nil {
+		t.Fatal(err)
+	}
+
+	var jsonData map[string]interface{}
+
+	if err := json.Unmarshal(out.Bytes(), &jsonData); err != nil {
+		t.Fatal(err)
+	}
+	data := jsonData["data"].(map[string]interface{})
+
+	if data["type"] != "null-string-id" {
+		t.Fatalf("Error marshalling type")
+	}
+
+	if _, ok := data["attributes"]; ok {
+		t.Fatal("Was expecting data.attributes to be omitted")
+	}
+}
+
+func TestMarshalStructNullStringID_Zero_Valid(t *testing.T) {
+	pi := &NullStringID{
+		ID:         sql.NullString{Valid: true},
+		Periodic:   sql.NullBool{Valid: true},
+		Name:       sql.NullString{Valid: true},
+		Value:      sql.NullFloat64{Valid: true},
+		Decimal:    sql.NullInt32{Valid: true},
+		Fractional: sql.NullInt64{Valid: true},
+		ComputedAt: sql.NullTime{Valid: true},
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalPayload(out, pi); err != nil {
+		t.Fatal(err)
+	}
+
+	var jsonData map[string]interface{}
+
+	if err := json.Unmarshal(out.Bytes(), &jsonData); err != nil {
+		t.Fatal(err)
+	}
+	data := jsonData["data"].(map[string]interface{})
+
+	if _, ok := data["id"]; ok {
+		t.Fatal("Was expecting data.id to be omitted")
+	}
+
+	if data["type"] != "null-string-id" {
+		t.Fatalf("Error marshalling type")
+	}
+
+	attributes := data["attributes"].(map[string]interface{})
+
+	if attributes["periodic"] != false {
+		t.Fatalf("Error marshalling to sql.NullBool: %v", attributes["periodic"])
+	}
+
+	if attributes["name"] != "" {
+		t.Fatal("Error marshalling to sql.NullString")
+	}
+
+	if attributes["value"] != 0.0 {
+		t.Fatal("Error marshalling to sql.NullFloat64")
+	}
+
+	if attributes["decimal"] != 0.0 {
+		t.Fatalf("Error marshalling to sql.NullInt32")
+	}
+
+	if attributes["fractional"] != 0.0 {
+		t.Fatalf("Error marshalling to sql.NullInt64")
+	}
+
+	if _, ok := attributes["computed_at"]; ok {
+		t.Fatal("Was expecting data.attributes.computed_at to be omitted")
+	}
+}
+
+func TestMarshalStructNullStringID(t *testing.T) {
+	pi := &NullStringID{
+		ID: sql.NullString{
+			String: "314",
+			Valid:  true,
+		},
+		Periodic: sql.NullBool{
+			Bool:  false,
+			Valid: true,
+		},
+		Name: sql.NullString{
+			String: "Pi",
+			Valid:  true,
+		},
+		Value: sql.NullFloat64{
+			Float64: 3.1415926535897932,
+			Valid:   true,
+		},
+		Decimal: sql.NullInt32{
+			Int32: 3,
+			Valid: true,
+		},
+		Fractional: sql.NullInt64{
+			Int64: 1415926535897932,
+			Valid: true,
+		},
+		ComputedAt: sql.NullTime{
+			Time:  time.Date(2021, 3, 14, 15, 0, 0, 0, time.UTC),
+			Valid: true,
+		},
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalPayload(out, pi); err != nil {
+		t.Fatal(err)
+	}
+
+	resp := new(OnePayload)
+	if err := json.Unmarshal(out.Bytes(), resp); err != nil {
+		t.Fatal(err)
+	}
+
+	data := resp.Data
+
+	if data.ID != "314" {
+		t.Fatal("Error marshalling id")
+	}
+
+	if data.Type != "null-string-id" {
+		t.Fatal("Error marshalling type")
+	}
+
+	if data.Attributes["periodic"] != false {
+		t.Fatal("Error marshalling to sql.NullBool")
+	}
+
+	if data.Attributes["name"] != "Pi" {
+		t.Fatal("Error marshalling to sql.NullString")
+	}
+
+	if data.Attributes["value"] != 3.1415926535897932 {
+		t.Fatal("Error marshalling to sql.NullFloat64")
+	}
+
+	if data.Attributes["decimal"] != 3.0 {
+		t.Fatalf("Error marshalling to sql.NullInt32")
+	}
+
+	if data.Attributes["computed_at"] != "2021-03-14T15:00:00Z" {
+		t.Fatalf("Error marshalling to sql.NullTime")
+	}
+}
+
+func TestMarshalStructNullInt32ID(t *testing.T) {
+	i32 := &NullInt32ID{
+		ID: sql.NullInt32{
+			Int32: 123,
+			Valid: true,
+		},
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalPayload(out, i32); err != nil {
+		t.Fatal(err)
+	}
+
+	resp := new(OnePayload)
+	if err := json.Unmarshal(out.Bytes(), resp); err != nil {
+		t.Fatal(err)
+	}
+
+	data := resp.Data
+
+	if data.ID != "123" {
+		t.Fatalf("Error marshalling id")
+	}
+
+	if data.Type != "null-int32-id" {
+		t.Fatal("Error marshalling type")
+	}
+}
+
+func TestMarshalStructNullInt64ID(t *testing.T) {
+	i32 := &NullInt64ID{
+		ID: sql.NullInt64{
+			Int64: 456,
+			Valid: true,
+		},
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalPayload(out, i32); err != nil {
+		t.Fatal(err)
+	}
+
+	resp := new(OnePayload)
+	if err := json.Unmarshal(out.Bytes(), resp); err != nil {
+		t.Fatal(err)
+	}
+
+	data := resp.Data
+
+	if data.ID != "456" {
+		t.Fatalf("Error marshalling id")
+	}
+
+	if data.Type != "null-int64-id" {
+		t.Fatal("Error marshalling type")
+	}
+}
+
+func TestMarshalStructNullFloat64ID(t *testing.T) {
+	i32 := &NullFloat64ID{
+		ID: sql.NullFloat64{
+			Float64: 12345678.12345678,
+			Valid:   true,
+		},
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalPayload(out, i32); err != nil {
+		t.Fatal(err)
+	}
+
+	resp := new(OnePayload)
+	if err := json.Unmarshal(out.Bytes(), resp); err != nil {
+		t.Fatal(err)
+	}
+
+	data := resp.Data
+
+	if data.ID != "12345678.12345678" {
+		t.Fatal("Error marshalling id")
+	}
+
+	if data.Type != "null-float64-id" {
+		t.Fatal("Error marshalling type")
+	}
+}
+
+func TestMarshalStructPi_Zero_Invalid(t *testing.T) {
+	pi := new(Float)
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalPayload(out, pi); err != nil {
+		t.Fatal(err)
+	}
+
+	var jsonData map[string]interface{}
+
+	if err := json.Unmarshal(out.Bytes(), &jsonData); err != nil {
+		t.Fatal(err)
+	}
+	data := jsonData["data"].(map[string]interface{})
+
+	if data["type"] != "float" {
+		t.Fatalf("Error marshalling type")
+	}
+
+	if _, ok := data["attributes"]; !ok {
+		t.Fatal("Was expecting data.attributes to NOT be omitted")
+	}
+}
+
+func TestMarshalStructPi_Zero_Valid(t *testing.T) {
+	pi := &Float{
+		ID:         sql.NullString{Valid: true},
+		Periodic:   sql.NullBool{Valid: true},
+		Name:       sql.NullString{Valid: true},
+		Value:      sql.NullFloat64{Valid: true},
+		Decimal:    sql.NullInt32{Valid: true},
+		Fractional: sql.NullInt64{Valid: true},
+		ComputedAt: sql.NullTime{Valid: true},
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalPayload(out, pi); err != nil {
+		t.Fatal(err)
+	}
+
+	var jsonData map[string]interface{}
+
+	if err := json.Unmarshal(out.Bytes(), &jsonData); err != nil {
+		t.Fatal(err)
+	}
+	data := jsonData["data"].(map[string]interface{})
+
+	if _, ok := data["id"]; ok {
+		t.Fatal("Was expecting data.id to be omitted")
+	}
+
+	if data["type"] != "float" {
+		t.Fatalf("Error marshalling type")
+	}
+
+	attributes := data["attributes"].(map[string]interface{})
+
+	if attributes["periodic"] != false {
+		t.Fatalf("Error marshalling to sql.NullBool: %v", attributes["periodic"])
+	}
+
+	if attributes["name"] != "" {
+		t.Fatal("Error marshalling to sql.NullString")
+	}
+
+	if attributes["value"] != 0.0 {
+		t.Fatal("Error marshalling to sql.NullFloat64")
+	}
+
+	if attributes["decimal"] != 0.0 {
+		t.Fatalf("Error marshalling to sql.NullInt32")
+	}
+
+	if attributes["fractional"] != 0.0 {
+		t.Fatalf("Error marshalling to sql.NullInt64")
+	}
+
+	if _, ok := attributes["computed_at"]; ok {
+		t.Fatal("Was expecting data.attributes.computed_at to be omitted")
+	}
+}
+
+func TestMarshalStructPi(t *testing.T) {
+	pi := &Float{
+		ID: sql.NullString{
+			String: "314",
+			Valid:  true,
+		},
+		Periodic: sql.NullBool{
+			Bool:  false,
+			Valid: true,
+		},
+		Name: sql.NullString{
+			String: "Float",
+			Valid:  true,
+		},
+		Value: sql.NullFloat64{
+			Float64: 3.1415926535897932,
+			Valid:   true,
+		},
+		Decimal: sql.NullInt32{
+			Int32: 3,
+			Valid: true,
+		},
+		Fractional: sql.NullInt64{
+			Int64: 1415926535897932,
+			Valid: true,
+		},
+		ComputedAt: sql.NullTime{
+			Time:  time.Date(2021, 3, 14, 15, 0, 0, 0, time.UTC),
+			Valid: true,
+		},
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalPayload(out, pi); err != nil {
+		t.Fatal(err)
+	}
+
+	resp := new(OnePayload)
+	if err := json.Unmarshal(out.Bytes(), resp); err != nil {
+		t.Fatal(err)
+	}
+
+	data := resp.Data
+
+	if data.ID != "314" {
+		t.Fatal("Error marshalling id")
+	}
+
+	if data.Type != "float" {
+		t.Fatal("Error marshalling type")
+	}
+
+	if data.Attributes["periodic"] != false {
+		t.Fatal("Error marshalling to sql.NullBool")
+	}
+
+	if data.Attributes["name"] != "Float" {
+		t.Fatal("Error marshalling to sql.NullString")
+	}
+
+	if data.Attributes["value"] != 3.1415926535897932 {
+		t.Fatal("Error marshalling to sql.NullFloat64")
+	}
+
+	if data.Attributes["decimal"] != 3.0 {
+		t.Fatalf("Error marshalling to sql.NullInt32")
 	}
 }
 

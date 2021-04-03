@@ -2,6 +2,7 @@ package jsonapi
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -149,90 +150,53 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 	modelValue := model.Elem()
 	modelType := modelValue.Type()
 
-	var er error
-
 	for i := 0; i < modelValue.NumField(); i++ {
 		fieldType := modelType.Field(i)
-		tag := fieldType.Tag.Get("jsonapi")
+		tag := fieldType.Tag.Get(annotationJSONAPI)
 		if tag == "" {
 			continue
 		}
 
 		fieldValue := modelValue.Field(i)
 
-		args := strings.Split(tag, ",")
+		args := strings.Split(tag, annotationSeparator)
+
 		if len(args) < 1 {
-			er = ErrBadJSONAPIStructTag
-			break
+			return ErrBadJSONAPIStructTag
 		}
 
 		annotation := args[0]
 
 		if (annotation == annotationClientID && len(args) != 1) ||
 			(annotation != annotationClientID && len(args) < 2) {
-			er = ErrBadJSONAPIStructTag
-			break
+			return ErrBadJSONAPIStructTag
 		}
 
-		if annotation == annotationPrimary {
+		switch annotation {
+		case annotationPrimary:
 			// Check the JSON API Type
 			if data.Type != args[1] {
-				er = fmt.Errorf(
+				return fmt.Errorf(
 					"Trying to Unmarshal an object of type %#v, but %#v does not match",
 					data.Type,
 					args[1],
 				)
-				break
 			}
 
-			if data.ID == "" {
-				continue
-			}
+			data, err = unmarshallID(data, fieldValue, fieldType)
 
-			// ID will have to be transmitted as astring per the JSON API spec
-			v := reflect.ValueOf(data.ID)
-
-			// Deal with PTRS
-			var kind reflect.Kind
-			if fieldValue.Kind() == reflect.Ptr {
-				kind = fieldType.Type.Elem().Kind()
-			} else {
-				kind = fieldType.Type.Kind()
-			}
-
-			// Handle String case
-			if kind == reflect.String {
-				assign(fieldValue, v)
-				continue
-			}
-
-			// Value was not a string... only other supported type was a numeric,
-			// which would have been sent as a float value.
-			floatValue, err := strconv.ParseFloat(data.ID, 64)
 			if err != nil {
-				// Could not convert the value in the "id" attr to a float
-				er = ErrBadJSONAPIID
-				break
+				return
 			}
 
-			// Convert the numeric float to one of the supported ID numeric types
-			// (int[8,16,32,64] or uint[8,16,32,64])
-			idValue, err := handleNumeric(floatValue, fieldType.Type, fieldValue)
-			if err != nil {
-				// We had a JSON float (numeric), but our field was not one of the
-				// allowed numeric types
-				er = ErrBadJSONAPIID
-				break
-			}
-
-			assign(fieldValue, idValue)
-		} else if annotation == annotationClientID {
+		case annotationClientID:
 			if data.ClientID == "" {
 				continue
 			}
 
 			fieldValue.Set(reflect.ValueOf(data.ClientID))
-		} else if annotation == annotationAttribute {
+
+		case annotationAttribute:
 			attributes := data.Attributes
 
 			if attributes == nil || len(data.Attributes) == 0 {
@@ -249,87 +213,148 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			structField := fieldType
 			value, err := unmarshalAttribute(attribute, args, structField, fieldValue)
 			if err != nil {
-				er = err
-				break
+				return err
 			}
 
 			assign(fieldValue, value)
-		} else if annotation == annotationRelation {
-			isSlice := fieldValue.Type().Kind() == reflect.Slice
 
-			if data.Relationships == nil || data.Relationships[args[1]] == nil {
-				continue
+		case annotationRelation:
+			data, err = unmarshallRelation(data, fieldValue, included, args)
+
+			if err != nil {
+				return
 			}
 
-			if isSlice {
-				// to-many relationship
-				relationship := new(RelationshipManyNode)
-
-				buf := bytes.NewBuffer(nil)
-
-				json.NewEncoder(buf).Encode(data.Relationships[args[1]])
-				json.NewDecoder(buf).Decode(relationship)
-
-				data := relationship.Data
-				models := reflect.New(fieldValue.Type()).Elem()
-
-				for _, n := range data {
-					m := reflect.New(fieldValue.Type().Elem().Elem())
-
-					if err := unmarshalNode(
-						fullNode(n, included),
-						m,
-						included,
-					); err != nil {
-						er = err
-						break
-					}
-
-					models = reflect.Append(models, m)
-				}
-
-				fieldValue.Set(models)
-			} else {
-				// to-one relationships
-				relationship := new(RelationshipOneNode)
-
-				buf := bytes.NewBuffer(nil)
-
-				json.NewEncoder(buf).Encode(
-					data.Relationships[args[1]],
-				)
-				json.NewDecoder(buf).Decode(relationship)
-
-				/*
-					http://jsonapi.org/format/#document-resource-object-relationships
-					http://jsonapi.org/format/#document-resource-object-linkage
-					relationship can have a data node set to null (e.g. to disassociate the relationship)
-					so unmarshal and set fieldValue only if data obj is not null
-				*/
-				if relationship.Data == nil {
-					continue
-				}
-
-				m := reflect.New(fieldValue.Type().Elem())
-				if err := unmarshalNode(
-					fullNode(relationship.Data, included),
-					m,
-					included,
-				); err != nil {
-					er = err
-					break
-				}
-
-				fieldValue.Set(m)
-
-			}
-
-		} else {
-			er = fmt.Errorf(unsupportedStructTagMsg, annotation)
+		default:
+			return fmt.Errorf(unsupportedStructTagMsg, annotation)
 		}
 	}
 
-	return er
+	return nil
+}
+
+func unmarshallID(node *Node, fieldValue reflect.Value, structField reflect.StructField) (*Node, error) {
+	if node.ID == "" {
+		return node, nil
+	}
+
+	// ID will have to be transmitted as a string per the JSON API spec
+	v := reflect.ValueOf(node.ID)
+
+	// Deal with PTRS
+	var kind reflect.Kind
+	if fieldValue.Kind() == reflect.Ptr {
+		kind = structField.Type.Elem().Kind()
+	} else {
+		kind = structField.Type.Kind()
+	}
+
+	// Handle String case
+	if kind == reflect.String {
+		assign(fieldValue, v)
+
+		return node, nil
+	}
+
+	// Handle sql.NullString case
+	if structField.Type == reflect.TypeOf(sql.NullString{}) {
+		if str, ok := v.Interface().(string); ok {
+			assign(fieldValue, reflect.ValueOf(sql.NullString{String: str, Valid: true}))
+
+			return node, nil
+		}
+	}
+
+	// Value was not a string... only other supported type was a numeric,
+	// which would have been sent as a float value.
+	floatValue, err := strconv.ParseFloat(node.ID, 64)
+	if err != nil {
+		// Could not convert the value in the "id" attr to a float
+		return nil, ErrBadJSONAPIID
+	}
+
+	// Convert the numeric float to one of the supported ID numeric types
+	// (int[8,16,32,64], uint[8,16,32,64] or sql.Null[Int32, Int64, Float64])
+	idValue, err := handleNumeric(floatValue, structField.Type, fieldValue)
+	if err != nil {
+		// We had a JSON float (numeric), but our field was not one of the
+		// allowed numeric types
+		return nil, ErrBadJSONAPIID
+	}
+
+	assign(fieldValue, idValue)
+
+	return node, nil
+}
+
+func unmarshallRelation(node *Node, fieldValue reflect.Value, included *map[string]*Node, args []string) (*Node, error) {
+	isSlice := fieldValue.Type().Kind() == reflect.Slice
+
+	if node.Relationships == nil || node.Relationships[args[1]] == nil {
+		return node, nil
+	}
+
+	if isSlice {
+		// to-many relationship
+		relationship := new(RelationshipManyNode)
+
+		buf := bytes.NewBuffer(nil)
+
+		json.NewEncoder(buf).Encode(node.Relationships[args[1]])
+		json.NewDecoder(buf).Decode(relationship)
+
+		data := relationship.Data
+		models := reflect.New(fieldValue.Type()).Elem()
+
+		for _, n := range data {
+			m := reflect.New(fieldValue.Type().Elem().Elem())
+
+			if err := unmarshalNode(
+				fullNode(n, included),
+				m,
+				included,
+			); err != nil {
+				return nil, err
+			}
+
+			models = reflect.Append(models, m)
+		}
+
+		fieldValue.Set(models)
+	} else {
+		// to-one relationships
+		relationship := new(RelationshipOneNode)
+
+		buf := bytes.NewBuffer(nil)
+
+		json.NewEncoder(buf).Encode(
+			node.Relationships[args[1]],
+		)
+		json.NewDecoder(buf).Decode(relationship)
+
+		/*
+			http://jsonapi.org/format/#document-resource-object-relationships
+			http://jsonapi.org/format/#document-resource-object-linkage
+			relationship can have a data node set to null (e.g. to disassociate the relationship)
+			so unmarshal and set fieldValue only if data obj is not null
+		*/
+		if relationship.Data == nil {
+			return node, nil
+		}
+
+		m := reflect.New(fieldValue.Type().Elem())
+		if err := unmarshalNode(
+			fullNode(relationship.Data, included),
+			m,
+			included,
+		); err != nil {
+			return nil, err
+		}
+
+		fieldValue.Set(m)
+	}
+
+	return node, nil
 }
 
 func fullNode(n *Node, included *map[string]*Node) *Node {
@@ -390,6 +415,12 @@ func unmarshalAttribute(
 	// Handle field of type []string
 	if fieldValue.Type() == reflect.TypeOf([]string{}) {
 		value, err = handleStringSlice(attribute)
+		return
+	}
+
+	// Handle field of sql.Null* type
+	if isSQLNullType(fieldType) {
+		value, err = handleSQLNullType(attribute, args, fieldType, fieldValue)
 		return
 	}
 
@@ -457,16 +488,17 @@ func handleTime(attribute interface{}, args []string, fieldValue reflect.Value) 
 	}
 
 	if isIso8601 {
-		var tm string
-		if v.Kind() == reflect.String {
-			tm = v.Interface().(string)
-		} else {
+		if v.Kind() != reflect.String {
 			return reflect.ValueOf(time.Now()), ErrInvalidISO8601
 		}
 
-		t, err := time.Parse(iso8601TimeFormat, tm)
+		t, err := time.Parse(iso8601TimeFormat, v.Interface().(string))
 		if err != nil {
 			return reflect.ValueOf(time.Now()), ErrInvalidISO8601
+		}
+
+		if _, ok := fieldValue.Interface().(sql.NullTime); ok {
+			return reflect.ValueOf(sql.NullTime{Time: t, Valid: true}), nil
 		}
 
 		if fieldValue.Kind() == reflect.Ptr {
@@ -476,17 +508,19 @@ func handleTime(attribute interface{}, args []string, fieldValue reflect.Value) 
 		return reflect.ValueOf(t), nil
 	}
 
-	var at int64
+	var t time.Time
 
 	if v.Kind() == reflect.Float64 {
-		at = int64(v.Interface().(float64))
+		t = time.Unix(int64(v.Float()), 0)
 	} else if v.Kind() == reflect.Int {
-		at = v.Int()
+		t = time.Unix(v.Int(), 0)
 	} else {
 		return reflect.ValueOf(time.Now()), ErrInvalidTime
 	}
 
-	t := time.Unix(at, 0)
+	if _, ok := fieldValue.Interface().(sql.NullTime); ok {
+		return reflect.ValueOf(sql.NullTime{Time: t, Valid: true}), nil
+	}
 
 	return reflect.ValueOf(t), nil
 }
@@ -544,6 +578,23 @@ func handleNumeric(
 	case reflect.Float64:
 		n := floatValue
 		numericValue = reflect.ValueOf(&n)
+	case reflect.Struct:
+		if _, ok := fieldValue.Interface().(sql.NullInt32); ok {
+			numericValue = reflect.ValueOf(sql.NullInt32{Int32: int32(floatValue), Valid: true})
+			break
+		}
+
+		if _, ok := fieldValue.Interface().(sql.NullInt64); ok {
+			numericValue = reflect.ValueOf(sql.NullInt64{Int64: int64(floatValue), Valid: true})
+			break
+		}
+
+		if _, ok := fieldValue.Interface().(sql.NullFloat64); ok {
+			numericValue = reflect.ValueOf(sql.NullFloat64{Float64: floatValue, Valid: true})
+			break
+		}
+
+		fallthrough
 	default:
 		return reflect.Value{}, ErrUnknownFieldNumberType
 	}
@@ -586,6 +637,32 @@ func handlePointer(
 	}
 
 	return concreteVal, nil
+}
+
+func isSQLNullType(fieldType reflect.Type) bool {
+	switch fieldType {
+	case reflect.TypeOf(sql.NullString{}), reflect.TypeOf(sql.NullBool{}), reflect.TypeOf(sql.NullInt32{}),
+		reflect.TypeOf(sql.NullInt64{}), reflect.TypeOf(sql.NullFloat64{}), reflect.TypeOf(sql.NullTime{}):
+		return true
+	}
+
+	return false
+}
+
+func handleSQLNullType(attribute interface{}, args []string, fieldType reflect.Type,
+	fieldValue reflect.Value) (reflect.Value, error) {
+	switch fieldType {
+	case reflect.TypeOf(sql.NullString{}):
+		return reflect.ValueOf(sql.NullString{String: attribute.(string), Valid: true}), nil
+	case reflect.TypeOf(sql.NullBool{}):
+		return reflect.ValueOf(sql.NullBool{Bool: attribute.(bool), Valid: true}), nil
+	case reflect.TypeOf(sql.NullInt32{}), reflect.TypeOf(sql.NullInt64{}), reflect.TypeOf(sql.NullFloat64{}):
+		return handleNumeric(attribute, fieldType, fieldValue)
+	case reflect.TypeOf(sql.NullTime{}):
+		return handleTime(attribute, args, fieldValue)
+	}
+
+	return reflect.Value{}, fmt.Errorf("expected sql.Null* type, got: %v", fieldType)
 }
 
 func handleStruct(

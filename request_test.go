@@ -212,6 +212,120 @@ func TestUnmarshalToStructWithPointerAttr_BadType_IntSlice(t *testing.T) {
 	}
 }
 
+func TestUnmarshalToStructNullStringID(t *testing.T) {
+	data := map[string]interface{}{
+		"data": map[string]interface{}{
+			"type": "null-string-id",
+			"id":   "314",
+			"attributes": map[string]interface{}{
+				"periodic":    false,
+				"name":        "Pi",
+				"value":       3.1415926535897932,
+				"decimal":     3,
+				"fractional":  1415926535897932,
+				"computed_at": "2021-03-14T15:00:00Z",
+			},
+		},
+	}
+	payload, err := json.Marshal(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pi := new(NullStringID)
+	if err = UnmarshalPayload(bytes.NewReader(payload), pi); err != nil {
+		t.Fatal(err)
+	}
+
+	if pi.ID.String != "314" {
+		t.Fatalf("Error unmarshalling to sql.NullString")
+	}
+	if pi.Name.String != "Pi" {
+		t.Fatalf("Error unmarshalling to sql.NullString")
+	}
+	if pi.Periodic.Bool {
+		t.Fatalf("Error unmarshalling to sql.NullBool")
+	}
+	if pi.Value.Float64 != 3.1415926535897932 {
+		t.Fatalf("Error unmarshalling to sql.NullFloat64")
+	}
+	if pi.Decimal.Int32 != 3 {
+		t.Fatalf("Error unmarshalling to sql.NullInt32")
+	}
+	if pi.Fractional.Int64 != 1415926535897932 {
+		t.Fatalf("Error unmarshalling to sql.NullInt64")
+	}
+	if !pi.ComputedAt.Time.Equal(time.Unix(1615734000, 0)) {
+		t.Fatalf("Error unmarshalling to sql.NullTime")
+	}
+}
+
+func TestUnmarshalToStructNullInt32ID(t *testing.T) {
+	data := map[string]interface{}{
+		"data": map[string]interface{}{
+			"type": "null-int32-id",
+			"id":   "123",
+		},
+	}
+	payload, err := json.Marshal(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	i32 := new(NullInt32ID)
+	if err = UnmarshalPayload(bytes.NewReader(payload), i32); err != nil {
+		t.Fatal(err)
+	}
+
+	if i32.ID.Int32 != 123 {
+		t.Fatalf("Error unmarshalling to sql.NullInt32")
+	}
+}
+
+func TestUnmarshalToStructNullInt64ID(t *testing.T) {
+	data := map[string]interface{}{
+		"data": map[string]interface{}{
+			"type": "null-int64-id",
+			"id":   "456",
+		},
+	}
+	payload, err := json.Marshal(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	i64 := new(NullInt64ID)
+	if err = UnmarshalPayload(bytes.NewReader(payload), i64); err != nil {
+		t.Fatal(err)
+	}
+
+	if i64.ID.Int64 != 456 {
+		t.Fatalf("Error unmarshalling to sql.NullInt64")
+	}
+}
+
+func TestUnmarshalToStructNullFloat64ID(t *testing.T) {
+	data := map[string]interface{}{
+		"data": map[string]interface{}{
+			"type": "null-float64-id",
+			"id":   "789",
+		},
+	}
+	payload, err := json.Marshal(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f64 := new(NullFloat64ID)
+	if err = UnmarshalPayload(bytes.NewReader(payload), f64); err != nil {
+		t.Fatal(err)
+	}
+
+	if f64.ID.Float64 != 789 {
+		t.Fatalf("Error unmarshalling to sql.NullFloat64")
+	}
+}
+
 func TestStringPointerField(t *testing.T) {
 	// Build Book payload
 	description := "Hello World!"
@@ -389,6 +503,32 @@ func TestUnmarshalParsesISO8601TimePointer(t *testing.T) {
 	expected := time.Date(2016, 8, 17, 8, 27, 12, 0, time.UTC)
 
 	if !out.Next.Equal(expected) {
+		t.Fatal("Parsing the ISO8601 timestamp failed")
+	}
+}
+
+func TestUnmarshalParsesISO8601NullTime(t *testing.T) {
+	payload := &OnePayload{
+		Data: &Node{
+			Type: "timestamps",
+			Attributes: map[string]interface{}{
+				"null": "2016-08-17T08:27:12Z",
+			},
+		},
+	}
+
+	in := bytes.NewBuffer(nil)
+	json.NewEncoder(in).Encode(payload)
+
+	out := new(Timestamp)
+
+	if err := UnmarshalPayload(in, out); err != nil {
+		t.Fatal(err)
+	}
+
+	expected := time.Date(2016, 8, 17, 8, 27, 12, 0, time.UTC)
+
+	if !out.Null.Time.Equal(expected) {
 		t.Fatal("Parsing the ISO8601 timestamp failed")
 	}
 }
