@@ -448,21 +448,20 @@ func handleStringSlice(attribute interface{}) (reflect.Value, error) {
 }
 
 func handleTime(attribute interface{}, args []string, fieldValue reflect.Value) (reflect.Value, error) {
-	var isIso8601 bool
-	var isRFC3339 bool
+	var isISO8601, isRFC3339 bool
 	v := reflect.ValueOf(attribute)
 
 	if len(args) > 2 {
 		for _, arg := range args[2:] {
 			if arg == annotationISO8601 {
-				isIso8601 = true
+				isISO8601 = true
 			} else if arg == annotationRFC3339 {
 				isRFC3339 = true
 			}
 		}
 	}
 
-	if isIso8601 {
+	if isISO8601 {
 		var tm string
 		if v.Kind() == reflect.String {
 			tm = v.Interface().(string)
