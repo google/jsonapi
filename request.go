@@ -482,14 +482,11 @@ func handleTime(attribute interface{}, args []string, fieldValue reflect.Value) 
 	}
 
 	if isRFC3339 {
-		var tm string
-		if v.Kind() == reflect.String {
-			tm = v.Interface().(string)
-		} else {
+		if v.Kind() != reflect.String {
 			return reflect.ValueOf(time.Now()), ErrInvalidRFC3339
 		}
 
-		t, err := time.Parse(time.RFC3339, tm)
+		t, err := time.Parse(time.RFC3339, v.Interface().(string))
 		if err != nil {
 			return reflect.ValueOf(time.Now()), ErrInvalidRFC3339
 		}
