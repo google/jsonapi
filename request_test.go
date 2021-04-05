@@ -349,7 +349,7 @@ func TestUnmarshal_Times(t *testing.T) {
 		desc         string
 		inputPayload *OnePayload
 		wantErr      bool
-		verifcation  func(tm *TimestampModel) error
+		verification  func(tm *TimestampModel) error
 	}{
 		// Default:
 		{
