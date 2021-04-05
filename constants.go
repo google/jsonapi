@@ -1,7 +1,5 @@
 package jsonapi
 
-import "time"
-
 const (
 	// StructTag annotation strings
 	annotationJSONAPI   = "jsonapi"
@@ -14,7 +12,6 @@ const (
 	annotationRFC3339   = "rfc3339"
 	annotationSeperator = ","
 
-	rfc3339TimeFormat = time.RFC3339
 	iso8601TimeFormat = "2006-01-02T15:04:05Z"
 
 	// MediaType is the identifier for the JSON API media type

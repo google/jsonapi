@@ -462,14 +462,11 @@ func handleTime(attribute interface{}, args []string, fieldValue reflect.Value) 
 	}
 
 	if isISO8601 {
-		var tm string
-		if v.Kind() == reflect.String {
-			tm = v.Interface().(string)
-		} else {
+		if v.Kind() != reflect.String {
 			return reflect.ValueOf(time.Now()), ErrInvalidISO8601
 		}
 
-		t, err := time.Parse(iso8601TimeFormat, tm)
+		t, err := time.Parse(iso8601TimeFormat, v.Interface().(string))
 		if err != nil {
 			return reflect.ValueOf(time.Now()), ErrInvalidISO8601
 		}

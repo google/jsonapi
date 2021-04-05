@@ -543,7 +543,7 @@ func TestMarshal_Times(t *testing.T) {
 			},
 			verification: func(root map[string]interface{}) error {
 				v := root["data"].(map[string]interface{})["attributes"].(map[string]interface{})["rfc3339v"].(string)
-				if got, want := v, aTime.UTC().Format(rfc3339TimeFormat); got != want {
+				if got, want := v, aTime.UTC().Format(time.RFC3339); got != want {
 					return fmt.Errorf("got %v, want %v", got, want)
 				}
 				return nil
@@ -557,7 +557,7 @@ func TestMarshal_Times(t *testing.T) {
 			},
 			verification: func(root map[string]interface{}) error {
 				v := root["data"].(map[string]interface{})["attributes"].(map[string]interface{})["rfc3339p"].(string)
-				if got, want := v, aTime.UTC().Format(rfc3339TimeFormat); got != want {
+				if got, want := v, aTime.UTC().Format(time.RFC3339); got != want {
 					return fmt.Errorf("got %v, want %v", got, want)
 				}
 				return nil
