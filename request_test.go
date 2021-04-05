@@ -3,6 +3,7 @@ package jsonapi
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -341,75 +342,175 @@ func TestUnmarshalSetsAttrs(t *testing.T) {
 	}
 }
 
-func TestUnmarshalParsesISO8601(t *testing.T) {
-	payload := &OnePayload{
-		Data: &Node{
-			Type: "timestamps",
-			Attributes: map[string]interface{}{
-				"timestamp": "2016-08-17T08:27:12Z",
+func TestUnmarshal_Times(t *testing.T) {
+	aTime := time.Date(2016, 8, 17, 8, 27, 12, 0, time.UTC)
+
+	for _, tc := range []struct {
+		desc         string
+		inputPayload *OnePayload
+		wantErr      bool
+		verification func(tm *TimestampModel) error
+	}{
+		// Default:
+		{
+			desc: "default_byValue",
+			inputPayload: &OnePayload{
+				Data: &Node{
+					Type: "timestamps",
+					Attributes: map[string]interface{}{
+						"defaultv": aTime.Unix(),
+					},
+				},
+			},
+			verification: func(tm *TimestampModel) error {
+				if !tm.DefaultV.Equal(aTime) {
+					return errors.New("times not equal!")
+				}
+				return nil
 			},
 		},
-	}
-
-	in := bytes.NewBuffer(nil)
-	json.NewEncoder(in).Encode(payload)
-
-	out := new(Timestamp)
-
-	if err := UnmarshalPayload(in, out); err != nil {
-		t.Fatal(err)
-	}
-
-	expected := time.Date(2016, 8, 17, 8, 27, 12, 0, time.UTC)
-
-	if !out.Time.Equal(expected) {
-		t.Fatal("Parsing the ISO8601 timestamp failed")
-	}
-}
-
-func TestUnmarshalParsesISO8601TimePointer(t *testing.T) {
-	payload := &OnePayload{
-		Data: &Node{
-			Type: "timestamps",
-			Attributes: map[string]interface{}{
-				"next": "2016-08-17T08:27:12Z",
+		{
+			desc: "default_byPointer",
+			inputPayload: &OnePayload{
+				Data: &Node{
+					Type: "timestamps",
+					Attributes: map[string]interface{}{
+						"defaultp": aTime.Unix(),
+					},
+				},
+			},
+			verification: func(tm *TimestampModel) error {
+				if !tm.DefaultP.Equal(aTime) {
+					return errors.New("times not equal!")
+				}
+				return nil
 			},
 		},
-	}
-
-	in := bytes.NewBuffer(nil)
-	json.NewEncoder(in).Encode(payload)
-
-	out := new(Timestamp)
-
-	if err := UnmarshalPayload(in, out); err != nil {
-		t.Fatal(err)
-	}
-
-	expected := time.Date(2016, 8, 17, 8, 27, 12, 0, time.UTC)
-
-	if !out.Next.Equal(expected) {
-		t.Fatal("Parsing the ISO8601 timestamp failed")
-	}
-}
-
-func TestUnmarshalInvalidISO8601(t *testing.T) {
-	payload := &OnePayload{
-		Data: &Node{
-			Type: "timestamps",
-			Attributes: map[string]interface{}{
-				"timestamp": "17 Aug 16 08:027 MST",
+		{
+			desc: "default_invalid",
+			inputPayload: &OnePayload{
+				Data: &Node{
+					Type: "timestamps",
+					Attributes: map[string]interface{}{
+						"defaultv": "not a timestamp!",
+					},
+				},
+			},
+			wantErr: true,
+		},
+		// ISO 8601:
+		{
+			desc: "iso8601_byValue",
+			inputPayload: &OnePayload{
+				Data: &Node{
+					Type: "timestamps",
+					Attributes: map[string]interface{}{
+						"iso8601v": "2016-08-17T08:27:12Z",
+					},
+				},
+			},
+			verification: func(tm *TimestampModel) error {
+				if !tm.ISO8601V.Equal(aTime) {
+					return errors.New("times not equal!")
+				}
+				return nil
 			},
 		},
-	}
+		{
+			desc: "iso8601_byPointer",
+			inputPayload: &OnePayload{
+				Data: &Node{
+					Type: "timestamps",
+					Attributes: map[string]interface{}{
+						"iso8601p": "2016-08-17T08:27:12Z",
+					},
+				},
+			},
+			verification: func(tm *TimestampModel) error {
+				if !tm.ISO8601P.Equal(aTime) {
+					return errors.New("times not equal!")
+				}
+				return nil
+			},
+		},
+		{
+			desc: "iso8601_invalid",
+			inputPayload: &OnePayload{
+				Data: &Node{
+					Type: "timestamps",
+					Attributes: map[string]interface{}{
+						"iso8601v": "not a timestamp",
+					},
+				},
+			},
+			wantErr: true,
+		},
+		// RFC 3339
+		{
+			desc: "rfc3339_byValue",
+			inputPayload: &OnePayload{
+				Data: &Node{
+					Type: "timestamps",
+					Attributes: map[string]interface{}{
+						"rfc3339v": "2016-08-17T08:27:12Z",
+					},
+				},
+			},
+			verification: func(tm *TimestampModel) error {
+				if got, want := tm.RFC3339V, aTime; got != want {
+					return fmt.Errorf("got %v, want %v", got, want)
+				}
+				return nil
+			},
+		},
+		{
+			desc: "rfc3339_byPointer",
+			inputPayload: &OnePayload{
+				Data: &Node{
+					Type: "timestamps",
+					Attributes: map[string]interface{}{
+						"rfc3339p": "2016-08-17T08:27:12Z",
+					},
+				},
+			},
+			verification: func(tm *TimestampModel) error {
+				if got, want := *tm.RFC3339P, aTime; got != want {
+					return fmt.Errorf("got %v, want %v", got, want)
+				}
+				return nil
+			},
+		},
+		{
+			desc: "rfc3339_invalid",
+			inputPayload: &OnePayload{
+				Data: &Node{
+					Type: "timestamps",
+					Attributes: map[string]interface{}{
+						"rfc3339v": "not a timestamp",
+					},
+				},
+			},
+			wantErr: true,
+		},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			// Serialize the OnePayload using the standard JSON library.
+			in := bytes.NewBuffer(nil)
+			if err := json.NewEncoder(in).Encode(tc.inputPayload); err != nil {
+				t.Fatal(err)
+			}
 
-	in := bytes.NewBuffer(nil)
-	json.NewEncoder(in).Encode(payload)
-
-	out := new(Timestamp)
-
-	if err := UnmarshalPayload(in, out); err != ErrInvalidISO8601 {
-		t.Fatalf("Expected ErrInvalidISO8601, got %v", err)
+			out := &TimestampModel{}
+			err := UnmarshalPayload(in, out)
+			if got, want := (err != nil), tc.wantErr; got != want {
+				t.Fatalf("UnmarshalPayload error: got %v, want %v", got, want)
+			}
+			if tc.verification != nil {
+				if err := tc.verification(out); err != nil {
+					t.Fatal(err)
+				}
+			}
+		})
 	}
 }
 

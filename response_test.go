@@ -3,6 +3,7 @@ package jsonapi
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"sort"
 	"testing"
@@ -470,58 +471,113 @@ func TestOmitsZeroTimes(t *testing.T) {
 	}
 }
 
-func TestMarshalISO8601Time(t *testing.T) {
-	testModel := &Timestamp{
-		ID:   5,
-		Time: time.Date(2016, 8, 17, 8, 27, 12, 23849, time.UTC),
-	}
+func TestMarshal_Times(t *testing.T) {
+	aTime := time.Date(2016, 8, 17, 8, 27, 12, 23849, time.UTC)
 
-	out := bytes.NewBuffer(nil)
-	if err := MarshalPayload(out, testModel); err != nil {
-		t.Fatal(err)
-	}
-
-	resp := new(OnePayload)
-	if err := json.NewDecoder(out).Decode(resp); err != nil {
-		t.Fatal(err)
-	}
-
-	data := resp.Data
-
-	if data.Attributes == nil {
-		t.Fatalf("Expected attributes")
-	}
-
-	if data.Attributes["timestamp"] != "2016-08-17T08:27:12Z" {
-		t.Fatal("Timestamp was not serialised into ISO8601 correctly")
-	}
-}
-
-func TestMarshalISO8601TimePointer(t *testing.T) {
-	tm := time.Date(2016, 8, 17, 8, 27, 12, 23849, time.UTC)
-	testModel := &Timestamp{
-		ID:   5,
-		Next: &tm,
-	}
-
-	out := bytes.NewBuffer(nil)
-	if err := MarshalPayload(out, testModel); err != nil {
-		t.Fatal(err)
-	}
-
-	resp := new(OnePayload)
-	if err := json.NewDecoder(out).Decode(resp); err != nil {
-		t.Fatal(err)
-	}
-
-	data := resp.Data
-
-	if data.Attributes == nil {
-		t.Fatalf("Expected attributes")
-	}
-
-	if data.Attributes["next"] != "2016-08-17T08:27:12Z" {
-		t.Fatal("Next was not serialised into ISO8601 correctly")
+	for _, tc := range []struct {
+		desc         string
+		input        *TimestampModel
+		verification func(data map[string]interface{}) error
+	}{
+		{
+			desc: "default_byValue",
+			input: &TimestampModel{
+				ID:       5,
+				DefaultV: aTime,
+			},
+			verification: func(root map[string]interface{}) error {
+				v := root["data"].(map[string]interface{})["attributes"].(map[string]interface{})["defaultv"].(float64)
+				if got, want := int64(v), aTime.Unix(); got != want {
+					return fmt.Errorf("got %v, want %v", got, want)
+				}
+				return nil
+			},
+		},
+		{
+			desc: "default_byPointer",
+			input: &TimestampModel{
+				ID:       5,
+				DefaultP: &aTime,
+			},
+			verification: func(root map[string]interface{}) error {
+				v := root["data"].(map[string]interface{})["attributes"].(map[string]interface{})["defaultp"].(float64)
+				if got, want := int64(v), aTime.Unix(); got != want {
+					return fmt.Errorf("got %v, want %v", got, want)
+				}
+				return nil
+			},
+		},
+		{
+			desc: "iso8601_byValue",
+			input: &TimestampModel{
+				ID:       5,
+				ISO8601V: aTime,
+			},
+			verification: func(root map[string]interface{}) error {
+				v := root["data"].(map[string]interface{})["attributes"].(map[string]interface{})["iso8601v"].(string)
+				if got, want := v, aTime.UTC().Format(iso8601TimeFormat); got != want {
+					return fmt.Errorf("got %v, want %v", got, want)
+				}
+				return nil
+			},
+		},
+		{
+			desc: "iso8601_byPointer",
+			input: &TimestampModel{
+				ID:       5,
+				ISO8601P: &aTime,
+			},
+			verification: func(root map[string]interface{}) error {
+				v := root["data"].(map[string]interface{})["attributes"].(map[string]interface{})["iso8601p"].(string)
+				if got, want := v, aTime.UTC().Format(iso8601TimeFormat); got != want {
+					return fmt.Errorf("got %v, want %v", got, want)
+				}
+				return nil
+			},
+		},
+		{
+			desc: "rfc3339_byValue",
+			input: &TimestampModel{
+				ID:       5,
+				RFC3339V: aTime,
+			},
+			verification: func(root map[string]interface{}) error {
+				v := root["data"].(map[string]interface{})["attributes"].(map[string]interface{})["rfc3339v"].(string)
+				if got, want := v, aTime.UTC().Format(time.RFC3339); got != want {
+					return fmt.Errorf("got %v, want %v", got, want)
+				}
+				return nil
+			},
+		},
+		{
+			desc: "rfc3339_byPointer",
+			input: &TimestampModel{
+				ID:       5,
+				RFC3339P: &aTime,
+			},
+			verification: func(root map[string]interface{}) error {
+				v := root["data"].(map[string]interface{})["attributes"].(map[string]interface{})["rfc3339p"].(string)
+				if got, want := v, aTime.UTC().Format(time.RFC3339); got != want {
+					return fmt.Errorf("got %v, want %v", got, want)
+				}
+				return nil
+			},
+		},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			out := bytes.NewBuffer(nil)
+			if err := MarshalPayload(out, tc.input); err != nil {
+				t.Fatal(err)
+			}
+			// Use the standard JSON library to traverse the genereated JSON payload.
+			data := map[string]interface{}{}
+			json.Unmarshal(out.Bytes(), &data)
+			if tc.verification != nil {
+				if err := tc.verification(data); err != nil {
+					t.Fatal(err)
+				}
+			}
+		})
 	}
 }
 
