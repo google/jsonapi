@@ -303,7 +303,7 @@ func TestUnmarshalSetsID(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if out.ID != 2 {
+	if out.ID != 9223372036854775807 {
 		t.Fatalf("Did not set ID on dst interface")
 	}
 }
@@ -1070,7 +1070,7 @@ func samplePayload() io.Reader {
 func samplePayloadWithID() io.Reader {
 	payload := &OnePayload{
 		Data: &Node{
-			ID:   "2",
+			ID:   "9223372036854775807",
 			Type: "blogs",
 			Attributes: map[string]interface{}{
 				"title":      "New blog",
