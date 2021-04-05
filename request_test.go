@@ -349,7 +349,7 @@ func TestUnmarshal_Times(t *testing.T) {
 		desc         string
 		inputPayload *OnePayload
 		wantErr      bool
-		verification  func(tm *TimestampModel) error
+		verification func(tm *TimestampModel) error
 	}{
 		// Default:
 		{
@@ -362,7 +362,7 @@ func TestUnmarshal_Times(t *testing.T) {
 					},
 				},
 			},
-			verifcation: func(tm *TimestampModel) error {
+			verification: func(tm *TimestampModel) error {
 				if !tm.DefaultV.Equal(aTime) {
 					return errors.New("times not equal!")
 				}
@@ -379,7 +379,7 @@ func TestUnmarshal_Times(t *testing.T) {
 					},
 				},
 			},
-			verifcation: func(tm *TimestampModel) error {
+			verification: func(tm *TimestampModel) error {
 				if !tm.DefaultP.Equal(aTime) {
 					return errors.New("times not equal!")
 				}
@@ -409,7 +409,7 @@ func TestUnmarshal_Times(t *testing.T) {
 					},
 				},
 			},
-			verifcation: func(tm *TimestampModel) error {
+			verification: func(tm *TimestampModel) error {
 				if !tm.ISO8601V.Equal(aTime) {
 					return errors.New("times not equal!")
 				}
@@ -426,7 +426,7 @@ func TestUnmarshal_Times(t *testing.T) {
 					},
 				},
 			},
-			verifcation: func(tm *TimestampModel) error {
+			verification: func(tm *TimestampModel) error {
 				if !tm.ISO8601P.Equal(aTime) {
 					return errors.New("times not equal!")
 				}
@@ -456,7 +456,7 @@ func TestUnmarshal_Times(t *testing.T) {
 					},
 				},
 			},
-			verifcation: func(tm *TimestampModel) error {
+			verification: func(tm *TimestampModel) error {
 				if got, want := tm.RFC3339V, aTime; got != want {
 					return fmt.Errorf("got %v, want %v", got, want)
 				}
@@ -473,7 +473,7 @@ func TestUnmarshal_Times(t *testing.T) {
 					},
 				},
 			},
-			verifcation: func(tm *TimestampModel) error {
+			verification: func(tm *TimestampModel) error {
 				if got, want := *tm.RFC3339P, aTime; got != want {
 					return fmt.Errorf("got %v, want %v", got, want)
 				}
@@ -505,8 +505,8 @@ func TestUnmarshal_Times(t *testing.T) {
 			if got, want := (err != nil), tc.wantErr; got != want {
 				t.Fatalf("UnmarshalPayload error: got %v, want %v", got, want)
 			}
-			if tc.verifcation != nil {
-				if err := tc.verifcation(out); err != nil {
+			if tc.verification != nil {
+				if err := tc.verification(out); err != nil {
 					t.Fatal(err)
 				}
 			}

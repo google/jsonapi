@@ -475,9 +475,9 @@ func TestMarshal_Times(t *testing.T) {
 	aTime := time.Date(2016, 8, 17, 8, 27, 12, 23849, time.UTC)
 
 	for _, tc := range []struct {
-		desc        string
-		input       *TimestampModel
-		verifcation func(data map[string]interface{}) error
+		desc         string
+		input        *TimestampModel
+		verification func(data map[string]interface{}) error
 	}{
 		{
 			desc: "default_byValue",
@@ -485,7 +485,7 @@ func TestMarshal_Times(t *testing.T) {
 				ID:       5,
 				DefaultV: aTime,
 			},
-			verifcation: func(root map[string]interface{}) error {
+			verification: func(root map[string]interface{}) error {
 				v := root["data"].(map[string]interface{})["attributes"].(map[string]interface{})["defaultv"].(float64)
 				if got, want := int64(v), aTime.Unix(); got != want {
 					return fmt.Errorf("got %v, want %v", got, want)
@@ -499,7 +499,7 @@ func TestMarshal_Times(t *testing.T) {
 				ID:       5,
 				DefaultP: &aTime,
 			},
-			verifcation: func(root map[string]interface{}) error {
+			verification: func(root map[string]interface{}) error {
 				v := root["data"].(map[string]interface{})["attributes"].(map[string]interface{})["defaultp"].(float64)
 				if got, want := int64(v), aTime.Unix(); got != want {
 					return fmt.Errorf("got %v, want %v", got, want)
@@ -513,7 +513,7 @@ func TestMarshal_Times(t *testing.T) {
 				ID:       5,
 				ISO8601V: aTime,
 			},
-			verifcation: func(root map[string]interface{}) error {
+			verification: func(root map[string]interface{}) error {
 				v := root["data"].(map[string]interface{})["attributes"].(map[string]interface{})["iso8601v"].(string)
 				if got, want := v, aTime.UTC().Format(iso8601TimeFormat); got != want {
 					return fmt.Errorf("got %v, want %v", got, want)
@@ -527,7 +527,7 @@ func TestMarshal_Times(t *testing.T) {
 				ID:       5,
 				ISO8601P: &aTime,
 			},
-			verifcation: func(root map[string]interface{}) error {
+			verification: func(root map[string]interface{}) error {
 				v := root["data"].(map[string]interface{})["attributes"].(map[string]interface{})["iso8601p"].(string)
 				if got, want := v, aTime.UTC().Format(iso8601TimeFormat); got != want {
 					return fmt.Errorf("got %v, want %v", got, want)
@@ -541,7 +541,7 @@ func TestMarshal_Times(t *testing.T) {
 				ID:       5,
 				RFC3339V: aTime,
 			},
-			verifcation: func(root map[string]interface{}) error {
+			verification: func(root map[string]interface{}) error {
 				v := root["data"].(map[string]interface{})["attributes"].(map[string]interface{})["rfc3339v"].(string)
 				if got, want := v, aTime.UTC().Format(rfc3339TimeFormat); got != want {
 					return fmt.Errorf("got %v, want %v", got, want)
@@ -555,7 +555,7 @@ func TestMarshal_Times(t *testing.T) {
 				ID:       5,
 				RFC3339P: &aTime,
 			},
-			verifcation: func(root map[string]interface{}) error {
+			verification: func(root map[string]interface{}) error {
 				v := root["data"].(map[string]interface{})["attributes"].(map[string]interface{})["rfc3339p"].(string)
 				if got, want := v, aTime.UTC().Format(rfc3339TimeFormat); got != want {
 					return fmt.Errorf("got %v, want %v", got, want)
@@ -572,8 +572,8 @@ func TestMarshal_Times(t *testing.T) {
 			// Use the standard JSON library to traverse the genereated JSON payload.
 			data := map[string]interface{}{}
 			json.Unmarshal(out.Bytes(), &data)
-			if tc.verifcation != nil {
-				if err := tc.verifcation(data); err != nil {
+			if tc.verification != nil {
+				if err := tc.verification(data); err != nil {
 					t.Fatal(err)
 				}
 			}
