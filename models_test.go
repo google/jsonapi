@@ -25,16 +25,14 @@ type WithPointer struct {
 	FloatVal *float32 `jsonapi:"attr,float-val"`
 }
 
-type Timestamp struct {
-	ID   int        `jsonapi:"primary,timestamps"`
-	Time time.Time  `jsonapi:"attr,timestamp,iso8601"`
-	Next *time.Time `jsonapi:"attr,next,iso8601"`
-}
-
-type TimestampRFC3339 struct {
-	ID   int        `jsonapi:"primary,timestamps"`
-	Time time.Time  `jsonapi:"attr,timestamp,rfc3339"`
-	Next *time.Time `jsonapi:"attr,next,rfc3339"`
+type TimestampModel struct {
+	ID       int        `jsonapi:"primary,timestamps"`
+	DefaultV time.Time  `jsonapi:"attr,defaultv"`
+	DefaultP *time.Time `jsonapi:"attr,defaultp"`
+	ISO8601V time.Time  `jsonapi:"attr,iso8601v,iso8601"`
+	ISO8601P *time.Time `jsonapi:"attr,iso8601p,iso8601"`
+	RFC3339V time.Time  `jsonapi:"attr,rfc3339v,rfc3339"`
+	RFC3339P *time.Time `jsonapi:"attr,rfc3339p,rfc3339"`
 }
 
 type Car struct {
