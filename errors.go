@@ -15,6 +15,17 @@ func MarshalErrors(w io.Writer, errorObjects []*ErrorObject) error {
 	return json.NewEncoder(w).Encode(&ErrorsPayload{Errors: errorObjects})
 }
 
+// UnmarshalErrors is just a wrapper for convenience
+func UnmarshalErrors(in io.Reader) (*ErrorsPayload, error) {
+	payload := new(ErrorsPayload)
+
+	if err := json.NewDecoder(in).Decode(payload); err != nil {
+		return nil, err
+	}
+
+	return payload, nil
+}
+
 // ErrorsPayload is a serializer struct for representing a valid JSON API errors payload.
 type ErrorsPayload struct {
 	Errors []*ErrorObject `json:"errors"`
