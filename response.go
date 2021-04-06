@@ -197,7 +197,13 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 	node := new(Node)
 
 	var er error
-	value := reflect.ValueOf(model)
+	var value reflect.Value
+	if modelValue, ok := model.(reflect.Value); ok {
+		value = modelValue.Addr()
+	} else {
+		value = reflect.ValueOf(model)
+	}
+
 	if value.IsNil() {
 		return nil, nil
 	}
@@ -339,6 +345,45 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 						node.Attributes[args[1]] = tm.Unix()
 					}
 				}
+			} else if fieldValue.Kind() == reflect.Slice && fieldValue.Type().Elem().Kind() == reflect.Struct {
+				if omitEmpty && fieldValue.Len() == 0 {
+					continue
+				}
+
+				newSlice := make([]map[string]interface{}, fieldValue.Len())
+				for i:=0; i < fieldValue.Len(); i++ {
+					included := make(map[string]*Node)
+					nested, err := visitModelNode(fieldValue.Index(i), &included, true)
+					if err != nil {
+						er = err
+						break
+					}
+
+					newSlice[i] = nested.Attributes
+				}
+				node.Attributes[args[1]] = newSlice
+			} else if fieldValue.Kind() == reflect.Struct ||
+				(fieldValue.Kind() == reflect.Ptr && fieldValue.Elem().Kind() == reflect.Struct) {
+
+				// Dealing with a fieldValue that is not a time
+				emptyValue := reflect.Zero(fieldValue.Type())
+
+				// See if we need to omit this field
+				if omitEmpty && reflect.DeepEqual(fieldValue.Interface(), emptyValue.Interface()) {
+					continue
+				}
+
+				included := make(map[string]*Node)
+				if fieldValue.Kind() == reflect.Ptr {
+					fieldValue = fieldValue.Elem()
+				}
+				nested, err := visitModelNode(fieldValue, &included, true)
+				if err != nil {
+					er = err
+					break
+				}
+
+				node.Attributes[args[1]] = nested.Attributes
 			} else {
 				// Dealing with a fieldValue that is not a time
 				emptyValue := reflect.Zero(fieldValue.Type())

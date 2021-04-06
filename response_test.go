@@ -957,6 +957,57 @@ func TestMarshal_InvalidIntefaceArgument(t *testing.T) {
 	}
 }
 
+func TestMarshalNestedStruct(t *testing.T) {
+	team := Team{
+		Name: "Awesome team",
+		Leader: Employee{
+			Firstname: "John",
+			Surname: "Mota",
+			Age: 35,
+		},
+		Members: []Employee{
+			{
+				Firstname: "Henrique",
+				Surname:  "Doe",
+			},
+		},
+	}
+
+	now := time.Now()
+	company := Company {
+		ID: "an_id",
+		Name: "Awesome Company",
+		Boss: &Employee{
+			Firstname: "Company",
+			Surname: "boss",
+			Age: 60,
+		},
+		Teams: []Team {
+			team,
+		},
+		FoundedAt: now,
+	}
+
+	buffer := bytes.NewBuffer(nil)
+	MarshalOnePayloadEmbedded(buffer, &company)
+	reader := bytes.NewReader(buffer.Bytes())
+	var finalCompany Company
+	UnmarshalPayload(reader, &finalCompany)
+
+	diff := company.FoundedAt.Sub(finalCompany.FoundedAt)
+
+	if diff.Seconds() > 1 {
+		t.Error("final unmarshal payload founded at must be approximately equal to the original.")
+	}
+
+	company.FoundedAt = time.Time{}
+	finalCompany.FoundedAt = time.Time{}
+
+	if !reflect.DeepEqual(company, finalCompany) {
+		t.Error("final unmarshal payload should be equal to the original one.")
+	}
+}
+
 func testBlog() *Blog {
 	return &Blog{
 		ID:        5,
