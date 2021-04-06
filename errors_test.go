@@ -40,6 +40,13 @@ func TestMarshalErrorsWritesTheExpectedPayload(t *testing.T) {
 				map[string]interface{}{"title": "Test title.", "detail": "Test detail", "meta": map[string]interface{}{"key": "val"}},
 			}},
 		},
+		{
+			Title: "TestSourceFieldIsSerializedAsNeeded",
+			In:    []*ErrorObject{{Title: "Test title.", Detail: "Test detail", Source: &ErrorSource{Pointer: "/data/attributes/foobar", Parameter: "foobar"}}},
+			Out: map[string]interface{}{"errors": []interface{}{
+				map[string]interface{}{"title": "Test title.", "detail": "Test detail", "source": map[string]interface{}{"pointer": "/data/attributes/foobar", "parameter": "foobar"}},
+			}},
+		},
 	}
 	for _, testRow := range marshalErrorsTableTasts {
 		t.Run(testRow.Title, func(t *testing.T) {
