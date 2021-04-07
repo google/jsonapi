@@ -46,6 +46,32 @@ func TestUnmarshall_attrStringSlice(t *testing.T) {
 	}
 }
 
+func TestUnmarshalToStructWithPointerToNamedType(t *testing.T) {
+	out := new(WithPointer)
+	in := map[string]interface{}{
+		"string-val": "foo",
+	}
+	if err := UnmarshalPayload(sampleWithPointerPayload(in), out); err != nil {
+		t.Fatal(err)
+	}
+	if *out.StringVal != "foo" {
+		t.Fatalf("Error unmarshalling to string alias ptr")
+	}
+}
+
+func TestUnmarshalToStructWithPointerToNamedTypeNull(t *testing.T) {
+	out := new(WithPointer)
+	in := map[string]interface{}{
+		"string-val": nil,
+	}
+	if err := UnmarshalPayload(sampleWithPointerPayload(in), out); err != nil {
+		t.Fatal(err)
+	}
+	if out.StringVal != nil {
+		t.Fatalf("Error unmarshalling to string alias ptr")
+	}
+}
+
 func TestUnmarshalToStructWithPointerAttr(t *testing.T) {
 	out := new(WithPointer)
 	in := map[string]interface{}{
@@ -68,6 +94,9 @@ func TestUnmarshalToStructWithPointerAttr(t *testing.T) {
 	}
 	if *out.FloatVal != 1.1 {
 		t.Fatalf("Error unmarshalling to float ptr")
+	}
+	if out.StringVal != nil {
+		t.Fatalf("Error unmarshalling to string alias ptr")
 	}
 }
 
