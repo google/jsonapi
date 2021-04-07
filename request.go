@@ -437,6 +437,22 @@ func unmarshalAttribute(
 	return
 }
 
+func handleIntSlice(
+	attribute interface{},
+	fieldType reflect.Type,
+	fieldValue reflect.Value) (reflect.Value, error) {
+	
+	v := reflect.ValueOf(attribute)
+
+	values := make([]int, v.Len())
+	for i := 0; i < v.Len(); i++ {
+		ve := v.Index(i)
+		values[i] = int(ve.Interface().(float64))
+	}
+
+	return reflect.ValueOf(values), nil
+}
+
 func handleStringSlice(attribute interface{}) (reflect.Value, error) {
 	v := reflect.ValueOf(attribute)
 	values := make([]string, v.Len())
