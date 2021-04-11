@@ -420,9 +420,6 @@ func unmarshalAttribute(
 	case json.Number:
 		value, err = handleNumeric(attribute.(json.Number), fieldType, fieldValue)
 		return
-	case float64:
-		value, err = handleNumeric(json.Number(fmt.Sprint(attribute)), fieldType, fieldValue)
-		return
 	}
 
 	// Field was a Pointer type
@@ -611,8 +608,11 @@ func handleStruct(
 		return reflect.Value{}, err
 	}
 
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+
 	node := new(Node)
-	if err := json.Unmarshal(data, &node.Attributes); err != nil {
+	if err = decoder.Decode(&node.Attributes); err != nil {
 		return reflect.Value{}, err
 	}
 
