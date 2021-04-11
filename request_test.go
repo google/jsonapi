@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"reflect"
 	"sort"
 	"strings"
@@ -303,7 +304,7 @@ func TestUnmarshalSetsID(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if out.ID != 2 {
+	if out.ID != 9223372036854775807 {
 		t.Fatalf("Did not set ID on dst interface")
 	}
 }
@@ -1070,7 +1071,7 @@ func samplePayload() io.Reader {
 func samplePayloadWithID() io.Reader {
 	payload := &OnePayload{
 		Data: &Node{
-			ID:   "2",
+			ID:   "9223372036854775807",
 			Type: "blogs",
 			Attributes: map[string]interface{}{
 				"title":      "New blog",
@@ -1414,5 +1415,92 @@ func TestUnmarshalNestedStructSlice(t *testing.T) {
 	if out.Teams[0].Members[0].Firstname != "Philip J." {
 		t.Fatalf("Nested struct not unmarshalled: Expected `Philip J.` but got `%s`",
 			out.Teams[0].Members[0].Firstname)
+	}
+}
+
+func TestUnmarshalNumerics(t *testing.T) {
+	data, err := json.Marshal(map[string]interface{}{
+		"data": map[string]interface{}{
+			"id":   "9223372036854775807",
+			"type": "numerics",
+			"attributes": map[string]interface{}{
+				"int":   math.MinInt32,
+				"int8":  math.MinInt8,
+				"int16": math.MinInt16,
+				"int32": math.MinInt32,
+				"int64": math.MinInt64,
+
+				"uint":   math.MaxInt32,
+				"uint8":  math.MaxInt8,
+				"uint16": math.MaxInt16,
+				"uint32": math.MaxInt32,
+				"uint64": math.MaxInt64,
+
+				"float32": math.MaxFloat32,
+				"float64": math.MaxFloat64,
+			},
+		},
+	})
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	in := bytes.NewReader(data)
+	n := new(Numerics)
+
+	if err = UnmarshalPayload(in, n); err != nil {
+		t.Fatal(err)
+	}
+
+	if n.ID != "9223372036854775807" {
+		t.Fatalf("Unexpected value for ID")
+	}
+
+	if n.Int != math.MinInt32 {
+		t.Fatalf("Unexpected value for Int")
+	}
+
+	if n.Int8 != math.MinInt8 {
+		t.Fatalf("Unexpected value for Int8")
+	}
+
+	if n.Int16 != math.MinInt16 {
+		t.Fatalf("Unexpected value for Int16")
+	}
+
+	if n.Int32 != math.MinInt32 {
+		t.Fatalf("Unexpected value for Int32")
+	}
+
+	if n.Int64 != math.MinInt64 {
+		t.Fatalf("Unexpected value for Int64")
+	}
+
+	if n.Uint != math.MaxInt32 {
+		t.Fatalf("Unexpected value for Uint")
+	}
+
+	if n.Uint8 != math.MaxInt8 {
+		t.Fatalf("Unexpected value for Uint8")
+	}
+
+	if n.Uint16 != math.MaxInt16 {
+		t.Fatalf("Unexpected value for Uint16")
+	}
+
+	if n.Uint32 != math.MaxInt32 {
+		t.Fatalf("Unexpected value for Uint32")
+	}
+
+	if n.Uint64 != math.MaxInt64 {
+		t.Fatalf("Unexpected value for Uint64")
+	}
+
+	if n.Float32 != math.MaxFloat32 {
+		t.Fatalf("Unexpected value for Float32")
+	}
+
+	if n.Float64 != math.MaxFloat64 {
+		t.Fatalf("Unexpected value for Float64")
 	}
 }

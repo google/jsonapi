@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -95,7 +94,10 @@ func newErrUnsupportedPtrType(rf reflect.Value, t reflect.Type, structField refl
 func UnmarshalPayload(in io.Reader, model interface{}) error {
 	payload := new(OnePayload)
 
-	if err := json.NewDecoder(in).Decode(payload); err != nil {
+	decoder := json.NewDecoder(in)
+	decoder.UseNumber()
+
+	if err := decoder.Decode(payload); err != nil {
 		return err
 	}
 
@@ -116,7 +118,10 @@ func UnmarshalPayload(in io.Reader, model interface{}) error {
 func UnmarshalManyPayload(in io.Reader, t reflect.Type) ([]interface{}, error) {
 	payload := new(ManyPayload)
 
-	if err := json.NewDecoder(in).Decode(payload); err != nil {
+	decoder := json.NewDecoder(in)
+	decoder.UseNumber()
+
+	if err := decoder.Decode(payload); err != nil {
 		return nil, err
 	}
 
@@ -209,18 +214,9 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				continue
 			}
 
-			// Value was not a string... only other supported type was a numeric,
-			// which would have been sent as a float value.
-			floatValue, err := strconv.ParseFloat(data.ID, 64)
-			if err != nil {
-				// Could not convert the value in the "id" attr to a float
-				er = ErrBadJSONAPIID
-				break
-			}
-
 			// Convert the numeric float to one of the supported ID numeric types
 			// (int[8,16,32,64] or uint[8,16,32,64])
-			idValue, err := handleNumeric(floatValue, fieldType.Type, fieldValue)
+			idValue, err := handleNumeric(json.Number(data.ID), fieldType.Type, fieldValue)
 			if err != nil {
 				// We had a JSON float (numeric), but our field was not one of the
 				// allowed numeric types
@@ -271,7 +267,10 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				buf := bytes.NewBuffer(nil)
 
 				json.NewEncoder(buf).Encode(data.Relationships[args[1]])
-				json.NewDecoder(buf).Decode(relationship)
+
+				decoder := json.NewDecoder(buf)
+				decoder.UseNumber()
+				decoder.Decode(relationship)
 
 				data := relationship.Data
 				models := reflect.New(fieldValue.Type()).Elem()
@@ -298,10 +297,11 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 
 				buf := bytes.NewBuffer(nil)
 
-				json.NewEncoder(buf).Encode(
-					data.Relationships[args[1]],
-				)
-				json.NewDecoder(buf).Decode(relationship)
+				json.NewEncoder(buf).Encode(data.Relationships[args[1]])
+
+				decoder := json.NewDecoder(buf)
+				decoder.UseNumber()
+				decoder.Decode(relationship)
 
 				/*
 					http://jsonapi.org/format/#document-resource-object-relationships
@@ -416,9 +416,9 @@ func unmarshalAttribute(
 		return
 	}
 
-	// JSON value was a float (numeric)
-	if value.Kind() == reflect.Float64 {
-		value, err = handleNumeric(attribute, fieldType, fieldValue)
+	switch attribute.(type) {
+	case json.Number:
+		value, err = handleNumeric(attribute.(json.Number), fieldType, fieldValue)
 		return
 	}
 
@@ -495,27 +495,26 @@ func handleTime(attribute interface{}, args []string, fieldValue reflect.Value) 
 		return reflect.ValueOf(t), nil
 	}
 
-	var at int64
+	switch v.Interface().(type) {
+	case json.Number:
+		i, err := v.Interface().(json.Number).Int64()
+		if err == nil {
+			return reflect.ValueOf(time.Unix(i, 0)), nil
+		}
 
-	if v.Kind() == reflect.Float64 {
-		at = int64(v.Interface().(float64))
-	} else if v.Kind() == reflect.Int {
-		at = v.Int()
-	} else {
-		return reflect.ValueOf(time.Now()), ErrInvalidTime
+		f, err := v.Interface().(json.Number).Float64()
+		if err == nil {
+			return reflect.ValueOf(time.Unix(int64(f), 0)), nil
+		}
 	}
 
-	t := time.Unix(at, 0)
-
-	return reflect.ValueOf(t), nil
+	return reflect.ValueOf(time.Now()), ErrInvalidTime
 }
 
 func handleNumeric(
-	attribute interface{},
+	attribute json.Number,
 	fieldType reflect.Type,
 	fieldValue reflect.Value) (reflect.Value, error) {
-	v := reflect.ValueOf(attribute)
-	floatValue := v.Interface().(float64)
 
 	var kind reflect.Kind
 	if fieldValue.Kind() == reflect.Ptr {
@@ -524,50 +523,41 @@ func handleNumeric(
 		kind = fieldType.Kind()
 	}
 
-	var numericValue reflect.Value
+	i, err := attribute.Int64()
 
 	switch kind {
 	case reflect.Int:
-		n := int(floatValue)
-		numericValue = reflect.ValueOf(&n)
+		return reflect.ValueOf(int(i)), err
 	case reflect.Int8:
-		n := int8(floatValue)
-		numericValue = reflect.ValueOf(&n)
+		return reflect.ValueOf(int8(i)), err
 	case reflect.Int16:
-		n := int16(floatValue)
-		numericValue = reflect.ValueOf(&n)
+		return reflect.ValueOf(int16(i)), err
 	case reflect.Int32:
-		n := int32(floatValue)
-		numericValue = reflect.ValueOf(&n)
+		return reflect.ValueOf(int32(i)), err
 	case reflect.Int64:
-		n := int64(floatValue)
-		numericValue = reflect.ValueOf(&n)
+		return reflect.ValueOf(i), err
 	case reflect.Uint:
-		n := uint(floatValue)
-		numericValue = reflect.ValueOf(&n)
+		return reflect.ValueOf(uint(i)), err
 	case reflect.Uint8:
-		n := uint8(floatValue)
-		numericValue = reflect.ValueOf(&n)
+		return reflect.ValueOf(uint8(i)), err
 	case reflect.Uint16:
-		n := uint16(floatValue)
-		numericValue = reflect.ValueOf(&n)
+		return reflect.ValueOf(uint16(i)), err
 	case reflect.Uint32:
-		n := uint32(floatValue)
-		numericValue = reflect.ValueOf(&n)
+		return reflect.ValueOf(uint32(i)), err
 	case reflect.Uint64:
-		n := uint64(floatValue)
-		numericValue = reflect.ValueOf(&n)
-	case reflect.Float32:
-		n := float32(floatValue)
-		numericValue = reflect.ValueOf(&n)
-	case reflect.Float64:
-		n := floatValue
-		numericValue = reflect.ValueOf(&n)
-	default:
-		return reflect.Value{}, ErrUnknownFieldNumberType
+		return reflect.ValueOf(uint64(i)), err
 	}
 
-	return numericValue, nil
+	f, err := attribute.Float64()
+
+	switch kind {
+	case reflect.Float32:
+		return reflect.ValueOf(float32(f)), err
+	case reflect.Float64:
+		return reflect.ValueOf(f), err
+	}
+
+	return reflect.Value{}, ErrUnknownFieldNumberType
 }
 
 func handlePointer(
@@ -580,6 +570,8 @@ func handlePointer(
 	var concreteVal reflect.Value
 
 	switch cVal := attribute.(type) {
+	case json.Number:
+		return handleNumeric(attribute.(json.Number), fieldType, fieldValue)
 	case string:
 		concreteVal = reflect.ValueOf(&cVal)
 	case bool:
@@ -616,8 +608,11 @@ func handleStruct(
 		return reflect.Value{}, err
 	}
 
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+
 	node := new(Node)
-	if err := json.Unmarshal(data, &node.Attributes); err != nil {
+	if err = decoder.Decode(&node.Attributes); err != nil {
 		return reflect.Value{}, err
 	}
 
