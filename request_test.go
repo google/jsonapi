@@ -1355,7 +1355,6 @@ func TestUnmarshalNestedStruct(t *testing.T) {
 }
 
 func TestUnmarshalNestedStructSlice(t *testing.T) {
-
 	fry := map[string]interface{}{
 		"firstname": "Philip J.",
 		"surname":   "Fry",
@@ -1414,5 +1413,62 @@ func TestUnmarshalNestedStructSlice(t *testing.T) {
 	if out.Teams[0].Members[0].Firstname != "Philip J." {
 		t.Fatalf("Nested struct not unmarshalled: Expected `Philip J.` but got `%s`",
 			out.Teams[0].Members[0].Firstname)
+	}
+}
+
+func TestUnmarshalNestedStructPointerSlice(t *testing.T) {
+	personA := map[string]interface{}{
+		"name": "persona",
+		"age":  25,
+	}
+
+	personB := map[string]interface{}{
+		"name": "personb",
+		"age":  19,
+	}
+
+	sample := map[string]interface{}{
+		"data": map[string]interface{}{
+			"type": "companies",
+			"id":   "123",
+			"attributes": map[string]interface{}{
+				"name": "Planet Express",
+				"people": []interface{}{
+					personA,
+					personB,
+				},
+			},
+		},
+	}
+
+	data, err := json.Marshal(sample)
+	if err != nil {
+		t.Fatal(err)
+	}
+	in := bytes.NewReader(data)
+	out := new(Company)
+
+	if err := UnmarshalPayload(in, out); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(out.People) != 2 {
+		t.Fatalf("Length of people should be 2, but is instead %d", len(out.People))
+	}
+
+	if out.People[0].Name != "persona" {
+		t.Fatalf("Nested pointer struct not unmarshalled: Expected `persona` but got `%s`", out.People[0].Name)
+	}
+
+	if out.People[0].Age != 25 {
+		t.Fatalf("Nested pointer struct not unmarshalled: Expected `25` but got `%d`", out.People[0].Age)
+	}
+
+	if out.People[1].Name != "personb" {
+		t.Fatalf("Nested pointer struct not unmarshalled: Expected `personb` but got `%s`", out.People[1].Name)
+	}
+
+	if out.People[1].Age != 19 {
+		t.Fatalf("Nested pointer struct not unmarshalled: Expected `19` but got `%d`", out.People[1].Age)
 	}
 }

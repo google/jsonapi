@@ -165,7 +165,13 @@ type Company struct {
 	Name      string    `jsonapi:"attr,name"`
 	Boss      Employee  `jsonapi:"attr,boss"`
 	Teams     []Team    `jsonapi:"attr,teams"`
+	People    []*People `jsonapi:"attr,people"`
 	FoundedAt time.Time `jsonapi:"attr,founded-at,iso8601"`
+}
+
+type People struct {
+	Name string `jsonapi:"attr,name"`
+	Age  int    `jsonapi:"attr,age"`
 }
 
 type Team struct {

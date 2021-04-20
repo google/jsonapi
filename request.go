@@ -416,6 +416,12 @@ func unmarshalAttribute(
 		return
 	}
 
+	if fieldValue.Type().Kind() == reflect.Slice &&
+		reflect.TypeOf(fieldValue.Interface()).Elem().Kind() == reflect.Ptr {
+		value, err = handleStructPointerSlice(attribute, args, fieldValue)
+		return
+	}
+
 	// JSON value was a float (numeric)
 	if value.Kind() == reflect.Float64 {
 		value, err = handleNumeric(attribute, fieldType, fieldValue)
@@ -652,5 +658,24 @@ func handleStructSlice(
 		models = reflect.Append(models, reflect.Indirect(value))
 	}
 
+	return models, nil
+}
+
+func handleStructPointerSlice(
+	attribute interface{},
+	args []string,
+	fieldValue reflect.Value) (reflect.Value, error) {
+
+	dataMap := reflect.ValueOf(attribute).Interface().([]interface{})
+	models := reflect.New(fieldValue.Type()).Elem()
+	for _, data := range dataMap {
+		model := reflect.New(fieldValue.Type().Elem()).Elem()
+		value, err := handleStruct(data, model)
+		if err != nil {
+			continue
+		}
+
+		models = reflect.Append(models, value)
+	}
 	return models, nil
 }
