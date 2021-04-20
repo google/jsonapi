@@ -1,1 +1,1 @@
-module github.com/google/jsonapi
+module github.com/hashicorp/jsonapi
