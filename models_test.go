@@ -51,6 +51,8 @@ type Post struct {
 	Body          string     `jsonapi:"attr,body"`
 	Comments      []*Comment `jsonapi:"relation,comments"`
 	LatestComment *Comment   `jsonapi:"relation,latest_comment"`
+
+	Links Links `jsonapi:"links,omitempty"`
 }
 
 type Comment struct {
@@ -58,6 +60,8 @@ type Comment struct {
 	ClientID string `jsonapi:"client-id"`
 	PostID   int    `jsonapi:"attr,post_id"`
 	Body     string `jsonapi:"attr,body"`
+
+	Links Links `jsonapi:"links,omitempty"`
 }
 
 type Book struct {
@@ -80,6 +84,8 @@ type Blog struct {
 	CurrentPostID int       `jsonapi:"attr,current_post_id"`
 	CreatedAt     time.Time `jsonapi:"attr,created_at"`
 	ViewCount     int       `jsonapi:"attr,view_count"`
+
+	Links Links `jsonapi:"links,omitempty"`
 }
 
 func (b *Blog) JSONAPILinks() *Links {

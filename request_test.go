@@ -745,6 +745,35 @@ func TestUnmarshalNestedRelationshipsEmbedded_withClientIDs(t *testing.T) {
 	}
 }
 
+func TestUnmarshalLinks(t *testing.T) {
+	model := new(Blog)
+
+	if err := UnmarshalPayload(samplePayload(), model); err != nil {
+		t.Fatal(err)
+	}
+
+	if model.Links == nil {
+		t.Fatalf("Expected Links field on model to be set")
+	}
+
+	if e, a := "http://somesite.com/blogs/1", model.Links[KeySelfLink]; e != a {
+		t.Fatalf("Was expecting links.%s to have a value of %s, got %s", KeySelfLink, e, a)
+	}
+
+	if e, a := "http://somesite.com/posts/1", model.Posts[0].Links[KeySelfLink]; e != a {
+		t.Fatalf("Was expecting posts.0.links.%s to have a value of %s, got %s", KeySelfLink, e, a)
+	}
+
+	expectedLinkObject := Link{Href: "http://somesite.com/posts/2", Meta: Meta{"foo": "bar"}}
+	if e, a := expectedLinkObject, model.CurrentPost.Links[KeySelfLink]; !reflect.DeepEqual(e, a) {
+		t.Fatalf("Was expecting posts.0.links.%s to have a value of %s, got %s", KeySelfLink, e, a)
+	}
+
+	if e, a := "http://somesite.com/comments/1", model.CurrentPost.Comments[0].Links[KeySelfLink]; e != a {
+		t.Fatalf("Was expecting posts.0.links.%s to have a value of %s, got %s", KeySelfLink, e, a)
+	}
+}
+
 func unmarshalSamplePayload() (*Blog, error) {
 	in := samplePayload()
 	out := new(Blog)
@@ -799,6 +828,32 @@ func TestUnmarshalManyPayload(t *testing.T) {
 			t.Fatal("Was expecting a Post")
 		}
 	}
+}
+
+func TestOnePayload_withLinks(t *testing.T) {
+	rawJSON := []byte("{\"data\": { \"type\": \"posts\", \"id\": \"1\", \"attributes\": { \"body\": \"First\", \"title\": \"Post\" } }, \"links\": { \"self\": \"http://somesite.com/posts/1\" } }")
+
+	in := bytes.NewReader(rawJSON)
+
+	payload := new(OnePayload)
+	if err := json.NewDecoder(in).Decode(payload); err != nil {
+		t.Fatal(err)
+	}
+
+	if payload.Links == nil {
+		t.Fatal("Was expecting a non nil ptr Link field")
+	}
+
+	links := *payload.Links
+
+	self, ok := links[KeySelfLink]
+	if !ok {
+		t.Fatal("Was expecting a non nil 'self' link field")
+	}
+	if e, a := "http://somesite.com/posts/1", self; e != a {
+		t.Fatalf("Was expecting links.%s to have a value of %s, got %s", KeySelfLink, e, a)
+	}
+
 }
 
 func TestManyPayload_withLinks(t *testing.T) {
@@ -1016,6 +1071,9 @@ func samplePayload() io.Reader {
 								"body":  "Bar",
 							},
 							ClientID: "1",
+							Links: &Links{
+								"self": "http://somesite.com/posts/1",
+							},
 						},
 						{
 							Type: "posts",
@@ -1024,6 +1082,9 @@ func samplePayload() io.Reader {
 								"body":  "Y",
 							},
 							ClientID: "2",
+							Links: &Links{
+								"self": "http://somesite.com/posts/2",
+							},
 						},
 					},
 				},
@@ -1044,6 +1105,9 @@ func samplePayload() io.Reader {
 											"body": "Great post!",
 										},
 										ClientID: "4",
+										Links: &Links{
+											"self": "http://somesite.com/comments/1",
+										},
 									},
 									{
 										Type: "comments",
@@ -1051,12 +1115,26 @@ func samplePayload() io.Reader {
 											"body": "Needs some work!",
 										},
 										ClientID: "5",
+										Links: &Links{
+											"self": "http://somesite.com/comments/2",
+										},
 									},
+								},
+							},
+						},
+						Links: &Links{
+							"self": &Link{
+								Href: "http://somesite.com/posts/2",
+								Meta: Meta{
+									"foo": "bar",
 								},
 							},
 						},
 					},
 				},
+			},
+			Links: &Links{
+				"self": "http://somesite.com/blogs/1",
 			},
 		},
 	}
