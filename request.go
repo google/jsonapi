@@ -327,6 +327,46 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 
 			}
 
+		} else if annotation == annotationLinks {
+			if data.Links == nil {
+				continue
+			}
+
+			links := make(Links, len(*data.Links))
+
+			for k, v := range *data.Links {
+				link := v // default case (including string urls)
+
+				// Unmarshal link objects to Link
+				if t, ok := v.(map[string]interface{}); ok {
+					unmarshaledHref := ""
+					href, ok := t["href"].(string)
+					if ok {
+						unmarshaledHref = href
+					}
+
+					unmarshaledMeta := make(Meta)
+					if meta, ok := t["meta"].(map[string]interface{}); ok {
+						for metaK, metaV := range meta {
+							unmarshaledMeta[metaK] = metaV
+						}
+					}
+
+					link = Link{
+						Href: unmarshaledHref,
+						Meta: unmarshaledMeta,
+					}
+				}
+
+				links[k] = link
+			}
+
+			if err != nil {
+				er = err
+				break
+			}
+
+			assign(fieldValue, reflect.ValueOf(links))
 		} else {
 			er = fmt.Errorf(unsupportedStructTagMsg, annotation)
 		}

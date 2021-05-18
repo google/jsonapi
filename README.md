@@ -179,6 +179,18 @@ used as the key in the `relationships` hash for the record. The optional
 third argument is `omitempty` - if present will prevent non existent to-one and
 to-many from being serialized.
 
+#### `links`
+
+*Note: This annotation is an added feature independent of the canonical google/jsonapi package*
+
+```
+`jsonapi:"links,omitempty"`
+```
+
+A field annotated with `links` will have the links members of the request unmarshaled to it. Note
+that this field should _always_ be annotated with `omitempty`, as marshaling of links members is
+instead handled by the `Linkable` interface (see `Links` below).
+
 ## Methods Reference
 
 **All `Marshal` and `Unmarshal` methods expect pointers to struct

@@ -7,6 +7,7 @@ const (
 	annotationClientID  = "client-id"
 	annotationAttribute = "attr"
 	annotationRelation  = "relation"
+	annotationLinks     = "links"
 	annotationOmitEmpty = "omitempty"
 	annotationISO8601   = "iso8601"
 	annotationRFC3339   = "rfc3339"
@@ -53,4 +54,8 @@ const (
 	// QueryParamPageCursor is a JSON API query parameter used with a cursor-based
 	// strategy
 	QueryParamPageCursor = "page[cursor]"
+
+	// KeySelfLink is the key within a top-level links object that denotes the link that
+	// generated the current response document.
+	KeySelfLink = "self"
 )
