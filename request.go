@@ -346,8 +346,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 					}
 
 					unmarshaledMeta := make(Meta)
-					meta, ok := t["meta"].(map[string]interface{})
-					if ok {
+					if meta, ok := t["meta"].(map[string]interface{}); ok {
 						for metaK, metaV := range meta {
 							unmarshaledMeta[metaK] = metaV
 						}
