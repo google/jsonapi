@@ -46,6 +46,60 @@ func TestUnmarshall_attrStringSlice(t *testing.T) {
 	}
 }
 
+func TestUnmarshall_attrInterface(t *testing.T) {
+	tests := []struct {
+		genericData interface{}
+		expected    reflect.Kind
+	}{
+		{
+			genericData: "foo",
+			expected:    reflect.String,
+		},
+		{
+			genericData: true,
+			expected:    reflect.Bool,
+		},
+		{
+			genericData: float64(5),
+			expected:    reflect.Float64,
+		},
+		{
+			genericData: []string{"foo", "bar"},
+			expected:    reflect.Slice,
+		},
+		{
+			genericData: map[string]string{
+				"foo": "bar",
+			},
+			expected: reflect.Map,
+		},
+	}
+
+	for _, tc := range tests {
+		out := &GenericInterface{}
+		data := map[string]interface{}{
+			"data": map[string]interface{}{
+				"type": "generic",
+				"id":   "1",
+				"attributes": map[string]interface{}{
+					"interface": tc.genericData,
+				},
+			},
+		}
+		b, err := json.Marshal(data)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if err := UnmarshalPayload(bytes.NewReader(b), out); err != nil {
+			t.Fatal(err)
+		}
+		if reflect.TypeOf(out.Data).Kind() != tc.expected {
+			t.Fatalf("Expected %v to match interface %v", out.Data, tc.expected)
+		}
+	}
+}
+
 func TestUnmarshalToStructWithPointerAttr(t *testing.T) {
 	out := new(WithPointer)
 	in := map[string]interface{}{

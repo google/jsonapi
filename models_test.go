@@ -75,6 +75,11 @@ type Book struct {
 	Tags        []string `jsonapi:"attr,tags"`
 }
 
+type GenericInterface struct {
+	ID   uint64      `jsonapi:"primary,generic"`
+	Data interface{} `jsonapi:"attr,interface"`
+}
+
 type Blog struct {
 	ID            int       `jsonapi:"primary,blogs"`
 	ClientID      string    `jsonapi:"client-id"`
