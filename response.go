@@ -358,9 +358,16 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 		} else if annotation == annotationRelation {
 			var omitEmpty bool
 
+			var extraField string
 			//add support for 'omitempty' struct tag for marshaling as absent
 			if len(args) > 2 {
 				omitEmpty = args[2] == annotationOmitEmpty
+				if !omitEmpty {
+					extraField = args[2]
+				}
+				if len(args) > 3 {
+					omitEmpty = args[3] == annotationOmitEmpty
+				}
 			}
 
 			isSlice := fieldValue.Type().Kind() == reflect.Slice
@@ -402,7 +409,7 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 					shallowNodes := []*Node{}
 					for _, n := range relationship.Data {
 						appendIncluded(included, n)
-						shallowNodes = append(shallowNodes, toShallowNode(n))
+						shallowNodes = append(shallowNodes, toShallowNode(n, extraField))
 					}
 
 					node.Relationships[args[1]] = &RelationshipManyNode{
@@ -435,7 +442,7 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 				if sideload {
 					appendIncluded(included, relationship)
 					node.Relationships[args[1]] = &RelationshipOneNode{
-						Data:  toShallowNode(relationship),
+						Data:  toShallowNode(relationship, extraField),
 						Links: relLinks,
 						Meta:  relMeta,
 					}
@@ -475,11 +482,15 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 	return node, nil
 }
 
-func toShallowNode(node *Node) *Node {
-	return &Node{
-		ID:   node.ID,
-		Type: node.Type,
+func toShallowNode(node *Node, extraField string) *Node {
+	ret := &Node{Type: node.Type}
+	if extraField != "" {
+		ret.Attributes = map[string]interface{}{}
+		ret.Attributes[extraField] = node.Attributes[extraField]
+		return ret
 	}
+	ret.ID = node.ID
+	return ret
 }
 
 func visitModelNodeRelationships(models reflect.Value, included *map[string]*Node,

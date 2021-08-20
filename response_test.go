@@ -183,6 +183,36 @@ func TestWithOmitsEmptyAnnotationOnRelation(t *testing.T) {
 	}
 }
 
+func TestWithExtraFieldOnRelation(t *testing.T) {
+	type BlogExtraField struct {
+		ID          int    `jsonapi:"primary,blogs"`
+		Title       string `jsonapi:"attr,title"`
+		CurrentPost *Post  `jsonapi:"relation,current_post,title,omitempty"`
+	}
+
+	blog := &BlogExtraField{
+		ID: 999,
+		CurrentPost: &Post{
+			Title: "Extra",
+		},
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalPayload(out, blog); err != nil {
+		t.Fatal(err)
+	}
+
+	expected := &BlogExtraField{}
+
+	if err := UnmarshalPayload(out, expected); err != nil {
+		t.Fatal(err)
+	}
+
+	if expected.CurrentPost.Title != blog.CurrentPost.Title {
+		t.Fatal("Was expecting extra attribute to be equal")
+	}
+}
+
 func TestWithOmitsEmptyAnnotationOnRelation_MixedData(t *testing.T) {
 	type BlogOptionalPosts struct {
 		ID          int     `jsonapi:"primary,blogs"`
