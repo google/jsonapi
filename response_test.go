@@ -184,32 +184,107 @@ func TestWithOmitsEmptyAnnotationOnRelation(t *testing.T) {
 }
 
 func TestWithExtraFieldOnRelation(t *testing.T) {
-	type BlogExtraField struct {
-		ID          int    `jsonapi:"primary,blogs"`
-		Title       string `jsonapi:"attr,title"`
-		CurrentPost *Post  `jsonapi:"relation,current_post,title,omitempty"`
+	type Book struct {
+		ID     string `jsonapi:"primary,book"`
+		Title  string `jsonapi:"attr,title,omitempty"`
+		Author string `jsonapi:"attr,author,omitempty"`
+	}
+	type Library struct {
+		ID          int     `jsonapi:"primary,library"`
+		CurrentBook *Book   `jsonapi:"relation,book,allowattrs,omitempty"`
+		Books       []*Book `jsonapi:"relation,books,allowattrs,omitempty"`
+		OtherBooks  []*Book `jsonapi:"relation,other_books,omitempty"`
 	}
 
-	blog := &BlogExtraField{
-		ID: 999,
-		CurrentPost: &Post{
-			Title: "Extra",
+	testCases := []struct {
+		desc     string
+		input    Library
+		expected Library
+	}{
+		{
+			"to-one success",
+			Library{
+				ID: 999,
+				CurrentBook: &Book{
+					Title: "A Good Book",
+				},
+			},
+			Library{
+				ID: 999,
+				CurrentBook: &Book{
+					Title: "A Good Book",
+				},
+			},
+		},
+		{
+			"to-many success",
+			Library{
+				ID: 999,
+				Books: []*Book{
+					{
+						Title: "A Good Book",
+					},
+					{
+						ID: "123",
+					},
+				},
+			},
+			Library{
+				ID: 999,
+				Books: []*Book{
+					{
+						Title: "A Good Book",
+					},
+					{
+						ID: "123",
+					},
+				},
+			},
+		},
+		{
+			"to-many without annotation",
+			Library{
+				ID: 999,
+				OtherBooks: []*Book{
+					{
+						Title: "A Good Book",
+					},
+					{
+						ID: "123",
+					},
+				},
+			},
+			Library{
+				ID: 999,
+				OtherBooks: []*Book{
+					{
+						Title: "",
+					},
+					{
+						ID: "123",
+					},
+				},
+			},
 		},
 	}
 
-	out := bytes.NewBuffer(nil)
-	if err := MarshalPayload(out, blog); err != nil {
-		t.Fatal(err)
-	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			out := bytes.NewBuffer(nil)
+			if err := MarshalPayloadWithoutIncluded(out, &tC.input); err != nil {
+				t.Fatal(err)
+			}
 
-	expected := &BlogExtraField{}
+			actual := Library{}
 
-	if err := UnmarshalPayload(out, expected); err != nil {
-		t.Fatal(err)
-	}
+			if err := UnmarshalPayload(out, &actual); err != nil {
+				t.Fatal(err)
+			}
 
-	if expected.CurrentPost.Title != blog.CurrentPost.Title {
-		t.Fatal("Was expecting extra attribute to be equal")
+			if !reflect.DeepEqual(actual, tC.expected) {
+				t.Fatal("Was expecting nested relationships to be equal")
+			}
+		})
 	}
 }
 

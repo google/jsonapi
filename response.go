@@ -358,12 +358,12 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 		} else if annotation == annotationRelation {
 			var omitEmpty bool
 
-			var extraField string
+			var sideloadType string
 			//add support for 'omitempty' struct tag for marshaling as absent
 			if len(args) > 2 {
 				omitEmpty = args[2] == annotationOmitEmpty
 				if !omitEmpty {
-					extraField = args[2]
+					sideloadType = args[2]
 				}
 				if len(args) > 3 {
 					omitEmpty = args[3] == annotationOmitEmpty
@@ -409,7 +409,7 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 					shallowNodes := []*Node{}
 					for _, n := range relationship.Data {
 						appendIncluded(included, n)
-						shallowNodes = append(shallowNodes, toShallowNode(n, extraField))
+						shallowNodes = append(shallowNodes, toShallowNode(n, sideloadType))
 					}
 
 					node.Relationships[args[1]] = &RelationshipManyNode{
@@ -442,7 +442,7 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 				if sideload {
 					appendIncluded(included, relationship)
 					node.Relationships[args[1]] = &RelationshipOneNode{
-						Data:  toShallowNode(relationship, extraField),
+						Data:  toShallowNode(relationship, sideloadType),
 						Links: relLinks,
 						Meta:  relMeta,
 					}
@@ -482,14 +482,11 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 	return node, nil
 }
 
-func toShallowNode(node *Node, extraField string) *Node {
-	ret := &Node{Type: node.Type}
-	if extraField != "" {
-		ret.Attributes = map[string]interface{}{}
-		ret.Attributes[extraField] = node.Attributes[extraField]
-		return ret
+func toShallowNode(node *Node, sideloadType string) *Node {
+	ret := &Node{Type: node.Type, ID: node.ID}
+	if sideloadType == annotationRelationAllowAttributes {
+		ret.Attributes = node.Attributes
 	}
-	ret.ID = node.ID
 	return ret
 }
 
