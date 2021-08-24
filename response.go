@@ -482,6 +482,14 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 	return node, nil
 }
 
+// toShallowNode takes a node and an optional sideload type
+// and returns a shallow version of the node. If the sideload
+// type is annotationRelationAllowAttributes, we include
+// attributes into the shallow version.
+//
+// An example of where this is useful would be if an object
+// within a relationship can be created at the same time as
+// the root node.
 func toShallowNode(node *Node, sideloadType string) *Node {
 	ret := &Node{Type: node.Type, ID: node.ID}
 	if sideloadType == annotationRelationAllowAttributes {
