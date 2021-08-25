@@ -358,16 +358,9 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 		} else if annotation == annotationRelation {
 			var omitEmpty bool
 
-			var sideloadType string
 			//add support for 'omitempty' struct tag for marshaling as absent
 			if len(args) > 2 {
 				omitEmpty = args[2] == annotationOmitEmpty
-				if !omitEmpty {
-					sideloadType = args[2]
-				}
-				if len(args) > 3 {
-					omitEmpty = args[3] == annotationOmitEmpty
-				}
 			}
 
 			isSlice := fieldValue.Type().Kind() == reflect.Slice
@@ -409,7 +402,7 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 					shallowNodes := []*Node{}
 					for _, n := range relationship.Data {
 						appendIncluded(included, n)
-						shallowNodes = append(shallowNodes, toShallowNode(n, sideloadType))
+						shallowNodes = append(shallowNodes, toShallowNode(n))
 					}
 
 					node.Relationships[args[1]] = &RelationshipManyNode{
@@ -442,7 +435,7 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 				if sideload {
 					appendIncluded(included, relationship)
 					node.Relationships[args[1]] = &RelationshipOneNode{
-						Data:  toShallowNode(relationship, sideloadType),
+						Data:  toShallowNode(relationship),
 						Links: relLinks,
 						Meta:  relMeta,
 					}
@@ -482,17 +475,15 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 	return node, nil
 }
 
-// toShallowNode takes a node and an optional sideload type
-// and returns a shallow version of the node. If the sideload
-// type is annotationRelationAllowAttributes, we include
-// attributes into the shallow version.
+// toShallowNode takes a node and returns a shallow version of the node.
+// If the ID is empty, we include attributes into the shallow version.
 //
 // An example of where this is useful would be if an object
 // within a relationship can be created at the same time as
 // the root node.
-func toShallowNode(node *Node, sideloadType string) *Node {
+func toShallowNode(node *Node) *Node {
 	ret := &Node{Type: node.Type, ID: node.ID}
-	if sideloadType == annotationRelationAllowAttributes {
+	if node.ID == "" {
 		ret.Attributes = node.Attributes
 	}
 	return ret

@@ -191,9 +191,8 @@ func TestWithExtraFieldOnRelation(t *testing.T) {
 	}
 	type Library struct {
 		ID          int     `jsonapi:"primary,library"`
-		CurrentBook *Book   `jsonapi:"relation,book,allowattrs,omitempty"`
-		Books       []*Book `jsonapi:"relation,books,allowattrs,omitempty"`
-		OtherBooks  []*Book `jsonapi:"relation,other_books,omitempty"`
+		CurrentBook *Book   `jsonapi:"relation,book,omitempty"`
+		Books       []*Book `jsonapi:"relation,books,omitempty"`
 	}
 
 	testCases := []struct {
@@ -234,31 +233,6 @@ func TestWithExtraFieldOnRelation(t *testing.T) {
 				Books: []*Book{
 					{
 						Title: "A Good Book",
-					},
-					{
-						ID: "123",
-					},
-				},
-			},
-		},
-		{
-			"to-many without annotation",
-			Library{
-				ID: 999,
-				OtherBooks: []*Book{
-					{
-						Title: "A Good Book",
-					},
-					{
-						ID: "123",
-					},
-				},
-			},
-			Library{
-				ID: 999,
-				OtherBooks: []*Book{
-					{
-						Title: "",
 					},
 					{
 						ID: "123",
