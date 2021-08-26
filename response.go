@@ -482,9 +482,11 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 // within a relationship can be created at the same time as
 // the root node.
 func toShallowNode(node *Node) *Node {
-	ret := &Node{Type: node.Type, ID: node.ID}
+	ret := &Node{Type: node.Type}
 	if node.ID == "" {
 		ret.Attributes = node.Attributes
+	} else {
+		ret.ID = node.ID
 	}
 	return ret
 }

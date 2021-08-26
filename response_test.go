@@ -224,7 +224,8 @@ func TestWithExtraFieldOnRelation(t *testing.T) {
 						Title: "A Good Book",
 					},
 					{
-						ID: "123",
+						ID:    "123",
+						Title: "Don't come back",
 					},
 				},
 			},
@@ -245,7 +246,7 @@ func TestWithExtraFieldOnRelation(t *testing.T) {
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
 			out := bytes.NewBuffer(nil)
-			if err := MarshalPayload(out, &tC.input); err != nil {
+			if err := MarshalPayloadWithoutIncluded(out, &tC.input); err != nil {
 				t.Fatal(err)
 			}
 
