@@ -481,6 +481,9 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 // An example of where this is useful would be if an object
 // within a relationship can be created at the same time as
 // the root node.
+//
+// This is not 1.0 jsonapi spec compliant--it's a bespoke variation on
+// resource object identifiers discussed in the pending 1.1 spec.
 func toShallowNode(node *Node) *Node {
 	ret := &Node{Type: node.Type}
 	if node.ID == "" {
