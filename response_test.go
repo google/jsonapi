@@ -183,6 +183,86 @@ func TestWithOmitsEmptyAnnotationOnRelation(t *testing.T) {
 	}
 }
 
+func TestWithExtraFieldOnRelation(t *testing.T) {
+	type Book struct {
+		ID     string `jsonapi:"primary,book"`
+		Title  string `jsonapi:"attr,title,omitempty"`
+		Author string `jsonapi:"attr,author,omitempty"`
+	}
+	type Library struct {
+		ID          int     `jsonapi:"primary,library"`
+		CurrentBook *Book   `jsonapi:"relation,book,omitempty"`
+		Books       []*Book `jsonapi:"relation,books,omitempty"`
+	}
+
+	testCases := []struct {
+		desc     string
+		input    Library
+		expected Library
+	}{
+		{
+			"to-one success",
+			Library{
+				ID: 999,
+				CurrentBook: &Book{
+					Title: "A Good Book",
+				},
+			},
+			Library{
+				ID: 999,
+				CurrentBook: &Book{
+					Title: "A Good Book",
+				},
+			},
+		},
+		{
+			"to-many success",
+			Library{
+				ID: 999,
+				Books: []*Book{
+					{
+						Title: "A Good Book",
+					},
+					{
+						ID:    "123",
+						Title: "Don't come back",
+					},
+				},
+			},
+			Library{
+				ID: 999,
+				Books: []*Book{
+					{
+						Title: "A Good Book",
+					},
+					{
+						ID: "123",
+					},
+				},
+			},
+		},
+	}
+
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			out := bytes.NewBuffer(nil)
+			if err := MarshalPayloadWithoutIncluded(out, &tC.input); err != nil {
+				t.Fatal(err)
+			}
+
+			actual := Library{}
+
+			if err := UnmarshalPayload(out, &actual); err != nil {
+				t.Fatal(err)
+			}
+
+			if !reflect.DeepEqual(actual, tC.expected) {
+				t.Fatal("Was expecting nested relationships to be equal")
+			}
+		})
+	}
+}
+
 func TestWithOmitsEmptyAnnotationOnRelation_MixedData(t *testing.T) {
 	type BlogOptionalPosts struct {
 		ID          int     `jsonapi:"primary,blogs"`
