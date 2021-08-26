@@ -245,7 +245,7 @@ func TestWithExtraFieldOnRelation(t *testing.T) {
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
 			out := bytes.NewBuffer(nil)
-			if err := MarshalPayloadWithoutIncluded(out, &tC.input); err != nil {
+			if err := MarshalPayload(out, &tC.input); err != nil {
 				t.Fatal(err)
 			}
 
