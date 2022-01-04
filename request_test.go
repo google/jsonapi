@@ -281,14 +281,13 @@ func TestUnmarshalInvalidJSON_BadType(t *testing.T) {
 			out := new(ModelBadTypes)
 			in := map[string]interface{}{}
 			in[test.Field] = test.BadValue
-			expectedErrorMessage := test.Error.Error()
 
 			err := UnmarshalPayload(samplePayloadWithBadTypes(in), out)
 
 			if err == nil {
 				t.Fatalf("Expected error due to invalid type.")
 			}
-			if err.Error() != expectedErrorMessage {
+			if !errors.Is(err, test.Error) {
 				t.Fatalf("Unexpected error message: %s", err.Error())
 			}
 		})
@@ -959,7 +958,7 @@ func TestUnmarshalCustomTypeAttributes_ErrInvalidType(t *testing.T) {
 		t.Fatal("Expected an error unmarshalling the payload due to type mismatch, got none")
 	}
 
-	if err != ErrInvalidType {
+	if !errors.Is(err, ErrInvalidType) {
 		t.Fatalf("Expected error to be %v, was %v", ErrInvalidType, err)
 	}
 }
