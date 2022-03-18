@@ -27,6 +27,10 @@ func TestExampleHandler_post(t *testing.T) {
 	if e, a := http.StatusCreated, rr.Code; e != a {
 		t.Fatalf("Expected a status of %d, got %d", e, a)
 	}
+
+	if e, a := jsonapi.MediaType, rr.Result().Header.Get(headerContentType); e != a {
+		t.Fatalf("Expected a Content-Type of %s, got %s", e, a)
+	}
 }
 
 func TestExampleHandler_put(t *testing.T) {
@@ -51,6 +55,10 @@ func TestExampleHandler_put(t *testing.T) {
 	if e, a := http.StatusOK, rr.Code; e != a {
 		t.Fatalf("Expected a status of %d, got %d", e, a)
 	}
+
+	if e, a := jsonapi.MediaType, rr.Result().Header.Get(headerContentType); e != a {
+		t.Fatalf("Expected a Content-Type of %s, got %s", e, a)
+	}
 }
 
 func TestExampleHandler_get_show(t *testing.T) {
@@ -67,6 +75,10 @@ func TestExampleHandler_get_show(t *testing.T) {
 	if e, a := http.StatusOK, rr.Code; e != a {
 		t.Fatalf("Expected a status of %d, got %d", e, a)
 	}
+
+	if e, a := jsonapi.MediaType, rr.Result().Header.Get(headerContentType); e != a {
+		t.Fatalf("Expected a Content-Type of %s, got %s", e, a)
+	}
 }
 
 func TestExampleHandler_get_list(t *testing.T) {
@@ -82,6 +94,10 @@ func TestExampleHandler_get_list(t *testing.T) {
 
 	if e, a := http.StatusOK, rr.Code; e != a {
 		t.Fatalf("Expected a status of %d, got %d", e, a)
+	}
+
+	if e, a := jsonapi.MediaType, rr.Result().Header.Get(headerContentType); e != a {
+		t.Fatalf("Expected a Content-Type of %s, got %s", e, a)
 	}
 }
 

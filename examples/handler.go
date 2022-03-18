@@ -53,8 +53,8 @@ func (h *ExampleHandler) createBlog(w http.ResponseWriter, r *http.Request) {
 
 	// ...do stuff with your blog...
 
-	w.WriteHeader(http.StatusCreated)
 	w.Header().Set(headerContentType, jsonapi.MediaType)
+	w.WriteHeader(http.StatusCreated)
 
 	if err := jsonapiRuntime.MarshalPayload(w, blog); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -68,8 +68,9 @@ func (h *ExampleHandler) echoBlogs(w http.ResponseWriter, r *http.Request) {
 	// but, for now
 	blogs := fixtureBlogsList()
 
-	w.WriteHeader(http.StatusOK)
 	w.Header().Set(headerContentType, jsonapi.MediaType)
+	w.WriteHeader(http.StatusOK)
+
 	if err := jsonapiRuntime.MarshalPayload(w, blogs); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -90,9 +91,9 @@ func (h *ExampleHandler) showBlog(w http.ResponseWriter, r *http.Request) {
 
 	// but, for now
 	blog := fixtureBlogCreate(intID)
+	w.Header().Set(headerContentType, jsonapi.MediaType)
 	w.WriteHeader(http.StatusOK)
 
-	w.Header().Set(headerContentType, jsonapi.MediaType)
 	if err := jsonapiRuntime.MarshalPayload(w, blog); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
