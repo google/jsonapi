@@ -291,7 +291,7 @@ If you need to include [link objects](http://jsonapi.org/format/#document-links)
 ```go
 func (post Post) JSONAPILinks() *Links {
 	return &Links{
-		"self": "href": fmt.Sprintf("https://example.com/posts/%d", post.ID),
+		"self": fmt.Sprintf("https://example.com/posts/%d", post.ID),
 		"comments": Link{
 			Href: fmt.Sprintf("https://example.com/api/blogs/%d/comments", post.ID),
 			Meta: map[string]interface{}{
