@@ -87,8 +87,12 @@ func (l *Links) validate() (err error) {
 
 // Link is used to represent a member of the `links` object.
 type Link struct {
-	Href string `json:"href"`
-	Meta Meta   `json:"meta,omitempty"`
+	Href     string `json:"href"`
+	Rel      string `json:"rel,omitempty"`
+	Title    string `json:"title,omitempty"`
+	Type     string `json:"type,omitempty"`
+	HrefLang string `json:"hreflang,omitempty"`
+	Meta     Meta   `json:"meta,omitempty"`
 }
 
 // Linkable is used to include document links in response data

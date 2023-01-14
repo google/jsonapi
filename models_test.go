@@ -94,6 +94,13 @@ func (b *Blog) JSONAPILinks() *Links {
 				},
 			},
 		},
+		"frenchTranslation": Link{
+			Href:     fmt.Sprintf("https://example.com/fr-fr/blogs/%d", b.ID),
+			Rel:      "alternate",
+			Title:    b.Title,
+			Type:     "text/html",
+			HrefLang: "fr-fr",
+		},
 	}
 }
 

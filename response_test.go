@@ -649,6 +649,63 @@ func TestSupportsLinkable(t *testing.T) {
 			t.Fatalf("Exepected value at '%s' to be a numeric (float64)", k)
 		}
 	}
+
+	translation, hasTranslation := links["frenchTranslation"]
+	if !hasTranslation {
+		t.Fatal("expect 'frenchTranslation' to be present")
+	}
+	translationMap, isMap := translation.(map[string]interface{})
+	if !isMap {
+		t.Fatal("Expected 'frenchTranslation' to contain a map")
+	}
+
+	alternateHref, hasHref := translationMap["href"]
+	if !hasHref {
+		t.Fatal("Expect 'alternate' to contain an 'href' key/value")
+	}
+	if _, isString := alternateHref.(string); !isString {
+		t.Fatal("Expected 'href' to contain a string")
+	}
+
+	alternateRel, hasRel := translationMap["rel"]
+	if !hasRel {
+		t.Fatal("Expect 'alternate' to contain an 'rel' key/value")
+	}
+	if str, isString := alternateRel.(string); !isString {
+		t.Fatal("Expected 'rel' to contain a string")
+	} else if str != "alternate" {
+		t.Fatal("Expected the 'rel' value to be 'alternate'")
+	}
+
+	alternateTitle, hasTitle := translationMap["title"]
+	if !hasTitle {
+		t.Fatal("Expect 'alternate' to contain an 'title' key/value")
+	}
+	if str, isString := alternateTitle.(string); !isString {
+		t.Fatal("Expected 'title' to contain a string")
+	} else if str != "Title 1" {
+		t.Fatal("Expected the 'title' value to be 'Title 1'")
+	}
+
+	alternateType, hasType := translationMap["type"]
+	if !hasType {
+		t.Fatal("Expect 'alternate' to contain an 'type' key/value")
+	}
+	if str, isString := alternateType.(string); !isString {
+		t.Fatal("Expected 'type' to contain a string")
+	} else if str != "text/html" {
+		t.Fatal("Expected the 'type' value to be 'text/html'")
+	}
+
+	alternateHrefLang, hasHrefLang := translationMap["hreflang"]
+	if !hasHrefLang {
+		t.Fatal("Expect 'alternate' to contain an 'hreflang' key/value")
+	}
+	if str, isString := alternateHrefLang.(string); !isString {
+		t.Fatal("Expected 'hreflang' to contain a string")
+	} else if str != "fr-fr" {
+		t.Fatal("Expected the 'hreflang' value to be 'fr-fr'")
+	}
 }
 
 func TestInvalidLinkable(t *testing.T) {
