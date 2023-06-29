@@ -130,6 +130,6 @@ func exerciseHandler() {
 	json.NewEncoder(out).Encode(responseBlog)
 
 	fmt.Println("================ Viola! Converted back our Blog struct =================")
-	fmt.Println(string(out.Bytes()))
+	fmt.Println(out.String)
 	fmt.Println("================ end marshal materialized Blog struct =================")
 }
