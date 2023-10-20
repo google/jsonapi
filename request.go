@@ -32,7 +32,9 @@ var (
 	ErrUnknownFieldNumberType = errors.New("The struct field was not of a known number type")
 	// ErrInvalidType is returned when the given type is incompatible with the expected type.
 	ErrInvalidType = errors.New("Invalid type provided") // I wish we used punctuation.
-
+	// ErrBadJSONAPIJoinStruct is returned when the polyrelation type did not contain
+	// an appropriate join type to contain the required jsonapi node.
+	ErrBadJSONAPIJoinStruct = errors.New("Invalid join struct for polymorphic relation field")
 )
 
 // ErrUnsupportedPtrType is returned when the Struct field was a pointer but
@@ -142,6 +144,131 @@ func UnmarshalManyPayload(in io.Reader, t reflect.Type) ([]interface{}, error) {
 	return models, nil
 }
 
+// jsonapiTypeOfModel returns a jsonapi primary type string
+// given a struct type that has typical jsonapi struct tags
+//
+// Example:
+// For this type, "posts" is returned. An error is returned if
+// no properly-formatted "primary" tag is found for jsonapi
+// annotations
+//
+//	type Post struct {
+//	    ID string `jsonapi:"primary,posts"`
+//	}
+func jsonapiTypeOfModel(structModel reflect.Type) (string, error) {
+	for i := 0; i < structModel.NumField(); i++ {
+		fieldType := structModel.Field(i)
+		args, err := getStructTags(fieldType)
+		if err != nil || len(args) < 2 {
+			continue
+		}
+
+		if args[0] == annotationPrimary {
+			return args[1], nil
+		}
+	}
+
+	return "", errors.New("no primary annotation found on model")
+}
+
+// structFieldIndex holds a bit of information about a type found at a struct field index
+type structFieldIndex struct {
+	Type     reflect.Type
+	FieldNum int
+}
+
+// joinStructMapping reflects on a value that may be a slice
+// of join structs or a join struct. A join struct is a struct
+// comprising of pointers to other jsonapi models, only one of
+// which is populated with a value by the decoder. The join struct is
+// probed and a data structure is generated that maps the
+// underlying model type (its 'primary' type) to the field number
+// within the join struct.
+//
+// This data can then be used to correctly assign each data relationship
+// to the correct join struct field.
+func joinStructMapping(join reflect.Type) (result map[string]structFieldIndex, err error) {
+	result = make(map[string]structFieldIndex)
+
+	for join.Kind() != reflect.Struct {
+		join = join.Elem()
+	}
+
+	for i := 0; i < join.NumField(); i++ {
+		fieldType := join.Field(i)
+
+		if fieldType.Type.Kind() != reflect.Ptr {
+			continue
+		}
+
+		subtype := fieldType.Type.Elem()
+		if t, err := jsonapiTypeOfModel(subtype); err == nil {
+			result[t] = structFieldIndex{
+				Type:     subtype,
+				FieldNum: i,
+			}
+		}
+	}
+
+	return result, nil
+}
+
+func getStructTags(field reflect.StructField) ([]string, error) {
+	tag := field.Tag.Get("jsonapi")
+	if tag == "" {
+		return []string{}, nil
+	}
+
+	args := strings.Split(tag, ",")
+	if len(args) < 1 {
+		return nil, ErrBadJSONAPIStructTag
+	}
+
+	annotation := args[0]
+
+	if (annotation == annotationClientID && len(args) != 1) ||
+		(annotation != annotationClientID && len(args) < 2) {
+		return nil, ErrBadJSONAPIStructTag
+	}
+
+	return args, nil
+}
+
+// unmarshalNodeMaybeJoin populates a model that may or may not be
+// a join struct that corresponds to a polyrelation or relation
+func unmarshalNodeMaybeJoin(m *reflect.Value, data *Node, annotation string, joinMapping map[string]structFieldIndex, included *map[string]*Node) error {
+	// This will hold either the value of the join model or the actual
+	// model, depending on annotation
+	var actualModel = *m
+	var joinElem *structFieldIndex = nil
+
+	if annotation == annotationPolyRelation {
+		j, ok := joinMapping[data.Type]
+		if !ok {
+			// There is no valid join field to assign this type of relation.
+			return ErrBadJSONAPIJoinStruct
+		}
+		joinElem = &j
+		actualModel = reflect.New(joinElem.Type)
+	}
+
+	if err := unmarshalNode(
+		fullNode(data, included),
+		actualModel,
+		included,
+	); err != nil {
+		return err
+	}
+
+	if joinElem != nil {
+		// actualModel is a pointer to the model type
+		// m is a pointer to a struct that should hold the actualModel at joinElem.FieldNum
+		v := m.Elem()
+		v.Field(joinElem.FieldNum).Set(actualModel)
+	}
+	return nil
+}
+
 func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -155,27 +282,18 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 	var er error
 
 	for i := 0; i < modelValue.NumField(); i++ {
+		fieldValue := modelValue.Field(i)
 		fieldType := modelType.Field(i)
-		tag := fieldType.Tag.Get("jsonapi")
-		if tag == "" {
+
+		args, err := getStructTags(fieldType)
+		if err != nil {
+			er = err
+			break
+		}
+		if len(args) == 0 {
 			continue
 		}
-
-		fieldValue := modelValue.Field(i)
-
-		args := strings.Split(tag, ",")
-		if len(args) < 1 {
-			er = ErrBadJSONAPIStructTag
-			break
-		}
-
 		annotation := args[0]
-
-		if (annotation == annotationClientID && len(args) != 1) ||
-			(annotation != annotationClientID && len(args) < 2) {
-			er = ErrBadJSONAPIStructTag
-			break
-		}
 
 		if annotation == annotationPrimary {
 			// Check the JSON API Type
@@ -257,16 +375,29 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			}
 
 			assign(fieldValue, value)
-		} else if annotation == annotationRelation {
+		} else if annotation == annotationRelation || annotation == annotationPolyRelation {
 			isSlice := fieldValue.Type().Kind() == reflect.Slice
 
+			// No relations of the given name were provided
 			if data.Relationships == nil || data.Relationships[args[1]] == nil {
 				continue
+			}
+
+			// If this is a polymorphic relation, each data relationship needs to be assigned
+			// to it's appropriate join field and fieldValue should be a join field.
+			var joinMapping map[string]structFieldIndex = nil
+			if annotation == annotationPolyRelation {
+				joinMapping, err = joinStructMapping(fieldValue.Type())
+				if err != nil {
+					er = err
+					break
+				}
 			}
 
 			if isSlice {
 				// to-many relationship
 				relationship := new(RelationshipManyNode)
+				sliceType := fieldValue.Type()
 
 				buf := bytes.NewBuffer(nil)
 
@@ -274,16 +405,18 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				json.NewDecoder(buf).Decode(relationship)
 
 				data := relationship.Data
-				models := reflect.New(fieldValue.Type()).Elem()
+
+				// This will hold either the value of the slice of join models or
+				// the slice of models, depending on the annotation
+				models := reflect.New(sliceType).Elem()
 
 				for _, n := range data {
-					m := reflect.New(fieldValue.Type().Elem().Elem())
+					// This will hold either the value of the join model or the actual
+					// model, depending on annotation
+					m := reflect.New(sliceType.Elem().Elem())
 
-					if err := unmarshalNode(
-						fullNode(n, included),
-						m,
-						included,
-					); err != nil {
+					err = unmarshalNodeMaybeJoin(&m, n, annotation, joinMapping, included)
+					if err != nil {
 						er = err
 						break
 					}
@@ -313,20 +446,18 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 					continue
 				}
 
+				// This will hold either the value of the join model or the actual
+				// model, depending on annotation
 				m := reflect.New(fieldValue.Type().Elem())
-				if err := unmarshalNode(
-					fullNode(relationship.Data, included),
-					m,
-					included,
-				); err != nil {
+
+				err = unmarshalNodeMaybeJoin(&m, relationship.Data, annotation, joinMapping, included)
+				if err != nil {
 					er = err
 					break
 				}
 
 				fieldValue.Set(m)
-
 			}
-
 		} else if annotation == annotationLinks {
 			if data.Links == nil {
 				continue

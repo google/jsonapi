@@ -179,6 +179,56 @@ used as the key in the `relationships` hash for the record. The optional
 third argument is `omitempty` - if present will prevent non existent to-one and
 to-many from being serialized.
 
+
+#### `polyrelation`
+
+```
+`jsonapi:"polyrelation,<key name in relationships hash>,<optional: omitempty>"`
+```
+
+Polymorphic relations can be represented exactly as relations, except that
+an intermediate type is needed within your model struct that will be populated
+with exactly one value among all the fields in that struct.
+
+Example:
+
+```go
+type Video struct {
+	ID          int    `jsonapi:"primary,videos"`
+	SourceURL   string `jsonapi:"attr,source-url"`
+	CaptionsURL string `jsonapi:"attr,captions-url"`
+}
+
+type Image struct {
+	ID        int    `jsonapi:"primary,images"`
+	SourceURL string `jsonapi:"attr,src"`
+	AltText   string `jsonapi:"attr,alt"`
+}
+
+type OneOfMedia struct {
+	Video *Video
+	Image *Image
+}
+
+type Post struct {
+	ID      int           `jsonapi:"primary,posts"`
+	Title   string        `jsonapi:"attr,title"`
+	Body    string        `jsonapi:"attr,body"`
+	Gallery []*OneOfMedia `jsonapi:"polyrelation,gallery"`
+	Hero    *OneOfMedia   `jsonapi:"polyrelation,hero"`
+}
+```
+
+During decoding, the `polyrelation` annotation instructs jsonapi to assign each relationship
+to either `Video` or `Image` within the value of the associated field. This value must be
+a pointer to a struct containing other pointer fields to jsonapi models. The actual field
+assignment depends on that type having a jsonapi "primary" annotation with a type matching
+the relationship type found in the response. All other fields will be remain nil.
+
+During encoding, the very first non-nil field will be used to populate the payload. Others
+will be ignored. Therefore, it's critical to set the value of only one field within the join
+struct.
+
 #### `links`
 
 *Note: This annotation is an added feature independent of the canonical google/jsonapi package*

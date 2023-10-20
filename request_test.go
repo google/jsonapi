@@ -607,6 +607,120 @@ func TestUnmarshalRelationships(t *testing.T) {
 	}
 }
 
+type Image struct {
+	ID  int    `jsonapi:"primary,images"`
+	Src string `jsonapi:"attr,src"`
+}
+
+type Video struct {
+	ID       int    `jsonapi:"primary,videos"`
+	Captions string `jsonapi:"attr,captions"`
+}
+
+type OneOfMedia struct {
+	Image *Image
+	Video *Video
+}
+
+var polySamplePayload = `{
+	"data": {
+		"type": "blogs",
+		"id":   "3",
+		"attributes": {
+			"title": "Hello, World"
+		},
+		"relationships": {
+			"hero-media": {
+				"data": {
+					"type": "videos",
+					"id":   "1",
+					"attributes": {
+						"captions": "It's Awesome!"
+					}
+				}
+			},
+			"media": {
+				"data": [
+					{
+						"type": "images",
+						"id":   "1",
+						"attributes": {
+							"src": "/media/clear1x1.gif"
+						}
+					},
+					{
+						"type": "videos",
+						"id":   "2",
+						"attributes": {
+							"captions": "Oh, I didn't see you there"
+						}
+					}
+				]
+			}
+		}
+	}
+}`
+
+func Test_UnmarshalPayload_polymorphicRelations(t *testing.T) {
+	type pointerToOne struct {
+		ID    int           `jsonapi:"primary,blogs"`
+		Title string        `jsonapi:"attr,title"`
+		Hero  *OneOfMedia   `jsonapi:"polyrelation,hero-media,omitempty"`
+		Media []*OneOfMedia `jsonapi:"polyrelation,media,omitempty"`
+	}
+
+	in := bytes.NewReader([]byte(polySamplePayload))
+	out := new(pointerToOne)
+
+	if err := UnmarshalPayload(in, out); err != nil {
+		t.Fatal(err)
+	}
+
+	if out.Title != "Hello, World" {
+		t.Errorf("expected Title %q but got %q", "Hello, World", out.Title)
+	}
+
+	if out.Hero.Image != nil {
+		t.Errorf("expected Hero image to be nil but got %+v", out.Hero.Image)
+	}
+
+	if out.Hero.Video == nil || out.Hero.Video.Captions != "It's Awesome!" {
+		t.Errorf("expected Hero to be the expected video relation but got %+v", out.Hero.Video)
+	}
+
+	if out.Media[0].Image == nil || out.Media[0].Image.Src != "/media/clear1x1.gif" {
+		t.Errorf("expected Media 0 to be the expected image relation but got %+v", out.Media[0])
+	}
+
+	if out.Media[1].Video == nil || out.Media[1].Video.Captions != "Oh, I didn't see you there" {
+		t.Errorf("expected Media 0 to be the expected video relation but got %+v", out.Media[1])
+	}
+}
+
+func Test_joinStructMapping(t *testing.T) {
+	cases := []struct {
+		val reflect.Type
+	}{
+		{val: reflect.TypeOf(&OneOfMedia{})},
+		{val: reflect.TypeOf([]*OneOfMedia{{}})},
+	}
+
+	for _, c := range cases {
+		result, err := joinStructMapping(c.val)
+		if err != nil {
+			t.Fatal(err)
+		}
+		imageField, ok := result["images"]
+		if !ok || imageField.FieldNum != 0 {
+			t.Errorf("expected \"images\" to be the first field, but got %d", imageField.FieldNum)
+		}
+		videoField, ok := result["videos"]
+		if !ok || videoField.FieldNum != 1 {
+			t.Errorf("expected \"videos\" to be the second field, but got %d", videoField.FieldNum)
+		}
+	}
+}
+
 func TestUnmarshalNullRelationship(t *testing.T) {
 	sample := map[string]interface{}{
 		"data": map[string]interface{}{
