@@ -77,7 +77,7 @@ all of your data easily.
 
 ## Example App
 
-[examples/app.go](https://github.com/google/jsonapi/blob/master/examples/app.go)
+[examples/app.go](https://github.com/hashicorp/jsonapi/blob/main/examples/app.go)
 
 This program demonstrates the implementation of a create, a show,
 and a list [http.Handler](http://golang.org/pkg/net/http#Handler).  It
@@ -521,13 +521,13 @@ I use git subtrees to manage dependencies rather than `go get` so that
 the src is committed to my repo.
 
 ```
-git subtree add --squash --prefix=src/github.com/google/jsonapi https://github.com/google/jsonapi.git master
+git subtree add --squash --prefix=src/github.com/hashicorp/jsonapi https://github.com/hashicorp/jsonapi.git main
 ```
 
 To update,
 
 ```
-git subtree pull --squash --prefix=src/github.com/google/jsonapi https://github.com/google/jsonapi.git master
+git subtree pull --squash --prefix=src/github.com/hashicorp/jsonapi https://github.com/hashicorp/jsonapi.git main
 ```
 
 This assumes that I have my repo structured with a `src` dir containing
