@@ -215,7 +215,7 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 		fieldValue := modelValue.Field(i)
 		fieldType := modelType.Field(i)
 
-		args := strings.Split(tag, annotationSeperator)
+		args := strings.Split(tag, annotationSeparator)
 
 		if len(args) < 1 {
 			er = ErrBadJSONAPIStructTag

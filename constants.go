@@ -12,7 +12,7 @@ const (
 	annotationOmitEmpty    = "omitempty"
 	annotationISO8601      = "iso8601"
 	annotationRFC3339      = "rfc3339"
-	annotationSeperator    = ","
+	annotationSeparator    = ","
 
 	iso8601TimeFormat = "2006-01-02T15:04:05Z"
 
