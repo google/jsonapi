@@ -32,9 +32,6 @@ var (
 	ErrUnknownFieldNumberType = errors.New("The struct field was not of a known number type")
 	// ErrInvalidType is returned when the given type is incompatible with the expected type.
 	ErrInvalidType = errors.New("Invalid type provided") // I wish we used punctuation.
-	// ErrBadJSONAPIJoinStruct is returned when the polyrelation type did not contain
-	// an appropriate join type to contain the required jsonapi node.
-	ErrBadJSONAPIJoinStruct = errors.New("Invalid join struct for polymorphic relation field")
 )
 
 // ErrUnsupportedPtrType is returned when the Struct field was a pointer but
@@ -245,8 +242,11 @@ func unmarshalNodeMaybeChoice(m *reflect.Value, data *Node, annotation string, c
 	if annotation == annotationPolyRelation {
 		c, ok := choiceTypeMapping[data.Type]
 		if !ok {
-			// There is no valid join field to assign this type of relation.
-			return ErrBadJSONAPIJoinStruct
+			// If there is no valid choice field to assign this type of relation,
+			// this shouldn't necessarily be an error because a newer version of
+			// the API could be communicating with an older version of the client
+			// library, in which case all choice variants would be nil.
+			return nil
 		}
 		choiceElem = &c
 		actualModel = reflect.New(choiceElem.Type)

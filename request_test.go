@@ -622,45 +622,6 @@ type OneOfMedia struct {
 	Video *Video
 }
 
-var polySamplePayload = `{
-	"data": {
-		"type": "blogs",
-		"id":   "3",
-		"attributes": {
-			"title": "Hello, World"
-		},
-		"relationships": {
-			"hero-media": {
-				"data": {
-					"type": "videos",
-					"id":   "1",
-					"attributes": {
-						"captions": "It's Awesome!"
-					}
-				}
-			},
-			"media": {
-				"data": [
-					{
-						"type": "images",
-						"id":   "1",
-						"attributes": {
-							"src": "/media/clear1x1.gif"
-						}
-					},
-					{
-						"type": "videos",
-						"id":   "2",
-						"attributes": {
-							"captions": "Oh, I didn't see you there"
-						}
-					}
-				]
-			}
-		}
-	}
-}`
-
 func Test_UnmarshalPayload_polymorphicRelations(t *testing.T) {
 	type pointerToOne struct {
 		ID    int           `jsonapi:"primary,blogs"`
@@ -669,7 +630,58 @@ func Test_UnmarshalPayload_polymorphicRelations(t *testing.T) {
 		Media []*OneOfMedia `jsonapi:"polyrelation,media,omitempty"`
 	}
 
-	in := bytes.NewReader([]byte(polySamplePayload))
+	in := bytes.NewReader([]byte(`{
+		"data": {
+			"type": "blogs",
+			"id":   "3",
+			"attributes": {
+				"title": "Hello, World"
+			},
+			"relationships": {
+				"hero-media": {
+					"data": {
+						"type": "videos",
+						"id":   "1"
+					}
+				},
+				"media": {
+					"data": [
+						{
+							"type": "images",
+							"id":   "1"
+						},
+						{
+							"type": "videos",
+							"id":   "2"
+						}
+					]
+				}
+			}
+		},
+		"included": [
+			{
+				"type": "videos",
+				"id": "1",
+				"attributes": {
+					"captions": "It's Awesome!"
+				}
+			},
+			{
+				"type": "images",
+				"id":   "1",
+				"attributes": {
+					"src": "/media/clear1x1.gif"
+				}
+			},
+			{
+				"type": "videos",
+				"id":   "2",
+				"attributes": {
+					"captions": "Oh, I didn't see you there"
+				}
+			}
+		]
+	}`))
 	out := new(pointerToOne)
 
 	if err := UnmarshalPayload(in, out); err != nil {
@@ -688,12 +700,59 @@ func Test_UnmarshalPayload_polymorphicRelations(t *testing.T) {
 		t.Errorf("expected Hero to be the expected video relation but got %+v", out.Hero.Video)
 	}
 
+	// Unmarshals included records
 	if out.Media[0].Image == nil || out.Media[0].Image.Src != "/media/clear1x1.gif" {
-		t.Errorf("expected Media 0 to be the expected image relation but got %+v", out.Media[0])
+		t.Errorf("expected Media 0 to be the expected image relation but got %+v", out.Media[0].Image)
 	}
 
 	if out.Media[1].Video == nil || out.Media[1].Video.Captions != "Oh, I didn't see you there" {
-		t.Errorf("expected Media 0 to be the expected video relation but got %+v", out.Media[1])
+		t.Errorf("expected Media 1 to be the expected video relation but got %+v", out.Media[1].Video)
+	}
+}
+
+func Test_UnmarshalPayload_polymorphicRelations_no_choice(t *testing.T) {
+	type pointerToOne struct {
+		ID    int         `jsonapi:"primary,blogs"`
+		Title string      `jsonapi:"attr,title"`
+		Hero  *OneOfMedia `jsonapi:"polyrelation,hero-media,omitempty"`
+	}
+
+	in := bytes.NewReader([]byte(`{
+		"data": {
+			"type": "blogs",
+			"id":   "3",
+			"attributes": {
+				"title": "Hello, World"
+			},
+			"relationships": {
+				"hero-media": {
+					"data": {
+						"type": "absolutely-not",
+						"id":   "1",
+						"attributes": {
+							"captions": "It's Awesome!"
+						}
+					}
+				}
+			}
+		}
+	}`))
+	out := new(pointerToOne)
+
+	if err := UnmarshalPayload(in, out); err != nil {
+		t.Fatal(err)
+	}
+
+	if out.Title != "Hello, World" {
+		t.Errorf("expected Title %q but got %q", "Hello, World", out.Title)
+	}
+
+	if out.Hero == nil {
+		t.Fatal("expected Hero to not be nil")
+	}
+
+	if out.Hero.Image != nil || out.Hero.Video != nil {
+		t.Fatal("expected both Hero fields to be nil")
 	}
 }
 
