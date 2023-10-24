@@ -187,8 +187,8 @@ to-many from being serialized.
 ```
 
 Polymorphic relations can be represented exactly as relations, except that
-an intermediate type is needed within your model struct that will be populated
-with exactly one value among all the fields in that struct.
+an intermediate type is needed within your model struct that provides a choice
+for the actual value to be populated within.
 
 Example:
 
@@ -220,14 +220,18 @@ type Post struct {
 ```
 
 During decoding, the `polyrelation` annotation instructs jsonapi to assign each relationship
-to either `Video` or `Image` within the value of the associated field. This value must be
-a pointer to a struct containing other pointer fields to jsonapi models. The actual field
-assignment depends on that type having a jsonapi "primary" annotation with a type matching
-the relationship type found in the response. All other fields will be remain nil.
+to either `Video` or `Image` within the value of the associated field, provided that the
+payload contains either a "videos" or "images" type. This field value must be
+a pointer to a special choice type struct (also known as a tagged union, or sum type) containing
+other pointer fields to jsonapi models. The actual field assignment depends on that type having
+a jsonapi "primary" annotation with a type matching the relationship type found in the response.
+All other fields will be remain empty. If no matching types are represented by the choice type,
+all fields will be empty.
 
 During encoding, the very first non-nil field will be used to populate the payload. Others
-will be ignored. Therefore, it's critical to set the value of only one field within the join
-struct.
+will be ignored. Therefore, it's critical to set the value of only one field within the choice
+struct. When accepting input values on this type of choice type, it would a good idea to enforce
+and check that the value is set on only one field.
 
 #### `links`
 

@@ -177,25 +177,25 @@ type structFieldIndex struct {
 	FieldNum int
 }
 
-// joinStructMapping reflects on a value that may be a slice
-// of join structs or a join struct. A join struct is a struct
-// comprising of pointers to other jsonapi models, only one of
-// which is populated with a value by the decoder. The join struct is
-// probed and a data structure is generated that maps the
-// underlying model type (its 'primary' type) to the field number
-// within the join struct.
+// choiceStructMapping reflects on a value that may be a slice
+// of choice type structs or a choice type struct. A choice type
+// struct is a struct comprising of pointers to other jsonapi models,
+// only one of which is populated with a value by the decoder.
 //
-// This data can then be used to correctly assign each data relationship
-// to the correct join struct field.
-func joinStructMapping(join reflect.Type) (result map[string]structFieldIndex, err error) {
+// The specified type is probed and a map is generated that maps the
+// underlying model type (its 'primary' type) to the field number
+// within the choice type struct. This data can then be used to correctly
+// assign each data relationship node to the correct choice type
+// struct field.
+func choiceStructMapping(choice reflect.Type) (result map[string]structFieldIndex, err error) {
 	result = make(map[string]structFieldIndex)
 
-	for join.Kind() != reflect.Struct {
-		join = join.Elem()
+	for choice.Kind() != reflect.Struct {
+		choice = choice.Elem()
 	}
 
-	for i := 0; i < join.NumField(); i++ {
-		fieldType := join.Field(i)
+	for i := 0; i < choice.NumField(); i++ {
+		fieldType := choice.Field(i)
 
 		if fieldType.Type.Kind() != reflect.Ptr {
 			continue
@@ -234,22 +234,22 @@ func getStructTags(field reflect.StructField) ([]string, error) {
 	return args, nil
 }
 
-// unmarshalNodeMaybeJoin populates a model that may or may not be
-// a join struct that corresponds to a polyrelation or relation
-func unmarshalNodeMaybeJoin(m *reflect.Value, data *Node, annotation string, joinMapping map[string]structFieldIndex, included *map[string]*Node) error {
-	// This will hold either the value of the join model or the actual
+// unmarshalNodeMaybeChoice populates a model that may or may not be
+// a choice type struct that corresponds to a polyrelation or relation
+func unmarshalNodeMaybeChoice(m *reflect.Value, data *Node, annotation string, choiceTypeMapping map[string]structFieldIndex, included *map[string]*Node) error {
+	// This will hold either the value of the choice type model or the actual
 	// model, depending on annotation
 	var actualModel = *m
-	var joinElem *structFieldIndex = nil
+	var choiceElem *structFieldIndex = nil
 
 	if annotation == annotationPolyRelation {
-		j, ok := joinMapping[data.Type]
+		c, ok := choiceTypeMapping[data.Type]
 		if !ok {
 			// There is no valid join field to assign this type of relation.
 			return ErrBadJSONAPIJoinStruct
 		}
-		joinElem = &j
-		actualModel = reflect.New(joinElem.Type)
+		choiceElem = &c
+		actualModel = reflect.New(choiceElem.Type)
 	}
 
 	if err := unmarshalNode(
@@ -260,11 +260,12 @@ func unmarshalNodeMaybeJoin(m *reflect.Value, data *Node, annotation string, joi
 		return err
 	}
 
-	if joinElem != nil {
+	if choiceElem != nil {
 		// actualModel is a pointer to the model type
-		// m is a pointer to a struct that should hold the actualModel at joinElem.FieldNum
+		// m is a pointer to a struct that should hold the actualModel
+		// at choiceElem.FieldNum
 		v := m.Elem()
-		v.Field(joinElem.FieldNum).Set(actualModel)
+		v.Field(choiceElem.FieldNum).Set(actualModel)
 	}
 	return nil
 }
@@ -384,10 +385,11 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			}
 
 			// If this is a polymorphic relation, each data relationship needs to be assigned
-			// to it's appropriate join field and fieldValue should be a join field.
-			var joinMapping map[string]structFieldIndex = nil
+			// to it's appropriate choice field and fieldValue should be a choice
+			// struct type field.
+			var choiceMapping map[string]structFieldIndex = nil
 			if annotation == annotationPolyRelation {
-				joinMapping, err = joinStructMapping(fieldValue.Type())
+				choiceMapping, err = choiceStructMapping(fieldValue.Type())
 				if err != nil {
 					er = err
 					break
@@ -406,16 +408,16 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 
 				data := relationship.Data
 
-				// This will hold either the value of the slice of join models or
+				// This will hold either the value of the slice of choice type models or
 				// the slice of models, depending on the annotation
 				models := reflect.New(sliceType).Elem()
 
 				for _, n := range data {
-					// This will hold either the value of the join model or the actual
+					// This will hold either the value of the choice type model or the actual
 					// model, depending on annotation
 					m := reflect.New(sliceType.Elem().Elem())
 
-					err = unmarshalNodeMaybeJoin(&m, n, annotation, joinMapping, included)
+					err = unmarshalNodeMaybeChoice(&m, n, annotation, choiceMapping, included)
 					if err != nil {
 						er = err
 						break
@@ -446,11 +448,11 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 					continue
 				}
 
-				// This will hold either the value of the join model or the actual
+				// This will hold either the value of the choice type model or the actual
 				// model, depending on annotation
 				m := reflect.New(fieldValue.Type().Elem())
 
-				err = unmarshalNodeMaybeJoin(&m, relationship.Data, annotation, joinMapping, included)
+				err = unmarshalNodeMaybeChoice(&m, relationship.Data, annotation, choiceMapping, included)
 				if err != nil {
 					er = err
 					break

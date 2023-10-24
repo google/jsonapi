@@ -697,7 +697,7 @@ func Test_UnmarshalPayload_polymorphicRelations(t *testing.T) {
 	}
 }
 
-func Test_joinStructMapping(t *testing.T) {
+func Test_choiceStructMapping(t *testing.T) {
 	cases := []struct {
 		val reflect.Type
 	}{
@@ -706,7 +706,7 @@ func Test_joinStructMapping(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		result, err := joinStructMapping(c.val)
+		result, err := choiceStructMapping(c.val)
 		if err != nil {
 			t.Fatal(err)
 		}
