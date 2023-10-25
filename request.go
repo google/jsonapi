@@ -193,11 +193,18 @@ func choiceStructMapping(choice reflect.Type) (result map[string]structFieldInde
 	for i := 0; i < choice.NumField(); i++ {
 		fieldType := choice.Field(i)
 
+		// Must be a pointer
 		if fieldType.Type.Kind() != reflect.Ptr {
 			continue
 		}
 
 		subtype := fieldType.Type.Elem()
+
+		// Must be a pointer to struct
+		if subtype.Kind() != reflect.Struct {
+			continue
+		}
+
 		if t, err := jsonapiTypeOfModel(subtype); err == nil {
 			result[t] = structFieldIndex{
 				Type:     subtype,

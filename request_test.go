@@ -618,8 +618,10 @@ type Video struct {
 }
 
 type OneOfMedia struct {
-	Image *Image
-	Video *Video
+	Image       *Image
+	random      int
+	Video       *Video
+	RandomStuff *string
 }
 
 func Test_UnmarshalPayload_polymorphicRelations(t *testing.T) {
@@ -774,8 +776,8 @@ func Test_choiceStructMapping(t *testing.T) {
 			t.Errorf("expected \"images\" to be the first field, but got %d", imageField.FieldNum)
 		}
 		videoField, ok := result["videos"]
-		if !ok || videoField.FieldNum != 1 {
-			t.Errorf("expected \"videos\" to be the second field, but got %d", videoField.FieldNum)
+		if !ok || videoField.FieldNum != 2 {
+			t.Errorf("expected \"videos\" to be the third field, but got %d", videoField.FieldNum)
 		}
 	}
 }
