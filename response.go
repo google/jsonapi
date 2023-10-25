@@ -51,17 +51,16 @@ var (
 // Many Example: you could pass it, w, your http.ResponseWriter, and, models, a
 // slice of Blog struct instance pointers to be written to the response body:
 //
-//	 func ListBlogs(w http.ResponseWriter, r *http.Request) {
-//     blogs := []*Blog{}
+//		 func ListBlogs(w http.ResponseWriter, r *http.Request) {
+//	    blogs := []*Blog{}
 //
-//		 w.Header().Set("Content-Type", jsonapi.MediaType)
-//		 w.WriteHeader(http.StatusOK)
+//			 w.Header().Set("Content-Type", jsonapi.MediaType)
+//			 w.WriteHeader(http.StatusOK)
 //
-//		 if err := jsonapi.MarshalPayload(w, blogs); err != nil {
-//			 http.Error(w, err.Error(), http.StatusInternalServerError)
+//			 if err := jsonapi.MarshalPayload(w, blogs); err != nil {
+//				 http.Error(w, err.Error(), http.StatusInternalServerError)
+//			 }
 //		 }
-//	 }
-//
 func MarshalPayload(w io.Writer, models interface{}) error {
 	payload, err := Marshal(models)
 	if err != nil {
