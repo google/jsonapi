@@ -39,7 +39,121 @@ func TestMarshalPayload(t *testing.T) {
 	}
 }
 
-func TestMarshalPayloadWithNulls(t *testing.T) {
+func TestMarshalPayloadWithOnePolyrelation(t *testing.T) {
+	blog := &BlogPostWithPoly{
+		ID:    "1",
+		Title: "Hello, World",
+		Hero: &OneOfMedia{
+			Image: &Image{
+				ID: "2",
+			},
+		},
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalPayload(out, blog); err != nil {
+		t.Fatal(err)
+	}
+
+	var jsonData map[string]interface{}
+	if err := json.Unmarshal(out.Bytes(), &jsonData); err != nil {
+		t.Fatal(err)
+	}
+
+	relationships := jsonData["data"].(map[string]interface{})["relationships"].(map[string]interface{})
+	if relationships == nil {
+		t.Fatal("No relationships defined in unmarshaled JSON")
+	}
+	heroMedia := relationships["hero-media"].(map[string]interface{})["data"].(map[string]interface{})
+	if heroMedia == nil {
+		t.Fatal("No hero-media relationship defined in unmarshaled JSON")
+	}
+
+	if heroMedia["id"] != "2" {
+		t.Fatal("Expected ID \"2\" in unmarshaled JSON")
+	}
+
+	if heroMedia["type"] != "images" {
+		t.Fatal("Expected type \"images\" in unmarshaled JSON")
+	}
+}
+
+func TestMarshalPayloadWithManyPolyrelation(t *testing.T) {
+	blog := &BlogPostWithPoly{
+		ID:    "1",
+		Title: "Hello, World",
+		Media: []*OneOfMedia{
+			{
+				Image: &Image{
+					ID: "2",
+				},
+			},
+			{
+				Video: &Video{
+					ID: "3",
+				},
+			},
+		},
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalPayload(out, blog); err != nil {
+		t.Fatal(err)
+	}
+
+	var jsonData map[string]interface{}
+	if err := json.Unmarshal(out.Bytes(), &jsonData); err != nil {
+		t.Fatal(err)
+	}
+
+	relationships := jsonData["data"].(map[string]interface{})["relationships"].(map[string]interface{})
+	if relationships == nil {
+		t.Fatal("No relationships defined in unmarshaled JSON")
+	}
+
+	heroMedia := relationships["media"].(map[string]interface{})
+	if heroMedia == nil {
+		t.Fatal("No hero-media relationship defined in unmarshaled JSON")
+	}
+
+	heroMediaData := heroMedia["data"].([]interface{})
+
+	if len(heroMediaData) != 2 {
+		t.Fatal("Expected 2 items in unmarshaled JSON")
+	}
+
+	imageData := heroMediaData[0].(map[string]interface{})
+	videoData := heroMediaData[1].(map[string]interface{})
+
+	if imageData["id"] != "2" || imageData["type"] != "images" {
+		t.Fatal("Expected images ID \"2\" in unmarshaled JSON")
+	}
+
+	if videoData["id"] != "3" || videoData["type"] != "videos" {
+		t.Fatal("Expected videos ID \"3\" in unmarshaled JSON")
+	}
+}
+
+func TestMarshalPayloadWithManyPolyrelationWithNils(t *testing.T) {
+	blog := &BlogPostWithPoly{
+		ID:    "1",
+		Title: "Hello, World",
+		Media: []*OneOfMedia{
+			nil,
+			{
+				Image: &Image{
+					ID: "2",
+				},
+			},
+			nil,
+		},
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalPayload(out, blog); !errors.Is(err, ErrUnexpectedNil) {
+		t.Fatal("expected error but got none")
+	}
+}
 
 func TestMarshalPayloadWithManyRelationWithNils(t *testing.T) {
 	blog := &Blog{
