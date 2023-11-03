@@ -212,3 +212,27 @@ type CustomAttributeTypes struct {
 	Float  CustomFloatType  `jsonapi:"attr,float"`
 	String CustomStringType `jsonapi:"attr,string"`
 }
+
+type Image struct {
+	ID  string `jsonapi:"primary,images"`
+	Src string `jsonapi:"attr,src"`
+}
+
+type Video struct {
+	ID       string `jsonapi:"primary,videos"`
+	Captions string `jsonapi:"attr,captions"`
+}
+
+type OneOfMedia struct {
+	Image       *Image
+	random      int
+	Video       *Video
+	RandomStuff *string
+}
+
+type BlogPostWithPoly struct {
+	ID    string        `jsonapi:"primary,blogs"`
+	Title string        `jsonapi:"attr,title"`
+	Hero  *OneOfMedia   `jsonapi:"polyrelation,hero-media,omitempty"`
+	Media []*OneOfMedia `jsonapi:"polyrelation,media,omitempty"`
+}

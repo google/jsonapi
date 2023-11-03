@@ -607,31 +607,7 @@ func TestUnmarshalRelationships(t *testing.T) {
 	}
 }
 
-type Image struct {
-	ID  int    `jsonapi:"primary,images"`
-	Src string `jsonapi:"attr,src"`
-}
-
-type Video struct {
-	ID       int    `jsonapi:"primary,videos"`
-	Captions string `jsonapi:"attr,captions"`
-}
-
-type OneOfMedia struct {
-	Image       *Image
-	random      int
-	Video       *Video
-	RandomStuff *string
-}
-
 func Test_UnmarshalPayload_polymorphicRelations(t *testing.T) {
-	type pointerToOne struct {
-		ID    int           `jsonapi:"primary,blogs"`
-		Title string        `jsonapi:"attr,title"`
-		Hero  *OneOfMedia   `jsonapi:"polyrelation,hero-media,omitempty"`
-		Media []*OneOfMedia `jsonapi:"polyrelation,media,omitempty"`
-	}
-
 	in := bytes.NewReader([]byte(`{
 		"data": {
 			"type": "blogs",
@@ -684,7 +660,7 @@ func Test_UnmarshalPayload_polymorphicRelations(t *testing.T) {
 			}
 		]
 	}`))
-	out := new(pointerToOne)
+	out := new(BlogPostWithPoly)
 
 	if err := UnmarshalPayload(in, out); err != nil {
 		t.Fatal(err)
@@ -714,7 +690,7 @@ func Test_UnmarshalPayload_polymorphicRelations(t *testing.T) {
 
 func Test_UnmarshalPayload_polymorphicRelations_no_choice(t *testing.T) {
 	type pointerToOne struct {
-		ID    int         `jsonapi:"primary,blogs"`
+		ID    string      `jsonapi:"primary,blogs"`
 		Title string      `jsonapi:"attr,title"`
 		Hero  *OneOfMedia `jsonapi:"polyrelation,hero-media,omitempty"`
 	}
