@@ -26,6 +26,8 @@ var (
 	// ErrUnexpectedType is returned when marshalling an interface; the interface
 	// had to be a pointer or a slice; otherwise this error is returned.
 	ErrUnexpectedType = errors.New("models should be a struct pointer or slice of struct pointers")
+	// ErrUnexpectedNil is returned when a slice of relation structs contains nil values
+	ErrUnexpectedNil = errors.New("slice of struct pointers cannot contain nil")
 )
 
 // MarshalPayload writes a jsonapi response for one or many records. The
@@ -498,7 +500,12 @@ func visitModelNodeRelationships(models reflect.Value, included *map[string]*Nod
 	nodes := []*Node{}
 
 	for i := 0; i < models.Len(); i++ {
-		n := models.Index(i).Interface()
+		model := models.Index(i)
+		if !model.IsValid() || model.IsNil() {
+			return nil, ErrUnexpectedNil
+		}
+
+		n := model.Interface()
 
 		node, err := visitModelNode(n, included, sideload)
 		if err != nil {

@@ -3,6 +3,7 @@ package jsonapi
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"sort"
@@ -40,6 +41,26 @@ func TestMarshalPayload(t *testing.T) {
 
 func TestMarshalPayloadWithNulls(t *testing.T) {
 
+func TestMarshalPayloadWithManyRelationWithNils(t *testing.T) {
+	blog := &Blog{
+		ID:    1,
+		Title: "Hello, World",
+		Posts: []*Post{
+			nil,
+			{
+				ID: 2,
+			},
+			nil,
+		},
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalPayload(out, blog); !errors.Is(err, ErrUnexpectedNil) {
+		t.Fatal("expected error but got none")
+	}
+}
+
+func TestMarshalPayloadWithNulls(t *testing.T) {
 	books := []*Book{nil, {ID: 101}, nil}
 	var jsonData map[string]interface{}
 
