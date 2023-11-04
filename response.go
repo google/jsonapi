@@ -406,7 +406,7 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 					choiceValue := fieldValue
 
 					// must be a pointer type
-					if choiceValue.Type().Kind() != reflect.Pointer {
+					if choiceValue.Type().Kind() != reflect.Ptr {
 						er = ErrUnexpectedType
 						break
 					}
@@ -430,7 +430,7 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 					for i := 0; i < fieldValue.Len(); i++ {
 						itemValue := fieldValue.Index(i)
 						// Once again, must be a pointer type
-						if itemValue.Type().Kind() != reflect.Pointer {
+						if itemValue.Type().Kind() != reflect.Ptr {
 							er = ErrUnexpectedType
 							break
 						}

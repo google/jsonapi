@@ -3,7 +3,6 @@ package jsonapi
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"reflect"
 	"sort"
@@ -150,7 +149,7 @@ func TestMarshalPayloadWithManyPolyrelationWithNils(t *testing.T) {
 	}
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalPayload(out, blog); !errors.Is(err, ErrUnexpectedNil) {
+	if err := MarshalPayload(out, blog); err != ErrUnexpectedNil {
 		t.Fatal("expected error but got none")
 	}
 }
@@ -169,7 +168,7 @@ func TestMarshalPayloadWithManyRelationWithNils(t *testing.T) {
 	}
 
 	out := bytes.NewBuffer(nil)
-	if err := MarshalPayload(out, blog); !errors.Is(err, ErrUnexpectedNil) {
+	if err := MarshalPayload(out, blog); err != ErrUnexpectedNil {
 		t.Fatal("expected error but got none")
 	}
 }
