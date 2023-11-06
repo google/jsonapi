@@ -193,7 +193,10 @@ func MarshalOnePayloadEmbedded(w io.Writer, model interface{}) error {
 	return json.NewEncoder(w).Encode(payload)
 }
 
-func chooseFirstNonNilFieldValue(structValue reflect.Value) (reflect.Value, error) {
+// selectChoiceTypeStructField returns the first non-nil struct pointer field in the
+// specified struct value that has a jsonapi type field defined within it.
+// An error is returned if there are no fields matching that definition.
+func selectChoiceTypeStructField(structValue reflect.Value) (reflect.Value, error) {
 	for i := 0; i < structValue.NumField(); i++ {
 		choiceFieldValue := structValue.Field(i)
 		choiceTypeField := choiceFieldValue.Type()
@@ -416,7 +419,7 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 					}
 
 					structValue := choiceValue.Elem()
-					if found, err := chooseFirstNonNilFieldValue(structValue); err == nil {
+					if found, err := selectChoiceTypeStructField(structValue); err == nil {
 						fieldValue = found
 					}
 				} else {
@@ -442,7 +445,7 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 
 						structValue := itemValue.Elem()
 
-						if found, err := chooseFirstNonNilFieldValue(structValue); err == nil {
+						if found, err := selectChoiceTypeStructField(structValue); err == nil {
 							collection = append(collection, found.Interface())
 						}
 					}

@@ -38,7 +38,7 @@ func TestMarshalPayload(t *testing.T) {
 	}
 }
 
-func TestMarshalPayloadWithOnePolyrelation(t *testing.T) {
+func TestMarshalPayloadWithHasOnePolyrelation(t *testing.T) {
 	blog := &BlogPostWithPoly{
 		ID:    "1",
 		Title: "Hello, World",
@@ -77,7 +77,7 @@ func TestMarshalPayloadWithOnePolyrelation(t *testing.T) {
 	}
 }
 
-func TestMarshalPayloadWithManyPolyrelation(t *testing.T) {
+func TestMarshalPayloadWithHasManyPolyrelation(t *testing.T) {
 	blog := &BlogPostWithPoly{
 		ID:    "1",
 		Title: "Hello, World",
@@ -133,7 +133,7 @@ func TestMarshalPayloadWithManyPolyrelation(t *testing.T) {
 	}
 }
 
-func TestMarshalPayloadWithManyPolyrelationWithNils(t *testing.T) {
+func TestMarshalPayloadWithHasManyPolyrelationWithNils(t *testing.T) {
 	blog := &BlogPostWithPoly{
 		ID:    "1",
 		Title: "Hello, World",
@@ -154,7 +154,20 @@ func TestMarshalPayloadWithManyPolyrelationWithNils(t *testing.T) {
 	}
 }
 
-func TestMarshalPayloadWithManyRelationWithNils(t *testing.T) {
+func TestMarshalPayloadWithHasOneNilPolyrelation(t *testing.T) {
+	blog := &BlogPostWithPoly{
+		ID:    "1",
+		Title: "Hello, World",
+		Hero:  nil,
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalPayload(out, blog); err != nil {
+		t.Fatalf("expected no error but got %s", err)
+	}
+}
+
+func TestMarshalPayloadWithHasOneNilRelation(t *testing.T) {
 	blog := &Blog{
 		ID:    1,
 		Title: "Hello, World",
