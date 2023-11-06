@@ -32,6 +32,8 @@ var (
 	ErrUnknownFieldNumberType = errors.New("The struct field was not of a known number type")
 	// ErrInvalidType is returned when the given type is incompatible with the expected type.
 	ErrInvalidType = errors.New("Invalid type provided") // I wish we used punctuation.
+	// ErrTypeNotFound is returned when the given type not found on the model.
+	ErrTypeNotFound = errors.New("no primary type annotation found on model")
 )
 
 // ErrUnsupportedPtrType is returned when the Struct field was a pointer but
@@ -155,7 +157,13 @@ func jsonapiTypeOfModel(structModel reflect.Type) (string, error) {
 	for i := 0; i < structModel.NumField(); i++ {
 		fieldType := structModel.Field(i)
 		args, err := getStructTags(fieldType)
-		if err != nil || len(args) < 2 {
+
+		// A jsonapi tag was found, but it was improperly structured
+		if err != nil {
+			return "", err
+		}
+
+		if len(args) < 2 {
 			continue
 		}
 
@@ -164,7 +172,7 @@ func jsonapiTypeOfModel(structModel reflect.Type) (string, error) {
 		}
 	}
 
-	return "", errors.New("no primary annotation found on model")
+	return "", ErrTypeNotFound
 }
 
 // structFieldIndex holds a bit of information about a type found at a struct field index
@@ -175,7 +183,7 @@ type structFieldIndex struct {
 
 // choiceStructMapping reflects on a value that may be a slice
 // of choice type structs or a choice type struct. A choice type
-// struct is a struct comprising of pointers to other jsonapi models,
+// struct is a struct comprised of pointers to other jsonapi models,
 // only one of which is populated with a value by the decoder.
 //
 // The specified type is probed and a map is generated that maps the
@@ -183,7 +191,23 @@ type structFieldIndex struct {
 // within the choice type struct. This data can then be used to correctly
 // assign each data relationship node to the correct choice type
 // struct field.
-func choiceStructMapping(choice reflect.Type) (result map[string]structFieldIndex, err error) {
+//
+// For example, if the `choice` type was
+//
+//	type OneOfMedia struct {
+//		Video *Video
+//		Image *Image
+//	}
+//
+// then the resulting map would be
+//
+//	{
+//	  "videos" => {Video, 0}
+//	  "images" => {Image, 1}
+//	}
+//
+// where `"videos"` is the value of the `primary` annotation on the `Video` model
+func choiceStructMapping(choice reflect.Type) (result map[string]structFieldIndex) {
 	result = make(map[string]structFieldIndex)
 
 	for choice.Kind() != reflect.Struct {
@@ -213,7 +237,7 @@ func choiceStructMapping(choice reflect.Type) (result map[string]structFieldInde
 		}
 	}
 
-	return result, nil
+	return result
 }
 
 func getStructTags(field reflect.StructField) ([]string, error) {
@@ -395,11 +419,7 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			// struct type field.
 			var choiceMapping map[string]structFieldIndex = nil
 			if annotation == annotationPolyRelation {
-				choiceMapping, err = choiceStructMapping(fieldValue.Type())
-				if err != nil {
-					er = err
-					break
-				}
+				choiceMapping = choiceStructMapping(fieldValue.Type())
 			}
 
 			if isSlice {

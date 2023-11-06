@@ -743,10 +743,7 @@ func Test_choiceStructMapping(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		result, err := choiceStructMapping(c.val)
-		if err != nil {
-			t.Fatal(err)
-		}
+		result := choiceStructMapping(c.val)
 		imageField, ok := result["images"]
 		if !ok || imageField.FieldNum != 0 {
 			t.Errorf("expected \"images\" to be the first field, but got %d", imageField.FieldNum)
