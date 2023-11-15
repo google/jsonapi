@@ -26,6 +26,8 @@ var (
 	// ErrUnexpectedType is returned when marshalling an interface; the interface
 	// had to be a pointer or a slice; otherwise this error is returned.
 	ErrUnexpectedType = errors.New("models should be a struct pointer or slice of struct pointers")
+	// ErrUnexpectedNil is returned when a slice of relation structs contains nil values
+	ErrUnexpectedNil = errors.New("slice of struct pointers cannot contain nil")
 )
 
 // MarshalPayload writes a jsonapi response for one or many records. The
@@ -51,17 +53,16 @@ var (
 // Many Example: you could pass it, w, your http.ResponseWriter, and, models, a
 // slice of Blog struct instance pointers to be written to the response body:
 //
-//	 func ListBlogs(w http.ResponseWriter, r *http.Request) {
-//     blogs := []*Blog{}
+//		 func ListBlogs(w http.ResponseWriter, r *http.Request) {
+//	    blogs := []*Blog{}
 //
-//		 w.Header().Set("Content-Type", jsonapi.MediaType)
-//		 w.WriteHeader(http.StatusOK)
+//			 w.Header().Set("Content-Type", jsonapi.MediaType)
+//			 w.WriteHeader(http.StatusOK)
 //
-//		 if err := jsonapi.MarshalPayload(w, blogs); err != nil {
-//			 http.Error(w, err.Error(), http.StatusInternalServerError)
+//			 if err := jsonapi.MarshalPayload(w, blogs); err != nil {
+//				 http.Error(w, err.Error(), http.StatusInternalServerError)
+//			 }
 //		 }
-//	 }
-//
 func MarshalPayload(w io.Writer, models interface{}) error {
 	payload, err := Marshal(models)
 	if err != nil {
@@ -192,6 +193,34 @@ func MarshalOnePayloadEmbedded(w io.Writer, model interface{}) error {
 	return json.NewEncoder(w).Encode(payload)
 }
 
+// selectChoiceTypeStructField returns the first non-nil struct pointer field in the
+// specified struct value that has a jsonapi type field defined within it.
+// An error is returned if there are no fields matching that definition.
+func selectChoiceTypeStructField(structValue reflect.Value) (reflect.Value, error) {
+	for i := 0; i < structValue.NumField(); i++ {
+		choiceFieldValue := structValue.Field(i)
+		choiceTypeField := choiceFieldValue.Type()
+
+		// Must be a pointer
+		if choiceTypeField.Kind() != reflect.Ptr {
+			continue
+		}
+
+		// Must not be nil
+		if choiceFieldValue.IsNil() {
+			continue
+		}
+
+		subtype := choiceTypeField.Elem()
+		_, err := jsonapiTypeOfModel(subtype)
+		if err == nil {
+			return choiceFieldValue, nil
+		}
+	}
+
+	return reflect.Value{}, errors.New("no non-nil choice field was found in the specified struct")
+}
+
 func visitModelNode(model interface{}, included *map[string]*Node,
 	sideload bool) (*Node, error) {
 	node := new(Node)
@@ -206,16 +235,16 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 	modelType := value.Type().Elem()
 
 	for i := 0; i < modelValue.NumField(); i++ {
+		fieldValue := modelValue.Field(i)
 		structField := modelValue.Type().Field(i)
 		tag := structField.Tag.Get(annotationJSONAPI)
 		if tag == "" {
 			continue
 		}
 
-		fieldValue := modelValue.Field(i)
 		fieldType := modelType.Field(i)
 
-		args := strings.Split(tag, annotationSeperator)
+		args := strings.Split(tag, annotationSeparator)
 
 		if len(args) < 1 {
 			er = ErrBadJSONAPIStructTag
@@ -355,7 +384,7 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 					node.Attributes[args[1]] = fieldValue.Interface()
 				}
 			}
-		} else if annotation == annotationRelation {
+		} else if annotation == annotationRelation || annotation == annotationPolyRelation {
 			var omitEmpty bool
 
 			//add support for 'omitempty' struct tag for marshaling as absent
@@ -368,6 +397,70 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 				(isSlice && fieldValue.Len() < 1 ||
 					(!isSlice && fieldValue.IsNil())) {
 				continue
+			}
+
+			if annotation == annotationPolyRelation {
+				// for polyrelation, we'll snoop out the actual relation model
+				// through the choice type value by choosing the first non-nil
+				// field that has a jsonapi type annotation and overwriting
+				// `fieldValue` so normal annotation-assisted marshaling
+				// can continue
+				if !isSlice {
+					choiceValue := fieldValue
+
+					// must be a pointer type
+					if choiceValue.Type().Kind() != reflect.Ptr {
+						er = ErrUnexpectedType
+						break
+					}
+
+					if choiceValue.IsNil() {
+						fieldValue = reflect.ValueOf(nil)
+					}
+					structValue := choiceValue.Elem()
+
+					// Short circuit if field is omitted from model
+					if !structValue.IsValid() {
+						break
+					}
+
+					if found, err := selectChoiceTypeStructField(structValue); err == nil {
+						fieldValue = found
+					}
+				} else {
+					// A slice polyrelation field can be... polymorphic... meaning
+					// that we might snoop different types within each slice element.
+					// Each snooped value will added to this collection and then
+					// the recursion will take care of the rest. The only special case
+					// is nil. For that, we'll just choose the first
+					collection := make([]interface{}, 0)
+
+					for i := 0; i < fieldValue.Len(); i++ {
+						itemValue := fieldValue.Index(i)
+						// Once again, must be a pointer type
+						if itemValue.Type().Kind() != reflect.Ptr {
+							er = ErrUnexpectedType
+							break
+						}
+
+						if itemValue.IsNil() {
+							er = ErrUnexpectedNil
+							break
+						}
+
+						structValue := itemValue.Elem()
+
+						if found, err := selectChoiceTypeStructField(structValue); err == nil {
+							collection = append(collection, found.Interface())
+						}
+					}
+
+					if er != nil {
+						break
+					}
+
+					fieldValue = reflect.ValueOf(collection)
+				}
 			}
 
 			if node.Relationships == nil {
@@ -499,7 +592,12 @@ func visitModelNodeRelationships(models reflect.Value, included *map[string]*Nod
 	nodes := []*Node{}
 
 	for i := 0; i < models.Len(); i++ {
-		n := models.Index(i).Interface()
+		model := models.Index(i)
+		if !model.IsValid() || model.IsNil() {
+			return nil, ErrUnexpectedNil
+		}
+
+		n := model.Interface()
 
 		node, err := visitModelNode(n, included, sideload)
 		if err != nil {

@@ -77,7 +77,7 @@ all of your data easily.
 
 ## Example App
 
-[examples/app.go](https://github.com/google/jsonapi/blob/master/examples/app.go)
+[examples/app.go](https://github.com/hashicorp/jsonapi/blob/main/examples/app.go)
 
 This program demonstrates the implementation of a create, a show,
 and a list [http.Handler](http://golang.org/pkg/net/http#Handler).  It
@@ -178,6 +178,60 @@ be, `relation`, and the second should be the name of the relationship,
 used as the key in the `relationships` hash for the record. The optional
 third argument is `omitempty` - if present will prevent non existent to-one and
 to-many from being serialized.
+
+
+#### `polyrelation`
+
+```
+`jsonapi:"polyrelation,<key name in relationships hash>,<optional: omitempty>"`
+```
+
+Polymorphic relations can be represented exactly as relations, except that
+an intermediate type is needed within your model struct that provides a choice
+for the actual value to be populated within.
+
+Example:
+
+```go
+type Video struct {
+	ID          int    `jsonapi:"primary,videos"`
+	SourceURL   string `jsonapi:"attr,source-url"`
+	CaptionsURL string `jsonapi:"attr,captions-url"`
+}
+
+type Image struct {
+	ID        int    `jsonapi:"primary,images"`
+	SourceURL string `jsonapi:"attr,src"`
+	AltText   string `jsonapi:"attr,alt"`
+}
+
+type OneOfMedia struct {
+	Video *Video
+	Image *Image
+}
+
+type Post struct {
+	ID      int           `jsonapi:"primary,posts"`
+	Title   string        `jsonapi:"attr,title"`
+	Body    string        `jsonapi:"attr,body"`
+	Gallery []*OneOfMedia `jsonapi:"polyrelation,gallery"`
+	Hero    *OneOfMedia   `jsonapi:"polyrelation,hero"`
+}
+```
+
+During decoding, the `polyrelation` annotation instructs jsonapi to assign each relationship
+to either `Video` or `Image` within the value of the associated field, provided that the
+payload contains either a "videos" or "images" type. This field value must be
+a pointer to a special choice type struct (also known as a tagged union, or sum type) containing
+other pointer fields to jsonapi models. The actual field assignment depends on that type having
+a jsonapi "primary" annotation with a type matching the relationship type found in the response.
+All other fields will be remain empty. If no matching types are represented by the choice type,
+all fields will be empty.
+
+During encoding, the very first non-nil field will be used to populate the payload. Others
+will be ignored. Therefore, it's critical to set the value of only one field within the choice
+struct. When accepting input values on this type of choice type, it would a good idea to enforce
+and check that the value is set on only one field.
 
 #### `links`
 
@@ -471,13 +525,13 @@ I use git subtrees to manage dependencies rather than `go get` so that
 the src is committed to my repo.
 
 ```
-git subtree add --squash --prefix=src/github.com/google/jsonapi https://github.com/google/jsonapi.git master
+git subtree add --squash --prefix=src/github.com/hashicorp/jsonapi https://github.com/hashicorp/jsonapi.git main
 ```
 
 To update,
 
 ```
-git subtree pull --squash --prefix=src/github.com/google/jsonapi https://github.com/google/jsonapi.git master
+git subtree pull --squash --prefix=src/github.com/hashicorp/jsonapi https://github.com/hashicorp/jsonapi.git main
 ```
 
 This assumes that I have my repo structured with a `src` dir containing

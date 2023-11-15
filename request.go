@@ -32,7 +32,8 @@ var (
 	ErrUnknownFieldNumberType = errors.New("The struct field was not of a known number type")
 	// ErrInvalidType is returned when the given type is incompatible with the expected type.
 	ErrInvalidType = errors.New("Invalid type provided") // I wish we used punctuation.
-
+	// ErrTypeNotFound is returned when the given type not found on the model.
+	ErrTypeNotFound = errors.New("no primary type annotation found on model")
 )
 
 // ErrUnsupportedPtrType is returned when the Struct field was a pointer but
@@ -70,24 +71,23 @@ func newErrUnsupportedPtrType(rf reflect.Value, t reflect.Type, structField refl
 // For example you could pass it, in, req.Body and, model, a BlogPost
 // struct instance to populate in an http handler,
 //
-//   func CreateBlog(w http.ResponseWriter, r *http.Request) {
-//   	blog := new(Blog)
+//	func CreateBlog(w http.ResponseWriter, r *http.Request) {
+//		blog := new(Blog)
 //
-//   	if err := jsonapi.UnmarshalPayload(r.Body, blog); err != nil {
-//   		http.Error(w, err.Error(), 500)
-//   		return
-//   	}
+//		if err := jsonapi.UnmarshalPayload(r.Body, blog); err != nil {
+//			http.Error(w, err.Error(), 500)
+//			return
+//		}
 //
-//   	// ...do stuff with your blog...
+//		// ...do stuff with your blog...
 //
-//   	w.Header().Set("Content-Type", jsonapi.MediaType)
-//   	w.WriteHeader(201)
+//		w.Header().Set("Content-Type", jsonapi.MediaType)
+//		w.WriteHeader(201)
 //
-//   	if err := jsonapi.MarshalPayload(w, blog); err != nil {
-//   		http.Error(w, err.Error(), 500)
-//   	}
-//   }
-//
+//		if err := jsonapi.MarshalPayload(w, blog); err != nil {
+//			http.Error(w, err.Error(), 500)
+//		}
+//	}
 //
 // Visit https://github.com/google/jsonapi#create for more info.
 //
@@ -142,6 +142,164 @@ func UnmarshalManyPayload(in io.Reader, t reflect.Type) ([]interface{}, error) {
 	return models, nil
 }
 
+// jsonapiTypeOfModel returns a jsonapi primary type string
+// given a struct type that has typical jsonapi struct tags
+//
+// Example:
+// For this type, "posts" is returned. An error is returned if
+// no properly-formatted "primary" tag is found for jsonapi
+// annotations
+//
+//	type Post struct {
+//	    ID string `jsonapi:"primary,posts"`
+//	}
+func jsonapiTypeOfModel(structModel reflect.Type) (string, error) {
+	for i := 0; i < structModel.NumField(); i++ {
+		fieldType := structModel.Field(i)
+		args, err := getStructTags(fieldType)
+
+		// A jsonapi tag was found, but it was improperly structured
+		if err != nil {
+			return "", err
+		}
+
+		if len(args) < 2 {
+			continue
+		}
+
+		if args[0] == annotationPrimary {
+			return args[1], nil
+		}
+	}
+
+	return "", ErrTypeNotFound
+}
+
+// structFieldIndex holds a bit of information about a type found at a struct field index
+type structFieldIndex struct {
+	Type     reflect.Type
+	FieldNum int
+}
+
+// choiceStructMapping reflects on a value that may be a slice
+// of choice type structs or a choice type struct. A choice type
+// struct is a struct comprised of pointers to other jsonapi models,
+// only one of which is populated with a value by the decoder.
+//
+// The specified type is probed and a map is generated that maps the
+// underlying model type (its 'primary' type) to the field number
+// within the choice type struct. This data can then be used to correctly
+// assign each data relationship node to the correct choice type
+// struct field.
+//
+// For example, if the `choice` type was
+//
+//	type OneOfMedia struct {
+//		Video *Video
+//		Image *Image
+//	}
+//
+// then the resulting map would be
+//
+//	{
+//	  "videos" => {Video, 0}
+//	  "images" => {Image, 1}
+//	}
+//
+// where `"videos"` is the value of the `primary` annotation on the `Video` model
+func choiceStructMapping(choice reflect.Type) (result map[string]structFieldIndex) {
+	result = make(map[string]structFieldIndex)
+
+	for choice.Kind() != reflect.Struct {
+		choice = choice.Elem()
+	}
+
+	for i := 0; i < choice.NumField(); i++ {
+		fieldType := choice.Field(i)
+
+		// Must be a pointer
+		if fieldType.Type.Kind() != reflect.Ptr {
+			continue
+		}
+
+		subtype := fieldType.Type.Elem()
+
+		// Must be a pointer to struct
+		if subtype.Kind() != reflect.Struct {
+			continue
+		}
+
+		if t, err := jsonapiTypeOfModel(subtype); err == nil {
+			result[t] = structFieldIndex{
+				Type:     subtype,
+				FieldNum: i,
+			}
+		}
+	}
+
+	return result
+}
+
+func getStructTags(field reflect.StructField) ([]string, error) {
+	tag := field.Tag.Get("jsonapi")
+	if tag == "" {
+		return []string{}, nil
+	}
+
+	args := strings.Split(tag, ",")
+	if len(args) < 1 {
+		return nil, ErrBadJSONAPIStructTag
+	}
+
+	annotation := args[0]
+
+	if (annotation == annotationClientID && len(args) != 1) ||
+		(annotation != annotationClientID && len(args) < 2) {
+		return nil, ErrBadJSONAPIStructTag
+	}
+
+	return args, nil
+}
+
+// unmarshalNodeMaybeChoice populates a model that may or may not be
+// a choice type struct that corresponds to a polyrelation or relation
+func unmarshalNodeMaybeChoice(m *reflect.Value, data *Node, annotation string, choiceTypeMapping map[string]structFieldIndex, included *map[string]*Node) error {
+	// This will hold either the value of the choice type model or the actual
+	// model, depending on annotation
+	var actualModel = *m
+	var choiceElem *structFieldIndex = nil
+
+	if annotation == annotationPolyRelation {
+		c, ok := choiceTypeMapping[data.Type]
+		if !ok {
+			// If there is no valid choice field to assign this type of relation,
+			// this shouldn't necessarily be an error because a newer version of
+			// the API could be communicating with an older version of the client
+			// library, in which case all choice variants would be nil.
+			return nil
+		}
+		choiceElem = &c
+		actualModel = reflect.New(choiceElem.Type)
+	}
+
+	if err := unmarshalNode(
+		fullNode(data, included),
+		actualModel,
+		included,
+	); err != nil {
+		return err
+	}
+
+	if choiceElem != nil {
+		// actualModel is a pointer to the model type
+		// m is a pointer to a struct that should hold the actualModel
+		// at choiceElem.FieldNum
+		v := m.Elem()
+		v.Field(choiceElem.FieldNum).Set(actualModel)
+	}
+	return nil
+}
+
 func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -155,27 +313,18 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 	var er error
 
 	for i := 0; i < modelValue.NumField(); i++ {
+		fieldValue := modelValue.Field(i)
 		fieldType := modelType.Field(i)
-		tag := fieldType.Tag.Get("jsonapi")
-		if tag == "" {
+
+		args, err := getStructTags(fieldType)
+		if err != nil {
+			er = err
+			break
+		}
+		if len(args) == 0 {
 			continue
 		}
-
-		fieldValue := modelValue.Field(i)
-
-		args := strings.Split(tag, ",")
-		if len(args) < 1 {
-			er = ErrBadJSONAPIStructTag
-			break
-		}
-
 		annotation := args[0]
-
-		if (annotation == annotationClientID && len(args) != 1) ||
-			(annotation != annotationClientID && len(args) < 2) {
-			er = ErrBadJSONAPIStructTag
-			break
-		}
 
 		if annotation == annotationPrimary {
 			// Check the JSON API Type
@@ -257,16 +406,26 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 			}
 
 			assign(fieldValue, value)
-		} else if annotation == annotationRelation {
+		} else if annotation == annotationRelation || annotation == annotationPolyRelation {
 			isSlice := fieldValue.Type().Kind() == reflect.Slice
 
+			// No relations of the given name were provided
 			if data.Relationships == nil || data.Relationships[args[1]] == nil {
 				continue
+			}
+
+			// If this is a polymorphic relation, each data relationship needs to be assigned
+			// to it's appropriate choice field and fieldValue should be a choice
+			// struct type field.
+			var choiceMapping map[string]structFieldIndex = nil
+			if annotation == annotationPolyRelation {
+				choiceMapping = choiceStructMapping(fieldValue.Type())
 			}
 
 			if isSlice {
 				// to-many relationship
 				relationship := new(RelationshipManyNode)
+				sliceType := fieldValue.Type()
 
 				buf := bytes.NewBuffer(nil)
 
@@ -274,16 +433,18 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 				json.NewDecoder(buf).Decode(relationship)
 
 				data := relationship.Data
-				models := reflect.New(fieldValue.Type()).Elem()
+
+				// This will hold either the value of the slice of choice type models or
+				// the slice of models, depending on the annotation
+				models := reflect.New(sliceType).Elem()
 
 				for _, n := range data {
-					m := reflect.New(fieldValue.Type().Elem().Elem())
+					// This will hold either the value of the choice type model or the actual
+					// model, depending on annotation
+					m := reflect.New(sliceType.Elem().Elem())
 
-					if err := unmarshalNode(
-						fullNode(n, included),
-						m,
-						included,
-					); err != nil {
+					err = unmarshalNodeMaybeChoice(&m, n, annotation, choiceMapping, included)
+					if err != nil {
 						er = err
 						break
 					}
@@ -313,20 +474,18 @@ func unmarshalNode(data *Node, model reflect.Value, included *map[string]*Node) 
 					continue
 				}
 
+				// This will hold either the value of the choice type model or the actual
+				// model, depending on annotation
 				m := reflect.New(fieldValue.Type().Elem())
-				if err := unmarshalNode(
-					fullNode(relationship.Data, included),
-					m,
-					included,
-				); err != nil {
+
+				err = unmarshalNodeMaybeChoice(&m, relationship.Data, annotation, choiceMapping, included)
+				if err != nil {
 					er = err
 					break
 				}
 
 				fieldValue.Set(m)
-
 			}
-
 		} else if annotation == annotationLinks {
 			if data.Links == nil {
 				continue
