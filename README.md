@@ -1,8 +1,8 @@
 # jsonapi
 
-![Build Status](https://github.com/hashicorp/jsonapi/actions/workflows/ci.yml/badge.svg?main)
-![Go Report Card](https://goreportcard.com/badge/github.com/hashicorp/jsonapi)
-![GoDoc](https://godoc.org/github.com/hashicorp/jsonapi?status.svg)
+[![Build Status](https://github.com/hashicorp/jsonapi/actions/workflows/ci.yml/badge.svg?main)](https://github.com/hashicorp/jsonapi/actions/workflows/ci.yml?query=branch%3Amain)
+[![Go Report Card](https://goreportcard.com/badge/github.com/hashicorp/jsonapi)](https://goreportcard.com/report/github.com/hashicorp/jsonapi)
+[![GoDoc](https://godoc.org/github.com/hashicorp/jsonapi?status.svg)](http://godoc.org/github.com/hashicorp/jsonapi)
 
 A serializer/deserializer for JSON payloads that comply to the
 [JSON API - jsonapi.org](http://jsonapi.org) v1.1 spec in go.
