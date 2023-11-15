@@ -734,6 +734,37 @@ func Test_UnmarshalPayload_polymorphicRelations_no_choice(t *testing.T) {
 	}
 }
 
+func Test_UnmarshalPayload_polymorphicRelations_omitted(t *testing.T) {
+	type pointerToOne struct {
+		ID    string      `jsonapi:"primary,blogs"`
+		Title string      `jsonapi:"attr,title"`
+		Hero  *OneOfMedia `jsonapi:"polyrelation,hero-media"`
+	}
+
+	in := bytes.NewReader([]byte(`{
+		"data": {
+			"type": "blogs",
+			"id":   "3",
+			"attributes": {
+				"title": "Hello, World"
+			}
+		}
+	}`))
+	out := new(pointerToOne)
+
+	if err := UnmarshalPayload(in, out); err != nil {
+		t.Fatal(err)
+	}
+
+	if out.Title != "Hello, World" {
+		t.Errorf("expected Title %q but got %q", "Hello, World", out.Title)
+	}
+
+	if out.Hero != nil {
+		t.Fatalf("expected Hero to be nil, but got %+v", out.Hero)
+	}
+}
+
 func Test_choiceStructMapping(t *testing.T) {
 	cases := []struct {
 		val reflect.Type

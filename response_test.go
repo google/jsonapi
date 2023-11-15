@@ -167,6 +167,18 @@ func TestMarshalPayloadWithHasOneNilPolyrelation(t *testing.T) {
 	}
 }
 
+func TestMarshalPayloadWithHasOneOmittedPolyrelation(t *testing.T) {
+	blog := &BlogPostWithPoly{
+		ID:    "1",
+		Title: "Hello, World",
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := MarshalPayload(out, blog); err != nil {
+		t.Fatalf("expected no error but got %s", err)
+	}
+}
+
 func TestMarshalPayloadWithHasOneNilRelation(t *testing.T) {
 	blog := &Blog{
 		ID:    1,

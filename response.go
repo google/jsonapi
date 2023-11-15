@@ -417,8 +417,13 @@ func visitModelNode(model interface{}, included *map[string]*Node,
 					if choiceValue.IsNil() {
 						fieldValue = reflect.ValueOf(nil)
 					}
-
 					structValue := choiceValue.Elem()
+
+					// Short circuit if field is omitted from model
+					if !structValue.IsValid() {
+						break
+					}
+
 					if found, err := selectChoiceTypeStructField(structValue); err == nil {
 						fieldValue = found
 					}
