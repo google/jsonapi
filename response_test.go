@@ -957,6 +957,61 @@ func TestMarshal_InvalidIntefaceArgument(t *testing.T) {
 	}
 }
 
+func TestMarshal_EmptyAttributesNotIncluded(t *testing.T) {
+	type Primary struct {
+		ID          string     `jsonapi:"primary,primary"`
+		Attr        string     `jsonapi:"attr,attr,omitempty"`
+		Secondary   *Primary   `jsonapi:"relation,secondary,omitempty"`
+		Secondaries []*Primary `jsonapi:"relation,secondaries,omitempty"`
+	}
+
+	p := &Primary{
+		ID:   "1",
+		Attr: "a",
+		Secondary: &Primary{
+			ID: "2",
+		},
+		Secondaries: []*Primary{
+			{ID: "3"},
+		},
+	}
+
+	t.Run("Single payload", func(t *testing.T) {
+		out := bytes.NewBuffer(nil)
+		if err := MarshalPayload(out, p); err != nil {
+			t.Fatal(err)
+		}
+
+		var jsonData map[string]interface{}
+		if err := json.Unmarshal(out.Bytes(), &jsonData); err != nil {
+			t.Fatal(err)
+		}
+
+		_, ok := jsonData["included"].([]interface{})
+		if ok {
+			t.Fatal("Was expecting included to be empty")
+		}
+	})
+
+	t.Run("Many payload", func(t *testing.T) {
+
+		out := bytes.NewBuffer(nil)
+		if err := MarshalPayload(out, []*Primary{p}); err != nil {
+			t.Fatal(err)
+		}
+
+		var jsonData map[string]interface{}
+		if err := json.Unmarshal(out.Bytes(), &jsonData); err != nil {
+			t.Fatal(err)
+		}
+
+		_, ok := jsonData["included"].([]interface{})
+		if ok {
+			t.Fatal("Was expecting included to be empty")
+		}
+	})
+}
+
 func testBlog() *Blog {
 	return &Blog{
 		ID:        5,

@@ -51,17 +51,16 @@ var (
 // Many Example: you could pass it, w, your http.ResponseWriter, and, models, a
 // slice of Blog struct instance pointers to be written to the response body:
 //
-//	 func ListBlogs(w http.ResponseWriter, r *http.Request) {
-//     blogs := []*Blog{}
+//		 func ListBlogs(w http.ResponseWriter, r *http.Request) {
+//	    blogs := []*Blog{}
 //
-//		 w.Header().Set("Content-Type", jsonapi.MediaType)
-//		 w.WriteHeader(http.StatusOK)
+//			 w.Header().Set("Content-Type", jsonapi.MediaType)
+//			 w.WriteHeader(http.StatusOK)
 //
-//		 if err := jsonapi.MarshalPayload(w, blogs); err != nil {
-//			 http.Error(w, err.Error(), http.StatusInternalServerError)
+//			 if err := jsonapi.MarshalPayload(w, blogs); err != nil {
+//				 http.Error(w, err.Error(), http.StatusInternalServerError)
+//			 }
 //		 }
-//	 }
-//
 func MarshalPayload(w io.Writer, models interface{}) error {
 	payload, err := Marshal(models)
 	if err != nil {
@@ -514,15 +513,19 @@ func appendIncluded(m *map[string]*Node, nodes ...*Node) {
 
 func nodeMapValues(m *map[string]*Node) []*Node {
 	mp := *m
-	nodes := make([]*Node, len(mp))
+	nodes := make([]*Node, 0)
 
-	i := 0
 	for _, n := range mp {
-		nodes[i] = n
-		i++
+		if !isNodeEmpty(n) {
+			nodes = append(nodes, n)
+		}
 	}
 
 	return nodes
+}
+
+func isNodeEmpty(n *Node) bool {
+	return (n.Attributes == nil || len(n.Attributes) == 0) && (n.Relationships == nil || len(n.Relationships) == 0)
 }
 
 func convertToSliceInterface(i *interface{}) ([]interface{}, error) {
